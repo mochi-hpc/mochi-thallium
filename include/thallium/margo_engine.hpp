@@ -30,7 +30,9 @@ private:
 		void* data = margo_registered_data(mid, info->id);
 		auto f = function_cast<G>(data);
 		request req(handle);
-		(*f)(req);
+		buffer input;
+		margo_get_input(handle, &input);
+		(*f)(req, input);
 		return HG_SUCCESS;
 	}
 
@@ -77,6 +79,7 @@ public:
 } // namespace thallium
 
 #include <thallium/remote_procedure.hpp>
+#include <thallium/serialization.hpp>
 
 namespace thallium {
 
@@ -84,8 +87,8 @@ template<typename F>
 remote_procedure margo_engine::define(const std::string& name) {
     // TODO throw an exception if the following call fails
     hg_id_t id = margo_register_name(m_mid, name.c_str(),
-                    nullptr, //proc_vector<char>,
-                    nullptr, //proc_vector<char>,
+                    serialize_buffer,
+                    serialize_buffer,
                     nullptr);
     margo_registered_disable_response(m_mid, id, HG_TRUE);
     return remote_procedure(id);
@@ -95,8 +98,8 @@ template<typename F>
 remote_procedure margo_engine::define(const std::string& name, F&& fun) {
     // TODO throw an exception if the following call fails
     hg_id_t id = margo_register_name(m_mid, name.c_str(),
-                    nullptr,//serialize<Args...>,
-                    nullptr, //proc_vector<char>,
+                    serialize_buffer,
+                    serialize_buffer,
                     rpc_callback<decltype(fun)>);
     margo_register_data(m_mid, id, void_cast(&fun), nullptr);
     margo_registered_disable_response(m_mid, id, HG_TRUE);

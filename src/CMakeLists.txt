@@ -4,10 +4,12 @@
 #
 
 # list of source files
-set(thallium-src endpoint.cpp 
+set(thallium-src serialization.cpp
+                 endpoint.cpp 
                  margo_engine.cpp 
                  remote_procedure.cpp 
-                 callable_remote_procedure.cpp)
+                 callable_remote_procedure.cpp
+                 proc_buffer.cpp)
 
 # load package helper for generating cmake CONFIG packages
 include (CMakePackageConfigHelpers)

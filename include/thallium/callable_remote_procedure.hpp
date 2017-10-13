@@ -68,7 +68,7 @@ public:
 	}
 
 	template<typename ... T>
-	auto operator()(T&& ... t) const {
+	auto operator()(const T& ... t) const {
 		// TODO throw an exception if handle is null
 //		buffer input;
 //		BufferOutputArchive arch(input);
@@ -77,11 +77,17 @@ public:
 		//auto input = std::tie(t...);
 		margo_forward(m_handle, nullptr);//&input);
 
-/*
-		Buffer output;
-*/
+
+//		Buffer output;
+
 		//margo_get_output(m_handle, &output);
 		return true;//Pack(std::move(output));
+	}
+
+
+	auto operator()(const buffer& buf) const {
+		margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
+		return true;
 	}
 };
 

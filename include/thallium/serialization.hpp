@@ -1,6 +1,7 @@
 #ifndef __THALLIUM_SERIALIZATION_HPP
 #define __THALLIUM_SERIALIZATION_HPP
 
+#include <cstdint>
 #include <mercury_proc.h>
 
 namespace thallium {
@@ -32,10 +33,7 @@ hg_return_t serialize(hg_proc_t proc, void* data) {
 	return proc::process_type<std::tuple<T...>>(proc, data, size);
 }
 
-hg_return_t serialize_buffer(hg_proc_t proc, void* data) {
-	std::size_t size;
-	return proc::process_type<buffer>(proc,data, size);
-}
+hg_return_t serialize_buffer(hg_proc_t proc, void* data);
 
 } // namespace thallium
 
