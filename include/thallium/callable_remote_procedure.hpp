@@ -1,0 +1,90 @@
+#ifndef __THALLIUM_CALLABLE_REMOTE_PROCEDURE_HPP
+#define __THALLIUM_CALLABLE_REMOTE_PROCEDURE_HPP
+
+#include <tuple>
+#include <cstdint>
+#include <margo.h>
+#include <thallium/buffer.hpp>
+
+namespace thallium {
+
+class margo_engine;
+class remote_procedure;
+class endpoint;
+
+class callable_remote_procedure {
+
+	friend class remote_procedure;
+
+private:
+	hg_handle_t m_handle;
+
+	callable_remote_procedure(hg_id_t id, const endpoint& ep);
+
+public:
+
+	callable_remote_procedure(const callable_remote_procedure& other) {
+		if(m_handle != HG_HANDLE_NULL) {
+			margo_destroy(m_handle);
+		}
+		m_handle = other.m_handle;
+		if(m_handle != HG_HANDLE_NULL) {
+			margo_ref_incr(m_handle);
+		}
+	}
+
+	callable_remote_procedure(callable_remote_procedure&& other) {
+		if(m_handle != HG_HANDLE_NULL) {
+            margo_destroy(m_handle);
+        }
+		m_handle = other.m_handle;
+		other.m_handle = HG_HANDLE_NULL;
+	}
+
+	callable_remote_procedure& operator=(const callable_remote_procedure& other) {
+		if(&other == this) return *this;
+		if(m_handle != HG_HANDLE_NULL) {
+			margo_destroy(m_handle);
+		}
+		m_handle = other.m_handle;
+		margo_ref_incr(m_handle);
+		return *this;
+	}
+
+	callable_remote_procedure& operator=(callable_remote_procedure&& other) {
+		if(&other == this) return *this;
+		if(m_handle != HG_HANDLE_NULL) {
+			margo_destroy(m_handle);
+		}
+		m_handle = other.m_handle;
+		other.m_handle = HG_HANDLE_NULL;
+		return *this;
+	}
+
+	~callable_remote_procedure() {
+		if(m_handle != HG_HANDLE_NULL) {
+			margo_destroy(m_handle);
+		}
+	}
+
+	template<typename ... T>
+	auto operator()(T&& ... t) const {
+		// TODO throw an exception if handle is null
+//		buffer input;
+//		BufferOutputArchive arch(input);
+//		serialize_many(arch, std::forward<T>(t)...);
+//		serialize(std::forward<T>(t)
+		//auto input = std::tie(t...);
+		margo_forward(m_handle, nullptr);//&input);
+
+/*
+		Buffer output;
+*/
+		//margo_get_output(m_handle, &output);
+		return true;//Pack(std::move(output));
+	}
+};
+
+}
+
+#endif
