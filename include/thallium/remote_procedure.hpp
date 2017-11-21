@@ -29,7 +29,7 @@ public:
 
 	callable_remote_procedure on(const endpoint& ep) const;
 
-	callable_remote_procedure operator,(const endpoint& ep) const;
+	callable_remote_procedure operator>>(const endpoint& ep) const;
 };
 
 }

@@ -21,9 +21,10 @@ class margo_engine {
 private:
 
 	margo_instance_id m_mid;
+    bool              m_is_server;
 
 	template<typename F>
-	static hg_return_t rpc_callback(hg_handle_t handle) {
+	static void rpc_handler_ult(hg_handle_t handle) {
 		using G = std::remove_reference_t<F>;
 		const struct hg_info* info = margo_get_info(handle);
 		margo_instance_id mid = margo_hg_handle_get_instance(handle);
@@ -33,8 +34,29 @@ private:
 		buffer input;
 		margo_get_input(handle, &input);
 		(*f)(req, input);
-		return HG_SUCCESS;
+        margo_free_input(handle, &input);
 	}
+
+    template<typename F>
+    static hg_return_t rpc_callback(hg_handle_t handle) {
+        int ret;
+        ABT_pool pool;
+        margo_instance_id mid;
+        const struct hg_info *hgi = margo_get_info(handle);
+        mid = margo_hg_handle_get_instance(handle);
+        if(mid == MARGO_INSTANCE_NULL) {
+            return HG_OTHER_ERROR;
+        }
+        ret = margo_lookup_mplex(mid, hgi->id, hgi->target_id, &pool);
+        if(ret != HG_SUCCESS) {
+            return HG_INVALID_PARAM;
+        }
+        ret = ABT_thread_create(pool, (void (*)(void *)) rpc_handler_ult<F>, handle, ABT_THREAD_ATTR_NULL, NULL);
+        if(ret != 0) {
+            return HG_NOMEM_ERROR;
+        }
+        return HG_SUCCESS;
+    }
 
 public:
 
@@ -42,8 +64,10 @@ public:
 	              bool use_progress_thread = false,
 	              std::int32_t rpc_thread_count = 0) {
 
+        m_is_server = (mode == MARGO_SERVER_MODE);
+
 		m_mid = margo_init(addr.c_str(), mode,
-				use_progress_thread,
+				use_progress_thread ? 1 : 0,
 				rpc_thread_count);
 		// TODO throw exception if m_mid is null
 	}
@@ -54,8 +78,10 @@ public:
 	margo_engine& operator=(const margo_engine& other) = delete;
 
 	~margo_engine() {
-		// TODO throw an exception if following call fails
-		margo_wait_for_finalize(m_mid);
+        if(m_is_server) {
+            // TODO throw an exception if following call fails
+            margo_wait_for_finalize(m_mid);
+        }
 	}
 
 	void finalize() {

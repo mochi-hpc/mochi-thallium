@@ -18,14 +18,14 @@ int server() {
 
 	tl::margo_engine me("bmi+tcp://127.0.0.1:1234", MARGO_SERVER_MODE);
 	me.define("hello1", hello);
-	me.define("hello2", [](const tl::request& req, const tl::buffer& input) 
+	me.define("hello2", [&me](const tl::request& req, const tl::buffer& input) 
 							{ std::cout << "(2) Hello World "; 
 							  for(auto c : input) std::cout << c;
-							  std::cout << std::endl; });
+							  std::cout << std::endl; 
+                              me.finalize(); });
 
 	std::string addr = me.self();
 	std::cout << "Server running at address " << addr << std::endl;
-	// TODO send address to client
 
 	return 0;
 }
@@ -43,10 +43,10 @@ int client() {
 
 	tl::buffer b(16,'a');
 	
-	(remote_hello1, server_endpoint)(b);
+	(remote_hello1 >> server_endpoint)(b);
 	
 	remote_hello2.on(server_endpoint)(b);
-	
+    
 	return 0;
 }
 
@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
 
 	if(rank == 0) server();
 	else          client();
+    std::cout << "rank " << rank << " finished its work" << std::endl;
 
 	MPI_Finalize();
 	return 0;
