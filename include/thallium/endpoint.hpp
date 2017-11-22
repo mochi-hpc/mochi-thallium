@@ -7,27 +7,27 @@
 
 namespace thallium {
 
-class margo_engine;
+class engine;
 
 class endpoint {
 
-	friend class margo_engine;
+	friend class engine;
 	friend class callable_remote_procedure;
 
 private:
 
-	margo_engine& m_margo;
-	hg_addr_t     m_addr;
+	engine&   m_engine;
+	hg_addr_t m_addr;
 
-	endpoint(margo_engine& m, hg_addr_t addr)
-	: m_margo(m), m_addr(addr) {}
+	endpoint(engine& e, hg_addr_t addr)
+	: m_engine(e), m_addr(addr) {}
 
 public:
 
 	endpoint(const endpoint& other);
 
 	endpoint(endpoint&& other)
-	: m_margo(other.m_margo), m_addr(other.m_addr) {
+	: m_engine(other.m_engine), m_addr(other.m_addr) {
 		other.m_addr = HG_ADDR_NULL;
 	}
 

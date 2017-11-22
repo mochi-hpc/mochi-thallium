@@ -10,21 +10,23 @@ namespace tl = thallium;
 
 void hello(const tl::request& req, const tl::buffer& input) {
 	std::cout << "(1) Hello World ";
-	for(auto c : input) std::cout << c;
+    for(auto c : input) std::cout << c;
 	std::cout << std::endl;
+    tl::buffer ret(6,'c');
+    req.respond(ret);
 }
 
 int server() {
 
-	tl::margo_engine me("bmi+tcp://127.0.0.1:1234", MARGO_SERVER_MODE);
-	me.define("hello1", hello);
-	me.define("hello2", [&me](const tl::request& req, const tl::buffer& input) 
+	tl::engine margo("bmi+tcp://127.0.0.1:1234", MARGO_SERVER_MODE);
+	margo.define("hello1", hello);
+	margo.define("hello2", [&margo](const tl::request& req, const tl::buffer& input) 
 							{ std::cout << "(2) Hello World "; 
 							  for(auto c : input) std::cout << c;
 							  std::cout << std::endl; 
-                              me.finalize(); });
-
-	std::string addr = me.self();
+                              margo.finalize(); }
+                        ).ignore_response();
+	std::string addr = margo.self();
 	std::cout << "Server running at address " << addr << std::endl;
 
 	return 0;
@@ -32,18 +34,21 @@ int server() {
 
 int client() {
 
-	tl::margo_engine me("bmi+tcp", MARGO_CLIENT_MODE);
-	auto remote_hello1 = me.define<decltype(hello)>("hello1");
-	auto remote_hello2 = me.define<void(const tl::request&, const tl::buffer&)>("hello2");
+	tl::engine margo("bmi+tcp", MARGO_CLIENT_MODE);
+	auto remote_hello1 = margo.define("hello1");
+	auto remote_hello2 = margo.define("hello2").ignore_response();
 	std::string server_addr = "bmi+tcp://127.0.0.1:1234";
 	sleep(1);
 
-	auto server_endpoint = me.lookup(server_addr);
+	auto server_endpoint = margo.lookup(server_addr);
 	std::cout << "Lookup done for endpoint " << (std::string)server_endpoint << std::endl;
 
 	tl::buffer b(16,'a');
 	
-	(remote_hello1 >> server_endpoint)(b);
+	auto ret = remote_hello1.on(server_endpoint)(b);
+    std::cout << "Response from hello1: ";
+    for(auto c : ret) std::cout << c;
+    std::cout << std::endl;
 	
 	remote_hello2.on(server_endpoint)(b);
     
@@ -59,7 +64,7 @@ int main(int argc, char** argv) {
 
 	if(rank == 0) server();
 	else          client();
-    std::cout << "rank " << rank << " finished its work" << std::endl;
+    std::cout << "Rank " << rank << " finished its work" << std::endl;
 
 	MPI_Finalize();
 	return 0;

@@ -1,8 +1,10 @@
-#ifndef __THALLIUM_MARGO_ENGINE_HPP
-#define __THALLIUM_MARGO_ENGINE_HPP
+#ifndef __THALLIUM_ENGINE_HPP
+#define __THALLIUM_ENGINE_HPP
 
 #include <iostream>
 #include <string>
+#include <functional>
+#include <unordered_map>
 #include <margo.h>
 #include <thallium/function_cast.hpp>
 #include <thallium/buffer.hpp>
@@ -13,31 +15,32 @@ namespace thallium {
 class endpoint;
 class remote_procedure;
 
-class margo_engine {
+class engine {
 
 	friend class endpoint;
+    friend class remote_procedure;
 	friend class callable_remote_procedure;
 
 private:
 
-	margo_instance_id m_mid;
-    bool              m_is_server;
+	margo_instance_id                  m_mid;
+    bool                               m_is_server;
 
-	template<typename F>
+	template<typename F, bool disable_response>
 	static void rpc_handler_ult(hg_handle_t handle) {
 		using G = std::remove_reference_t<F>;
 		const struct hg_info* info = margo_get_info(handle);
 		margo_instance_id mid = margo_hg_handle_get_instance(handle);
 		void* data = margo_registered_data(mid, info->id);
 		auto f = function_cast<G>(data);
-		request req(handle);
+		request req(handle, disable_response);
 		buffer input;
 		margo_get_input(handle, &input);
 		(*f)(req, input);
         margo_free_input(handle, &input);
 	}
 
-    template<typename F>
+    template<typename F, bool disable_response>
     static hg_return_t rpc_callback(hg_handle_t handle) {
         int ret;
         ABT_pool pool;
@@ -51,7 +54,8 @@ private:
         if(ret != HG_SUCCESS) {
             return HG_INVALID_PARAM;
         }
-        ret = ABT_thread_create(pool, (void (*)(void *)) rpc_handler_ult<F>, handle, ABT_THREAD_ATTR_NULL, NULL);
+        ret = ABT_thread_create(pool, (void (*)(void *)) rpc_handler_ult<F,disable_response>, 
+                handle, ABT_THREAD_ATTR_NULL, NULL);
         if(ret != 0) {
             return HG_NOMEM_ERROR;
         }
@@ -60,7 +64,7 @@ private:
 
 public:
 
-	margo_engine(const std::string& addr, int mode, 
+	engine(const std::string& addr, int mode, 
 	              bool use_progress_thread = false,
 	              std::int32_t rpc_thread_count = 0) {
 
@@ -72,12 +76,12 @@ public:
 		// TODO throw exception if m_mid is null
 	}
 
-	margo_engine(const margo_engine& other)            = delete;
-	margo_engine(margo_engine&& other)                 = delete;
-	margo_engine& operator=(margo_engine&& other)      = delete;
-	margo_engine& operator=(const margo_engine& other) = delete;
+	engine(const engine& other)            = delete;
+	engine(engine&& other)                 = delete;
+	engine& operator=(engine&& other)      = delete;
+	engine& operator=(const engine& other) = delete;
 
-	~margo_engine() {
+	~engine() {
         if(m_is_server) {
             // TODO throw an exception if following call fails
             margo_wait_for_finalize(m_mid);
@@ -91,7 +95,6 @@ public:
 
 	endpoint self() const;
 
-	template<typename F>
 	remote_procedure define(const std::string& name);
 
 	template<typename F>
@@ -105,31 +108,20 @@ public:
 } // namespace thallium
 
 #include <thallium/remote_procedure.hpp>
-#include <thallium/serialization.hpp>
+#include <thallium/proc_buffer.hpp>
 
 namespace thallium {
 
 template<typename F>
-remote_procedure margo_engine::define(const std::string& name) {
+remote_procedure engine::define(const std::string& name, F&& fun) {
     // TODO throw an exception if the following call fails
     hg_id_t id = margo_register_name(m_mid, name.c_str(),
-                    serialize_buffer,
-                    serialize_buffer,
-                    nullptr);
-    margo_registered_disable_response(m_mid, id, HG_TRUE);
-    return remote_procedure(id);
-}
-
-template<typename F>
-remote_procedure margo_engine::define(const std::string& name, F&& fun) {
-    // TODO throw an exception if the following call fails
-    hg_id_t id = margo_register_name(m_mid, name.c_str(),
-                    serialize_buffer,
-                    serialize_buffer,
-                    rpc_callback<decltype(fun)>);
+                    process_buffer,
+                    process_buffer,
+                    rpc_callback<decltype(fun), false>);
     margo_register_data(m_mid, id, void_cast(&fun), nullptr);
-    margo_registered_disable_response(m_mid, id, HG_TRUE);
-    return remote_procedure(id);
+    
+    return remote_procedure(*this, id);
 }
 
 }

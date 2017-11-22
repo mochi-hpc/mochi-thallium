@@ -8,7 +8,7 @@
 
 namespace thallium {
 
-class margo_engine;
+class engine;
 class remote_procedure;
 class endpoint;
 
@@ -18,8 +18,9 @@ class callable_remote_procedure {
 
 private:
 	hg_handle_t m_handle;
+    bool        m_ignore_response;
 
-	callable_remote_procedure(hg_id_t id, const endpoint& ep);
+	callable_remote_procedure(hg_id_t id, const endpoint& ep, bool ignore_resp);
 
 public:
 
@@ -74,8 +75,8 @@ public:
 //		BufferOutputArchive arch(input);
 //		serialize_many(arch, std::forward<T>(t)...);
 //		serialize(std::forward<T>(t)
-		//auto input = std::tie(t...);
-		margo_forward(m_handle, nullptr);//&input);
+//		auto input = std::tie(t...);
+		margo_forward(m_handle, nullptr);
 
 
 //		Buffer output;
@@ -87,7 +88,11 @@ public:
 
 	auto operator()(const buffer& buf) const {
 		margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
-		return true;
+        buffer output;
+        if(m_ignore_response) return output;
+        margo_get_output(m_handle, &output);
+        margo_free_output(m_handle, &output); // won't do anything on a buffer type
+        return output;
 	}
 };
 

@@ -1,2 +1,5 @@
-add_executable(00_hello 00_hello.cpp)
-target_link_libraries(00_hello thallium)
+add_executable(TestHelloWorld TestHelloWorld.cpp)
+target_link_libraries(TestHelloWorld thallium)
+
+add_executable(TestSerialization TestSerialization.cpp)
+target_link_libraries(TestSerialization thallium)

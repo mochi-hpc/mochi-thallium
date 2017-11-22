@@ -5,28 +5,29 @@
 
 namespace thallium {
 
-class margo_engine;
+class engine;
 
 class request {
 
-	friend class margo_engine;
+	friend class engine;
 
 private:
 
 	hg_handle_t m_handle;
+    bool        m_disable_response;
 
-	request(hg_handle_t h)
-	: m_handle(h) {}
+	request(hg_handle_t h, bool disable_resp)
+	: m_handle(h), m_disable_response(disable_resp) {}
 
 public:
 
 	request(const request& other)
-	: m_handle(other.m_handle) {
+	: m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
 		margo_ref_incr(m_handle);
 	}
 
 	request(request&& other) 
-	: m_handle(other.m_handle) {
+	: m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
 		other.m_handle = HG_HANDLE_NULL;
 	}
 
@@ -34,6 +35,7 @@ public:
 		if(m_handle == other.m_handle) return *this;
 		margo_destroy(m_handle);
 		m_handle = other.m_handle;
+        m_disable_response = other.m_disable_response;
 		margo_ref_incr(m_handle);
 		return *this;
 	}
@@ -42,6 +44,7 @@ public:
 		if(m_handle == other.m_handle) return *this;
 		margo_destroy(m_handle);
 		m_handle = other.m_handle;
+        m_disable_response = other.m_disable_response;
 		other.m_handle = HG_HANDLE_NULL;
 		return *this;
 	}
@@ -51,12 +54,28 @@ public:
 	}
 
 	template<typename T>
-	void respond(T&& t) {
+	void respond(T&& t) const {
+        if(m_disable_response) return; // XXX throwing an exception?
 		// TODO serialize
 		if(m_handle != HG_HANDLE_NULL) {
 			margo_respond(m_handle, nullptr);
 		}
 	}
+
+    void respond(const buffer& output) const {
+        if(m_disable_response) return; // XXX throwing an exception?
+        if(m_handle != HG_HANDLE_NULL) {
+            margo_respond(m_handle, const_cast<void*>(static_cast<const void*>(&output)));
+        }
+    }
+
+    void respond(buffer& output) const {
+        respond((const buffer&)output);
+    }
+
+    void respond(buffer&& output) const {
+        respond((const buffer&)output);
+    }
 };
 
 }

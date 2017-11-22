@@ -5,19 +5,20 @@
 
 namespace thallium {
 
-class margo_engine;
+class engine;
 class endpoint;
 class callable_remote_procedure;
 
 class remote_procedure {
 
-	friend class margo_engine;
+	friend class engine;
 
 private:
+    engine& m_engine;
 	hg_id_t m_id;
+    bool    m_ignore_response;
 
-	remote_procedure(hg_id_t id)
-	: m_id(id) {}
+	remote_procedure(engine& e, hg_id_t id); 
 
 public:
 
@@ -28,8 +29,9 @@ public:
 	~remote_procedure()                                        = default;
 
 	callable_remote_procedure on(const endpoint& ep) const;
+    
+    remote_procedure& ignore_response();
 
-	callable_remote_procedure operator>>(const endpoint& ep) const;
 };
 
 }
