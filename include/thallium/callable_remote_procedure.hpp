@@ -3,8 +3,11 @@
 
 #include <tuple>
 #include <cstdint>
+#include <utility>
 #include <margo.h>
 #include <thallium/buffer.hpp>
+#include <thallium/serialization/stl/vector.hpp>
+#include <thallium/serialization/buffer_output_archive.hpp>
 
 namespace thallium {
 
@@ -21,6 +24,15 @@ private:
     bool        m_ignore_response;
 
 	callable_remote_procedure(hg_id_t id, const endpoint& ep, bool ignore_resp);
+
+	auto forward(const buffer& buf) const {
+		margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
+        buffer output;
+        if(m_ignore_response) return output;
+        margo_get_output(m_handle, &output);
+        margo_free_output(m_handle, &output); // won't do anything on a buffer type
+        return output;
+	}
 
 public:
 
@@ -69,30 +81,11 @@ public:
 	}
 
 	template<typename ... T>
-	auto operator()(const T& ... t) const {
-		// TODO throw an exception if handle is null
-//		buffer input;
-//		BufferOutputArchive arch(input);
-//		serialize_many(arch, std::forward<T>(t)...);
-//		serialize(std::forward<T>(t)
-//		auto input = std::tie(t...);
-		margo_forward(m_handle, nullptr);
-
-
-//		Buffer output;
-
-		//margo_get_output(m_handle, &output);
-		return true;//Pack(std::move(output));
-	}
-
-
-	auto operator()(const buffer& buf) const {
-		margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
-        buffer output;
-        if(m_ignore_response) return output;
-        margo_get_output(m_handle, &output);
-        margo_free_output(m_handle, &output); // won't do anything on a buffer type
-        return output;
+	auto operator()(T&& ... t) const {
+		buffer b;
+		buffer_output_archive arch(b);
+		serialize_many(arch, std::forward<T>(t)...);
+		return forward(b);
 	}
 };
 
