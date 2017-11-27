@@ -149,8 +149,13 @@ struct saver<A,T,false> {
  * Generic save method calling apply on a saver.
  */
 template<class A, typename T>
-inline void save(A& ar, T&& t) {
+inline void save(A& ar, T& t) {
 	saver<A,T,has_save_method<A,T>::value>::apply(ar,std::forward<T>(t));
+}
+
+template<class A, typename T>
+inline void save(A& ar, T&& t) {
+    save(ar, t);
 }
 
 /**
@@ -178,8 +183,13 @@ struct loader<A,T,false> {
  * Generic load method calling allpy on a loader.
  */
 template<class A, typename T>
-inline void load(A& ar, T&& t) {
+inline void load(A& ar, T& t) {
 	loader<A,T,has_load_method<A,T>::value>::apply(ar,std::forward<T>(t));
+}
+
+template<class A, typename T>
+inline void load(A& ar, T&& t) {
+    load(ar, t);
 }
 
 /**

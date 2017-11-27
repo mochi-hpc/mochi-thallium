@@ -50,9 +50,7 @@ int client() {
 	auto server_endpoint = margo.lookup(server_addr);
 	std::cout << "Lookup done for endpoint " << (std::string)server_endpoint << std::endl;
 
-    std::string name("Matthieu");
-
-	remote_hello.on(server_endpoint)(name);
+	remote_hello.on(server_endpoint)(std::string("Matt"));
 	
     int ret = remote_sum.on(server_endpoint)(23,67);
 
