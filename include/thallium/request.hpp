@@ -2,6 +2,8 @@
 #define __THALLIUM_REQUEST_HPP
 
 #include <margo.h>
+#include <thallium/serialization/serialize.hpp>
+#include <thallium/serialization/buffer_output_archive.hpp>
 
 namespace thallium {
 
@@ -53,15 +55,17 @@ public:
 		margo_destroy(m_handle);
 	}
 
-	template<typename T>
-	void respond(T&& t) const {
+	template<typename ... T>
+	void respond(T&&... t) const {
         if(m_disable_response) return; // XXX throwing an exception?
-		// TODO serialize
 		if(m_handle != HG_HANDLE_NULL) {
-			margo_respond(m_handle, nullptr);
+            buffer b;
+            buffer_output_archive arch(b);
+            serialize_many(arch, std::forward<T>(t)...);
+			margo_respond(m_handle, &b);
 		}
 	}
-
+/*
     void respond(const buffer& output) const {
         if(m_disable_response) return; // XXX throwing an exception?
         if(m_handle != HG_HANDLE_NULL) {
@@ -76,6 +80,7 @@ public:
     void respond(buffer&& output) const {
         respond((const buffer&)output);
     }
+*/
 };
 
 }

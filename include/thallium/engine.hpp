@@ -6,6 +6,7 @@
 #include <functional>
 #include <unordered_map>
 #include <margo.h>
+#include <thallium/tuple_util.hpp>
 #include <thallium/function_cast.hpp>
 #include <thallium/buffer.hpp>
 #include <thallium/request.hpp>
@@ -23,8 +24,11 @@ class engine {
 
 private:
 
+    using rpc_t = std::function<void(const request&, const buffer&)>;
+
 	margo_instance_id                  m_mid;
     bool                               m_is_server;
+    std::unordered_map<hg_id_t, rpc_t> m_rpcs;
 
 	template<typename F, bool disable_response>
 	static void rpc_handler_ult(hg_handle_t handle) {
@@ -97,8 +101,12 @@ public:
 
 	remote_procedure define(const std::string& name);
 
-	template<typename F>
-	remote_procedure define(const std::string& name, F&& fun);
+	template<typename ... Args>
+	remote_procedure define(const std::string& name, 
+        const std::function<void(const request&, Args...)>& fun);
+
+    template<typename ... Args>
+    remote_procedure define(const std::string& name, void (*f)(const request&, Args...));
 
 	endpoint lookup(const std::string& address) const;
 
@@ -109,19 +117,42 @@ public:
 
 #include <thallium/remote_procedure.hpp>
 #include <thallium/proc_buffer.hpp>
+#include <thallium/serialization/stl/tuple.hpp>
+#include <thallium/serialization/buffer_input_archive.hpp>
+#include <thallium/serialization/buffer_output_archive.hpp>
 
 namespace thallium {
 
-template<typename F>
-remote_procedure engine::define(const std::string& name, F&& fun) {
+template<typename ... Args>
+remote_procedure engine::define(const std::string& name, 
+        const std::function<void(const request&, Args...)>& fun) {
     // TODO throw an exception if the following call fails
+
     hg_id_t id = margo_register_name(m_mid, name.c_str(),
                     process_buffer,
                     process_buffer,
-                    rpc_callback<decltype(fun), false>);
-    margo_register_data(m_mid, id, void_cast(&fun), nullptr);
+                    rpc_callback<rpc_t, false>);
+
+    m_rpcs[id] = [fun](const request& r, const buffer& b) {
+        std::function<void(Args...)> l = [&fun, &r](Args&&... args) {
+            fun(r, std::forward<Args>(args)...);
+        };
+        std::tuple<std::decay_t<Args>...> iargs;
+        if(sizeof...(Args) > 0) {
+            buffer_input_archive iarch(b);
+            iarch & iargs;
+        }
+        apply_function_to_tuple(l,iargs);
+    };
+
+    margo_register_data(m_mid, id, void_cast(&m_rpcs[id]), nullptr);
     
     return remote_procedure(*this, id);
+}
+
+template<typename ... Args>
+remote_procedure engine::define(const std::string& name, void (*f)(const request&, Args...)) {
+    return define(name, std::function<void(const request&,Args...)>(f));
 }
 
 }

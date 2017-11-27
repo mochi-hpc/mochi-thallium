@@ -6,6 +6,8 @@
 #include <utility>
 #include <margo.h>
 #include <thallium/buffer.hpp>
+#include <thallium/packed_response.hpp>
+#include <thallium/serialization/serialize.hpp>
 #include <thallium/serialization/stl/vector.hpp>
 #include <thallium/serialization/buffer_output_archive.hpp>
 
@@ -28,10 +30,10 @@ private:
 	auto forward(const buffer& buf) const {
 		margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
         buffer output;
-        if(m_ignore_response) return output;
+        if(m_ignore_response) return packed_response(std::move(output));
         margo_get_output(m_handle, &output);
         margo_free_output(m_handle, &output); // won't do anything on a buffer type
-        return output;
+        return packed_response(std::move(output));
 	}
 
 public:
@@ -83,10 +85,15 @@ public:
 	template<typename ... T>
 	auto operator()(T&& ... t) const {
 		buffer b;
-		buffer_output_archive arch(b);
-		serialize_many(arch, std::forward<T>(t)...);
+        buffer_output_archive arch(b);
+        serialize_many(arch, std::forward<T>(t)...);
 		return forward(b);
 	}
+
+    auto operator()() const {
+        buffer b;
+        return forward(b);
+    }
 };
 
 }

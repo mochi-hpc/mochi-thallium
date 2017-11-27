@@ -24,12 +24,12 @@ private:
 	std::size_t pos;
 
 	template<typename T, bool b>
-	inline void read_impl(T& t, const std::integral_constant<bool, b>&) {
-		load(*this,t);
+	inline void read_impl(T&& t, const std::integral_constant<bool, b>&) {
+		load(*this,std::forward<T>(t));
 	}
 
 	template<typename T>
-	inline void read_impl(T& t, const std::true_type&) {
+	inline void read_impl(T&& t, const std::true_type&) {
 		read(&t);
 	}
 
@@ -54,8 +54,8 @@ public:
 	 * a load member function has been provided.
 	 */
 	template<typename T>
-	buffer_input_archive& operator&(T& obj) {
-		read_impl(obj, std::is_arithmetic<T>());
+	buffer_input_archive& operator&(T&& obj) {
+		read_impl(std::forward<T>(obj), std::is_arithmetic<std::decay_t<T>>());
 		return *this;
 	}
 
@@ -64,8 +64,8 @@ public:
 	 * \see operator&
 	 */
 	template<typename T>
-	buffer_input_archive& operator>>(T& obj) {
-		return (*this) & obj;
+	buffer_input_archive& operator>>(T&& obj) {
+		return (*this) & std::forward<T>(obj);
 	}
 
 	/**

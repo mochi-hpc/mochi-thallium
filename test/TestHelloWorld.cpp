@@ -5,27 +5,33 @@
 #include <unistd.h>
 #include <iostream>
 #include <thallium.hpp>
+#include <thallium/serialization/stl/string.hpp>
 
 namespace tl = thallium;
 
-void hello(const tl::request& req, const tl::buffer& input) {
-	std::cout << "(1) Hello World ";
-    for(auto c : input) std::cout << c;
-	std::cout << std::endl;
-    tl::buffer ret(6,'c');
-    req.respond(ret);
+void hello(const tl::request& req, const std::string& name) {
+	std::cout << "Hello " << name << std::endl;
 }
 
 int server() {
 
 	tl::engine margo("bmi+tcp://127.0.0.1:1234", MARGO_SERVER_MODE);
-	margo.define("hello1", hello);
-	margo.define("hello2", [&margo](const tl::request& req, const tl::buffer& input) 
-							{ std::cout << "(2) Hello World "; 
-							  for(auto c : input) std::cout << c;
-							  std::cout << std::endl; 
-                              margo.finalize(); }
-                        ).ignore_response();
+	margo.define("hello", hello).ignore_response();
+
+    std::function<void(const tl::request&, int, int)> f =
+        [](const tl::request& req, int x, int y) {
+            std::cout << x << "+" << y << " = " << (x+y) << std::endl;
+            req.respond(x+y);
+        };
+    margo.define("sum", f);
+
+    std::function<void(const tl::request&)> g =
+        [&margo](const tl::request& req) {
+            std::cout << "Stopping server" << std::endl;
+            margo.finalize();
+        };
+    margo.define("stop", g);
+
 	std::string addr = margo.self();
 	std::cout << "Server running at address " << addr << std::endl;
 
@@ -35,22 +41,24 @@ int server() {
 int client() {
 
 	tl::engine margo("bmi+tcp", MARGO_CLIENT_MODE);
-	auto remote_hello1 = margo.define("hello1");
-	auto remote_hello2 = margo.define("hello2").ignore_response();
+	auto remote_hello = margo.define("hello").ignore_response();
+	auto remote_sum   = margo.define("sum");
+    auto remote_stop  = margo.define("stop").ignore_response();
 	std::string server_addr = "bmi+tcp://127.0.0.1:1234";
 	sleep(1);
 
 	auto server_endpoint = margo.lookup(server_addr);
 	std::cout << "Lookup done for endpoint " << (std::string)server_endpoint << std::endl;
 
-	tl::buffer b(16,'a');
+    std::string name("Matthieu");
+
+	remote_hello.on(server_endpoint)(name);
 	
-	auto ret = remote_hello1.on(server_endpoint)(b);
-    std::cout << "Response from hello1: ";
-    for(auto c : ret) std::cout << c;
-    std::cout << std::endl;
-	
-	remote_hello2.on(server_endpoint)(b);
+    int ret = remote_sum.on(server_endpoint)(23,67);
+
+    std::cout << "Server returned " << ret << std::endl;
+
+    remote_stop.on(server_endpoint)();
     
 	return 0;
 }

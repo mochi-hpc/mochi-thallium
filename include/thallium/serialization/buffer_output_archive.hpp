@@ -22,12 +22,12 @@ private:
 	std::size_t pos;
 
 	template<typename T, bool b>
-	inline void write_impl(T& t, const std::integral_constant<bool, b>&) {
-		save(*this,t);
+	inline void write_impl(T&& t, const std::integral_constant<bool, b>&) {
+		save(*this,std::forward<T>(t));
 	}
 
 	template<typename T>
-	inline void write_impl(T& t, const std::true_type&) {
+	inline void write_impl(T&& t, const std::true_type&) {
 		write((char*)&t,sizeof(T));
 	}
 
@@ -54,8 +54,8 @@ public:
 	 * a load member function has been provided.
 	 */
 	template<typename T>
-	buffer_output_archive& operator&(T& obj) {
-		write_impl(obj, std::is_arithmetic<T>());
+	buffer_output_archive& operator&(T&& obj) {
+		write_impl(std::forward<T>(obj), std::is_arithmetic<std::decay_t<T>>());
 		return *this;
 	}
 
@@ -64,8 +64,8 @@ public:
 	 * \see operator&
 	 */
 	template<typename T>
-	buffer_output_archive& operator<<(T& obj) {
-		return (*this) & obj;
+	buffer_output_archive& operator<<(T&& obj) {
+		return (*this) & std::forward<T>(obj);
 	}
 
 	/**
