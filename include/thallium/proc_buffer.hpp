@@ -1,3 +1,8 @@
+/*
+ * (C) 2017 The University of Chicago
+ * 
+ * See COPYRIGHT in top-level directory.
+ */
 #ifndef __THALLIUM_PROC_BUFFER_HPP
 #define __THALLIUM_PROC_BUFFER_HPP
 

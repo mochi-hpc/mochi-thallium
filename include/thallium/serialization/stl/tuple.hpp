@@ -1,5 +1,10 @@
-#ifndef THALLIUM_TUPLE_SERIALIZATION_H
-#define THALLIUM_TUPLE_SERIALIZATION_H
+/*
+ * (C) 2017 The University of Chicago
+ * 
+ * See COPYRIGHT in top-level directory.
+ */
+#ifndef __THALLIUM_TUPLE_SERIALIZATION_HPP
+#define __THALLIUM_TUPLE_SERIALIZATION_HPP
 
 #include <tuple>
 

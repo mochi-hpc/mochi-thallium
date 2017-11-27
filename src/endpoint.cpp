@@ -1,3 +1,8 @@
+/*
+ * (C) 2017 The University of Chicago
+ * 
+ * See COPYRIGHT in top-level directory.
+ */
 #include <thallium/endpoint.hpp>
 #include <thallium/engine.hpp>
 

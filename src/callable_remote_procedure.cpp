@@ -1,3 +1,9 @@
+/*
+ * (C) 2017 The University of Chicago
+ * 
+ * See COPYRIGHT in top-level directory.
+ */
+
 #include <thallium/callable_remote_procedure.hpp>
 #include <thallium/endpoint.hpp>
 #include <thallium/engine.hpp>
