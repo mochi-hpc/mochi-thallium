@@ -15,15 +15,21 @@
 #include <thallium/function_cast.hpp>
 #include <thallium/buffer.hpp>
 #include <thallium/request.hpp>
+#include <thallium/bulk_mode.hpp>
 
 namespace thallium {
 
+class bulk;
 class endpoint;
+class resolved_bulk;
 class remote_procedure;
 
 class engine {
 
+    friend class request;
+    friend class bulk;
 	friend class endpoint;
+    friend class resolved_bulk;
     friend class remote_procedure;
 	friend class callable_remote_procedure;
 
@@ -35,14 +41,25 @@ private:
     bool                               m_is_server;
     std::unordered_map<hg_id_t, rpc_t> m_rpcs;
 
+    struct rpc_callback_data {
+        engine* m_engine;
+        void*   m_function;
+    };
+
+    static void free_rpc_callback_data(void* data) {
+        rpc_callback_data* cb_data = (rpc_callback_data*)data;
+        delete cb_data;
+    }
+
 	template<typename F, bool disable_response>
 	static void rpc_handler_ult(hg_handle_t handle) {
 		using G = std::remove_reference_t<F>;
 		const struct hg_info* info = margo_get_info(handle);
 		margo_instance_id mid = margo_hg_handle_get_instance(handle);
 		void* data = margo_registered_data(mid, info->id);
-		auto f = function_cast<G>(data);
-		request req(handle, disable_response);
+        auto cb_data  = static_cast<rpc_callback_data*>(data);
+		auto f = function_cast<G>(cb_data->m_function);
+		request req(*(cb_data->m_engine), handle, disable_response);
 		buffer input;
 		margo_get_input(handle, &input);
 		(*f)(req, input);
@@ -115,6 +132,8 @@ public:
 
 	endpoint lookup(const std::string& address) const;
 
+    bulk expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_mode flag);
+
 	operator std::string() const;
 };
 
@@ -138,19 +157,23 @@ remote_procedure engine::define(const std::string& name,
                     process_buffer,
                     rpc_callback<rpc_t, false>);
 
-    m_rpcs[id] = [fun](const request& r, const buffer& b) {
+    m_rpcs[id] = [fun,this](const request& r, const buffer& b) {
         std::function<void(Args...)> l = [&fun, &r](Args&&... args) {
             fun(r, std::forward<Args>(args)...);
         };
         std::tuple<std::decay_t<Args>...> iargs;
         if(sizeof...(Args) > 0) {
-            buffer_input_archive iarch(b);
+            buffer_input_archive iarch(b, *this);
             iarch & iargs;
         }
         apply_function_to_tuple(l,iargs);
     };
 
-    margo_register_data(m_mid, id, void_cast(&m_rpcs[id]), nullptr);
+    rpc_callback_data* cb_data = new rpc_callback_data;
+    cb_data->m_engine   = this;
+    cb_data->m_function = void_cast(&m_rpcs[id]);
+
+    margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
     
     return remote_procedure(*this, id);
 }

@@ -4,9 +4,12 @@
 #
 
 # list of source files
-set(thallium-src endpoint.cpp 
+set(thallium-src bulk.cpp
+		 endpoint.cpp 
                  engine.cpp 
                  remote_procedure.cpp 
+		 request.cpp
+		 resolved_bulk.cpp
                  callable_remote_procedure.cpp
                  proc_buffer.cpp)
 

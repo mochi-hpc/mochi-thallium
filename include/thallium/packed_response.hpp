@@ -20,17 +20,18 @@ class packed_response {
 
 private:
 
-    buffer m_buffer;
+    engine* m_engine;
+    buffer  m_buffer;
 
-    packed_response(buffer&& b)
-    : m_buffer(std::move(b)) {}
+    packed_response(buffer&& b, engine& e)
+    : m_engine(&e), m_buffer(std::move(b)) {}
 
 public:
 
     template<typename T>
     T as() const {
         T t;
-        buffer_input_archive iarch(m_buffer);
+        buffer_input_archive iarch(m_buffer, *m_engine);
         iarch & t;
         return t;
     }

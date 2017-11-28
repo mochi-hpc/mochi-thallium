@@ -19,7 +19,7 @@ class remote_procedure {
 	friend class engine;
 
 private:
-    engine& m_engine;
+    engine* m_engine;
 	hg_id_t m_id;
     bool    m_ignore_response;
 

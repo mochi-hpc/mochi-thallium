@@ -13,11 +13,15 @@
 namespace thallium {
 
 class engine;
+class request;
+class resolved_bulk;
 
 class endpoint {
 
 	friend class engine;
+    friend class request;
 	friend class callable_remote_procedure;
+    friend class resolved_bulk;
 
 private:
 
@@ -45,7 +49,11 @@ public:
 	
 	~endpoint();
 
-	operator std::string() const; 
+	operator std::string() const;
+
+    bool is_null() const {
+        return m_addr == HG_ADDR_NULL;
+    }
 };
 
 }

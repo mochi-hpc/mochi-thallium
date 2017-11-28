@@ -12,6 +12,8 @@
 
 namespace thallium {
 
+class engine;
+
 /**
  * buffer_output_archive wraps and hg::buffer object and
  * offers the functionalities to serialize C++ objects into
@@ -23,8 +25,9 @@ class buffer_output_archive : public output_archive {
 
 private:
 
-	buffer& buffer_;
-	std::size_t pos;
+	buffer&     m_buffer;
+	std::size_t m_pos;
+    engine*     m_engine;
 
 	template<typename T, bool b>
 	inline void write_impl(T&& t, const std::integral_constant<bool, b>&) {
@@ -46,9 +49,15 @@ public:
 	 * of the buffer_output_archive instance should be shorter than
 	 * that of the buffer itself.
 	 */
-	buffer_output_archive(buffer& b) : buffer_(b), pos(0) {
-		buffer_.resize(0);
+	buffer_output_archive(buffer& b, engine& e)
+    : m_buffer(b), m_pos(0), m_engine(&e) {
+		m_buffer.resize(0);
 	}
+
+    buffer_output_archive(buffer& b)
+    : m_buffer(b), m_pos(0), m_engine(nullptr) {
+        m_buffer.resize(0);
+    }
 
 	/**
 	 * Operator to add a C++ object of type T into the archive.
@@ -82,14 +91,14 @@ public:
 	template<typename T>
 	inline void write(T* const t, size_t count=1) {
 		size_t s = count*sizeof(T);
-		if(pos+s > buffer_.size()) {
-			if(pos+s > buffer_.capacity()) {
-				buffer_.reserve(buffer_.capacity()*2);
+		if(m_pos+s > m_buffer.size()) {
+			if(m_pos+s > m_buffer.capacity()) {
+				m_buffer.reserve(m_buffer.capacity()*2);
 			}
-			buffer_.resize(pos+s);
+			m_buffer.resize(m_pos+s);
 		}
-		memcpy((void*)(&buffer_[pos]),(void*)t,s);
-		pos += s;
+		memcpy((void*)(&m_buffer[m_pos]),(void*)t,s);
+		m_pos += s;
 	}
 };
 

@@ -27,18 +27,19 @@ class callable_remote_procedure {
 	friend class remote_procedure;
 
 private:
+    engine*     m_engine;
 	hg_handle_t m_handle;
     bool        m_ignore_response;
 
-	callable_remote_procedure(hg_id_t id, const endpoint& ep, bool ignore_resp);
+	callable_remote_procedure(engine& e, hg_id_t id, const endpoint& ep, bool ignore_resp);
 
 	auto forward(const buffer& buf) const {
 		margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
         buffer output;
-        if(m_ignore_response) return packed_response(std::move(output));
+        if(m_ignore_response) return packed_response(std::move(output), *m_engine);
         margo_get_output(m_handle, &output);
         margo_free_output(m_handle, &output); // won't do anything on a buffer type
-        return packed_response(std::move(output));
+        return packed_response(std::move(output), *m_engine);
 	}
 
 public:
@@ -90,7 +91,7 @@ public:
 	template<typename ... T>
 	auto operator()(T&& ... t) const {
 		buffer b;
-        buffer_output_archive arch(b);
+        buffer_output_archive arch(b, *m_engine);
         serialize_many(arch, std::forward<T>(t)...);
 		return forward(b);
 	}

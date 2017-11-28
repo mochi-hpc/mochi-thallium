@@ -3,3 +3,6 @@ target_link_libraries(TestHelloWorld thallium)
 
 add_executable(TestSerialization TestSerialization.cpp)
 target_link_libraries(TestSerialization thallium)
+
+add_executable(TestBulk TestBulk.cpp)
+target_link_libraries(TestBulk thallium)

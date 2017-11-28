@@ -14,6 +14,8 @@
 
 namespace thallium {
 
+class engine;
+
 /**
  * buffer_input_archive wraps a buffer object and
  * offers the functionalities to deserialize its content
@@ -25,8 +27,9 @@ class buffer_input_archive : public input_archive {
 
 private:
 
-	const buffer& buffer_;
-	std::size_t pos;
+	const buffer& m_buffer;
+	std::size_t   m_pos;
+    engine*       m_engine;
 
 	template<typename T, bool b>
 	inline void read_impl(T&& t, const std::integral_constant<bool, b>&) {
@@ -48,7 +51,11 @@ public:
 	 * the buffer_input_archive instance should be shorter than that
 	 * of the buffer.
 	 */
-	buffer_input_archive(const buffer& b) : buffer_(b), pos(0) {}
+	buffer_input_archive(const buffer& b, engine& e)
+    : m_buffer(b), m_pos(0), m_engine(&e) {}
+
+    buffer_input_archive(const buffer& b)
+    : m_buffer(b), m_pos(0), m_engine(nullptr) {}
 
 	/**
 	 * Operator to get C++ objects of type T from the archive.
@@ -81,12 +88,16 @@ public:
 	 */
 	template<typename T>
 	inline void read(T* t, std::size_t count=1) {
-		if(pos + count*sizeof(T) > buffer_.size()) {
+		if(m_pos + count*sizeof(T) > m_buffer.size()) {
 			throw std::runtime_error("Reading beyond buffer size");
 		}
-		std::memcpy((void*)t,(const void*)(&buffer_[pos]),count*sizeof(T));
-		pos += count*sizeof(T);
+		std::memcpy((void*)t,(const void*)(&m_buffer[m_pos]),count*sizeof(T));
+		m_pos += count*sizeof(T);
 	}
+
+    engine& get_engine() const {
+        return *m_engine;
+    }
 };
 
 }

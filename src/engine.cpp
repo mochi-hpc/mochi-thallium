@@ -8,6 +8,7 @@
 #include <thallium/remote_procedure.hpp>
 #include <thallium/engine.hpp>
 #include <thallium/endpoint.hpp>
+#include <thallium/bulk.hpp>
 
 namespace thallium {
 
@@ -33,6 +34,20 @@ remote_procedure engine::define(const std::string& name) {
                     process_buffer,
                     nullptr);
     return remote_procedure(*this, id);
+}
+
+bulk engine::expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_mode flag) {
+    hg_bulk_t handle;
+    hg_uint32_t count = segments.size();
+    std::vector<void*> buf_ptrs(count);
+    std::vector<hg_size_t> buf_sizes(count);
+    for(unsigned i=0; i < segments.size(); i++) {
+        buf_ptrs[i]  = segments[i].first;
+        buf_sizes[i] = segments[i].second;
+    }
+    hg_return_t ret = margo_bulk_create(m_mid, count, &buf_ptrs[0], &buf_sizes[0], (hg_uint32_t)flag, &handle);
+    // TODO throw an exception if ret != HG_SUCCESS
+    return bulk(*this, handle, true);
 }
 
 }
