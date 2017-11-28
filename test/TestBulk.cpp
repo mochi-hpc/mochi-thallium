@@ -21,7 +21,7 @@ int server() {
             seg[0].first  = (void*)(&v[0]);
             seg[0].second = v.size();
             tl::bulk local = margo.expose(seg, tl::bulk_mode::write_only);
-            b(1,5).on(ep) >> local(0,5);
+            b(1,5).on(ep) >> local;
             std::cout << "Server received bulk: ";
             for(auto c : v) std::cout << c;
             std::cout << std::endl;

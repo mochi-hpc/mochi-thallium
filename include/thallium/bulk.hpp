@@ -53,6 +53,10 @@ private:
         ~bulk_segment()                   = default;
 
         resolved_bulk on(const endpoint& ep) const;
+
+        std::size_t operator>>(const resolved_bulk& b) const;
+
+        std::size_t operator<<(const resolved_bulk& b) const;
     };
 
 public:
@@ -113,9 +117,15 @@ public:
         return m_bulk == HG_BULK_NULL;
     }
 
+    resolved_bulk on(const endpoint& ep) const;
+
     bulk_segment select(std::size_t offset, std::size_t size) const;
 
     bulk_segment operator()(std::size_t offset, std::size_t size) const;
+
+    std::size_t operator>>(const resolved_bulk& b) const;
+
+    std::size_t operator<<(const resolved_bulk& b) const;
 
     template<typename A>
     void save(A& ar) {

@@ -20,4 +20,23 @@ resolved_bulk bulk::bulk_segment::on(const endpoint& ep) const {
     return resolved_bulk(*this, ep);
 }
 
+resolved_bulk bulk::on(const endpoint& ep) const {
+    return resolved_bulk(*this, ep);
+}
+
+std::size_t bulk::bulk_segment::operator>>(const resolved_bulk& b) const {
+    return b << *this;
+}
+
+std::size_t bulk::bulk_segment::operator<<(const resolved_bulk& b) const {
+    return b >> *this;
+}
+
+std::size_t bulk::operator>>(const resolved_bulk& b) const {
+    return b << (this->select(0,size()));
+}
+
+std::size_t bulk::operator<<(const resolved_bulk& b) const {
+    return b >> (this->select(0,size()));
+}
 }
