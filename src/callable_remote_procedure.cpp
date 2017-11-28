@@ -13,7 +13,7 @@ namespace thallium {
 callable_remote_procedure::callable_remote_procedure(hg_id_t id, const endpoint& ep, bool ignore_resp) {
     m_ignore_response = ignore_resp;
 	// TODO throw exception if this call fails
-	margo_create(ep.m_engine.m_mid, ep.m_addr, id, &m_handle);
+	margo_create(ep.m_engine->m_mid, ep.m_addr, id, &m_handle);
 }
 
 }

@@ -21,13 +21,16 @@ class endpoint {
 
 private:
 
-	engine&   m_engine;
+	engine*   m_engine;
 	hg_addr_t m_addr;
 
 	endpoint(engine& e, hg_addr_t addr)
-	: m_engine(e), m_addr(addr) {}
+	: m_engine(&e), m_addr(addr) {}
 
 public:
+
+    endpoint()
+    : m_engine(nullptr), m_addr(HG_ADDR_NULL) {}
 
 	endpoint(const endpoint& other);
 
