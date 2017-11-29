@@ -10,6 +10,10 @@
 
 namespace thallium {
 
+/**
+ * @brief bulk_mode enum indicates whether a bulk object is
+ * created for read/write, or read only, or write only.
+ */
 enum class bulk_mode : hg_uint32_t {
     read_write = HG_BULK_READWRITE,
     read_only  = HG_BULK_READ_ONLY,

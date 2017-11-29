@@ -17,6 +17,9 @@
 #include <thallium/request.hpp>
 #include <thallium/bulk_mode.hpp>
 
+#define THALLIUM_SERVER_MODE MARGO_SERVER_MODE
+#define THALLIUM_CLIENT_MODE MARGO_CLIENT_MODE
+
 namespace thallium {
 
 class bulk;
@@ -24,6 +27,12 @@ class endpoint;
 class remote_bulk;
 class remote_procedure;
 
+/**
+ * @brief The engine class is at the core of Thallium,
+ * it is the first object to instanciate to start using the
+ * Thallium runtime. It initializes Margo and other libraries,
+ * and allow users to declare RPCs and bulk objects.
+ */
 class engine {
 
     friend class request;
@@ -41,16 +50,32 @@ private:
     bool                               m_is_server;
     std::unordered_map<hg_id_t, rpc_t> m_rpcs;
 
+    /**
+     * @brief Encapsulation of some data needed by RPC callbacks
+     * (namely, the initiating thallium engine and the function to call)
+     */
     struct rpc_callback_data {
         engine* m_engine;
         void*   m_function;
     };
 
+    /**
+     * @brief Function to call to free the data registered with an RPC.
+     *
+     * @param data pointer to the data to free (instance of rpc_callback_data).
+     */
     static void free_rpc_callback_data(void* data) {
         rpc_callback_data* cb_data = (rpc_callback_data*)data;
         delete cb_data;
     }
 
+    /**
+     * @brief Function run as a ULT when receiving an RPC.
+     *
+     * @tparam F type of the function to call.
+     * @tparam disable_response whether the caller expects a response.
+     * @param handle handle of the RPC.
+     */
 	template<typename F, bool disable_response>
 	static void rpc_handler_ult(hg_handle_t handle) {
 		using G = std::remove_reference_t<F>;
@@ -66,6 +91,15 @@ private:
         margo_free_input(handle, &input);
 	}
 
+    /**
+     * @brief Callback called when an RPC is received.
+     *
+     * @tparam F type of the function exposed by the user for this RPC.
+     * @tparam disable_response whether the caller expects a response.
+     * @param handle handle of the RPC.
+     *
+     * @return HG_SUCCESS or a Mercury error code.
+     */
     template<typename F, bool disable_response>
     static hg_return_t rpc_callback(hg_handle_t handle) {
         int ret;
@@ -90,11 +124,20 @@ private:
 
 public:
 
+    /**
+     * @brief Constructor.
+     *
+     * @param addr address of this instance.
+     * @param mode THALLIUM_SERVER_MODE or THALLIUM_CLIENT_MODE.
+     * @param use_progress_thread whether to use a dedicated ES to drive progress.
+     * @param rpc_thread_count number of threads to use for servicing RPCs.
+     * Use -1 to indicate that RPCs should be serviced in the progress ES.
+     */
 	engine(const std::string& addr, int mode, 
 	              bool use_progress_thread = false,
 	              std::int32_t rpc_thread_count = 0) {
 
-        m_is_server = (mode == MARGO_SERVER_MODE);
+        m_is_server = (mode == THALLIUM_SERVER_MODE);
 
 		m_mid = margo_init(addr.c_str(), mode,
 				use_progress_thread ? 1 : 0,
@@ -102,38 +145,115 @@ public:
 		// TODO throw exception if m_mid is null
 	}
 
+    /**
+     * @brief Copy-constructor is deleted.
+     */
 	engine(const engine& other)            = delete;
+
+    /**
+     * @brief Move-constructor is deleted.
+     */
 	engine(engine&& other)                 = delete;
+    
+    /**
+     * @brief Move-assignment operator is deleted.
+     */
 	engine& operator=(engine&& other)      = delete;
+
+    /**
+     * @brief Copy-assignment operator is deleted.
+     */
 	engine& operator=(const engine& other) = delete;
 
+
+    /**
+     * @brief Destructor.
+     */
 	~engine() {
         if(m_is_server) {
-            // TODO throw an exception if following call fails
+            // TODO an exception if following call fails
             margo_wait_for_finalize(m_mid);
         }
 	}
 
+
+    /**
+     * @brief Finalize the engine. Can be called by any thread.
+     */
 	void finalize() {
-		// TODO throw an exception if the following call fails
+		// TODO  an exception if the following call fails
 		margo_finalize(m_mid);
 	}
 
+    /**
+     * @brief Creates an endpoint from this engine.
+     *
+     * @return An endpoint corresponding to this engine.
+     */
 	endpoint self() const;
 
+    /**
+     * @brief Defines an RPC with a name, without providing a
+     * function pointer (used on clients).
+     *
+     * @param name Name of the RPC.
+     *
+     * @return a remote_procedure object.
+     */
 	remote_procedure define(const std::string& name);
 
+    /**
+     * @brief Defines an RPC with a name and an std::function 
+     * representing the RPC.
+     *
+     * @tparam Args Types of arguments accepted by the RPC.
+     * @param name Name of the RPC.
+     * @param fun Function to associate with the RPC.
+     *
+     * @return a remote_procedure object.
+     */
 	template<typename ... Args>
 	remote_procedure define(const std::string& name, 
         const std::function<void(const request&, Args...)>& fun);
 
+    /**
+     * @brief Defines an RPC with a name and a function pointer
+     * to call when the RPC is received.
+     *
+     * @tparam Args Types of arguments accepted by the RPC.
+     * @param name Name of the RPC.
+     * @param f Function to associate with the RPC.
+     *
+     * @return a remote_procedure object.
+     */
     template<typename ... Args>
     remote_procedure define(const std::string& name, void (*f)(const request&, Args...));
 
+    /**
+     * @brief Lookup an address and returns an endpoint object
+     * to communicate with this address.
+     *
+     * @param address String representation of the address.
+     *
+     * @return an endpoint object associated with the given address.
+     */
 	endpoint lookup(const std::string& address) const;
 
+    /**
+     * @brief Exposes a series of memory segments for bulk operations.
+     *
+     * @param segments vector of <pointer,size> pairs of memory segments.
+     * @param flag indicates whether the bulk is read-write, read-only or write-only.
+     *
+     * @return a bulk object representing the memory exposed for RDMA.
+     */
     bulk expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_mode flag);
 
+    /**
+     * @brief String representation of the engine's address.
+     *
+     * @return String representation of the engine's address.
+     */
 	operator std::string() const;
 };
 

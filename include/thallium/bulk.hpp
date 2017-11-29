@@ -82,7 +82,7 @@ private:
         /**
          * @brief Copy constructor is deleted.
          */
-        bulk_segment(const bulk_segment&) = delete;
+        bulk_segment(const bulk_segment&) = default;
 
         /**
          * @brief Move constructor is default.

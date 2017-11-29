@@ -15,6 +15,13 @@ namespace thallium {
 class engine;
 class endpoint;
 
+/**
+ * @brief A request object is created whenever a server
+ * receives an RPC. The object is passed as first argument to
+ * the function associated with the RPC. The request allows
+ * one to get information from the caller and to respond to
+ * the RPC.
+ */
 class request {
 
 	friend class engine;
@@ -25,21 +32,38 @@ private:
 	hg_handle_t m_handle;
     bool        m_disable_response;
 
+    /**
+     * @brief Constructor. Made private since request are only created
+     * by the engine within RPC callbacks.
+     *
+     * @param e engine object that created the request.
+     * @param h handle of the RPC that was received.
+     * @param disable_resp whether responses are disabled.
+     */
 	request(engine& e, hg_handle_t h, bool disable_resp)
 	: m_engine(&e), m_handle(h), m_disable_response(disable_resp) {}
 
 public:
 
+    /**
+     * @brief Copy constructor.
+     */
 	request(const request& other)
 	: m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
 		margo_ref_incr(m_handle);
 	}
 
+    /**
+     * @brief Move constructor.
+     */
 	request(request&& other)
 	: m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
 		other.m_handle = HG_HANDLE_NULL;
 	}
 
+    /**
+     * @brief Copy-assignment operator.
+     */
 	request& operator=(const request& other) {
 		if(m_handle == other.m_handle) return *this;
 		margo_destroy(m_handle);
@@ -50,6 +74,9 @@ public:
 		return *this;
 	}
 
+    /**
+     * @brief Move-assignment operator.
+     */
 	request& operator=(request&& other) {
 		if(m_handle == other.m_handle) return *this;
 		margo_destroy(m_handle);
@@ -60,10 +87,21 @@ public:
 		return *this;
 	}
 
+    /**
+     * @brief Destructor.
+     */
 	~request() {
 		margo_destroy(m_handle);
 	}
 
+    /**
+     * @brief Responds to the sender of the RPC.
+     * Serializes the series of arguments provided and
+     * send the resulting buffer to the sender.
+     *
+     * @tparam T Types of parameters to serialize.
+     * @param t Parameters to serialize.
+     */
 	template<typename ... T>
 	void respond(T&&... t) const {
         if(m_disable_response) return; // XXX throwing an exception?
@@ -75,6 +113,11 @@ public:
 		}
 	}
 
+    /**
+     * @brief Get the endpoint corresponding to the sender of the RPC.
+     *
+     * @return endpoint corresponding to the sender of the RPC.
+     */
     endpoint get_endpoint() const;
 };
 

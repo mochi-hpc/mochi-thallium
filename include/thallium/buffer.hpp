@@ -10,6 +10,9 @@
 
 namespace thallium {
 
+/**
+ * @brief buffer object defined as std::vector<char>.
+ */
 using buffer = std::vector<char>;
 
 }

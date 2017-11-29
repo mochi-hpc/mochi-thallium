@@ -1,6 +1,7 @@
 #ifndef __THALLIUM_HPP
 #define __THALLIUM_HPP
 
+#include <margo.h>
 #include <thallium/bulk_mode.hpp>
 #include <thallium/bulk.hpp>
 #include <thallium/engine.hpp>
