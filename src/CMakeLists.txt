@@ -9,7 +9,7 @@ set(thallium-src bulk.cpp
                  engine.cpp 
                  remote_procedure.cpp 
 		 request.cpp
-		 resolved_bulk.cpp
+		 remote_bulk.cpp
                  callable_remote_procedure.cpp
                  proc_buffer.cpp)
 

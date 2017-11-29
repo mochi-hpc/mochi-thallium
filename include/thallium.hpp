@@ -7,6 +7,6 @@
 #include <thallium/endpoint.hpp>
 #include <thallium/remote_procedure.hpp>
 #include <thallium/callable_remote_procedure.hpp>
-#include <thallium/resolved_bulk.hpp>
+#include <thallium/remote_bulk.hpp>
 
 #endif

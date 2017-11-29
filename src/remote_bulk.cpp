@@ -4,11 +4,11 @@
  * See COPYRIGHT in top-level directory.
  */
 #include <thallium/bulk.hpp>
-#include <thallium/resolved_bulk.hpp>
+#include <thallium/remote_bulk.hpp>
 
 namespace thallium {
 
-std::size_t resolved_bulk::operator>>(const bulk::bulk_segment& dest) const {
+std::size_t remote_bulk::operator>>(const bulk::bulk_segment& dest) const {
 
     margo_instance_id mid   = m_segment.m_bulk.m_engine->m_mid;
     hg_bulk_op_t op         = HG_BULK_PULL;
@@ -28,7 +28,7 @@ std::size_t resolved_bulk::operator>>(const bulk::bulk_segment& dest) const {
     return size;
 }
 
-std::size_t resolved_bulk::operator<<(const bulk::bulk_segment& src) const {
+std::size_t remote_bulk::operator<<(const bulk::bulk_segment& src) const {
 
     margo_instance_id mid   = m_segment.m_bulk.m_engine->m_mid;
     hg_bulk_op_t op         = HG_BULK_PUSH;

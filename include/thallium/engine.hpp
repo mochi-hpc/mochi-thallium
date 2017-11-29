@@ -21,7 +21,7 @@ namespace thallium {
 
 class bulk;
 class endpoint;
-class resolved_bulk;
+class remote_bulk;
 class remote_procedure;
 
 class engine {
@@ -29,7 +29,7 @@ class engine {
     friend class request;
     friend class bulk;
 	friend class endpoint;
-    friend class resolved_bulk;
+    friend class remote_bulk;
     friend class remote_procedure;
 	friend class callable_remote_procedure;
 

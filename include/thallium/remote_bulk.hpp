@@ -3,8 +3,8 @@
  * 
  * See COPYRIGHT in top-level directory.
  */
-#ifndef __THALLIUM_RESOLVED_BULK_HPP
-#define __THALLIUM_RESOLVED_BULK_HPP
+#ifndef __THALLIUM_REMOTE_BULK_HPP
+#define __THALLIUM_REMOTE_BULK_HPP
 
 #include <cstdint>
 #include <string>
@@ -14,7 +14,7 @@
 
 namespace thallium {
 
-class resolved_bulk {
+class remote_bulk {
 
     friend class bulk;
 
@@ -23,7 +23,7 @@ private:
     const bulk::bulk_segment& m_segment;
     endpoint                  m_endpoint;
 
-	resolved_bulk(const bulk::bulk_segment& b, const endpoint& ep)
+	remote_bulk(const bulk::bulk_segment& b, const endpoint& ep)
 	: m_segment(b), m_endpoint(ep) {}
 
 public:

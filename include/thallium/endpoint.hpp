@@ -14,14 +14,14 @@ namespace thallium {
 
 class engine;
 class request;
-class resolved_bulk;
+class remote_bulk;
 
 class endpoint {
 
 	friend class engine;
     friend class request;
 	friend class callable_remote_procedure;
-    friend class resolved_bulk;
+    friend class remote_bulk;
 
 private:
 
