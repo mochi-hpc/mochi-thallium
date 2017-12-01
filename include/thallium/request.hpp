@@ -7,6 +7,7 @@
 #define __THALLIUM_REQUEST_HPP
 
 #include <margo.h>
+#include <thallium/margo_exception.hpp>
 #include <thallium/serialization/serialize.hpp>
 #include <thallium/serialization/buffer_output_archive.hpp>
 
@@ -50,7 +51,8 @@ public:
      */
 	request(const request& other)
 	: m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
-		margo_ref_incr(m_handle);
+        hg_return_t ret = margo_ref_incr(m_handle);
+        MARGO_ASSERT(ret, margo_ref_incr);
 	}
 
     /**
@@ -66,11 +68,14 @@ public:
      */
 	request& operator=(const request& other) {
 		if(m_handle == other.m_handle) return *this;
-		margo_destroy(m_handle);
+        hg_return_t ret;
+        ret = margo_destroy(m_handle);
+        MARGO_ASSERT(ret, margo_destroy);
         m_engine           = other.m_engine;
 		m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
-		margo_ref_incr(m_handle);
+        ret = margo_ref_incr(m_handle);
+        MARGO_ASSERT(ret, margo_ref_incr);
 		return *this;
 	}
 
@@ -90,8 +95,9 @@ public:
     /**
      * @brief Destructor.
      */
-	~request() {
-		margo_destroy(m_handle);
+	~request() throw(margo_exception) {
+		hg_return_t ret = margo_destroy(m_handle);
+        MARGO_ASSERT(ret, margo_destroy);
 	}
 
     /**
@@ -109,7 +115,8 @@ public:
             buffer b;
             buffer_output_archive arch(b, *m_engine);
             serialize_many(arch, std::forward<T>(t)...);
-			margo_respond(m_handle, &b);
+			hg_return_t ret = margo_respond(m_handle, &b);
+            MARGO_ASSERT(ret, margo_respond);
 		}
 	}
 

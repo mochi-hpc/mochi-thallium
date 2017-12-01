@@ -11,6 +11,7 @@ set(thallium-src bulk.cpp
 		 request.cpp
 		 remote_bulk.cpp
                  callable_remote_procedure.cpp
+		 margo_exception.cpp
                  proc_buffer.cpp)
 
 # load package helper for generating cmake CONFIG packages

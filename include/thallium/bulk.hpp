@@ -11,6 +11,7 @@
 #include <vector>
 #include <margo.h>
 #include <thallium/endpoint.hpp>
+#include <thallium/margo_exception.hpp>
 
 namespace thallium {
 
@@ -141,7 +142,8 @@ public:
      */
 	bulk(const bulk& other)
     : m_engine(other.m_engine), m_bulk(other.m_bulk), m_is_local(other.m_is_local) {
-        margo_bulk_ref_incr(m_bulk);
+        hg_return_t ret = margo_bulk_ref_incr(m_bulk);
+        MARGO_ASSERT(ret, margo_bulk_ref_incr);
     }
 
     /**
@@ -158,13 +160,15 @@ public:
 	bulk& operator=(const bulk& other) {
         if(this == &other) return *this;
         if(m_bulk != HG_BULK_NULL) {
-            margo_bulk_free(m_bulk);
+            hg_return_t ret = margo_bulk_free(m_bulk);
+            MARGO_ASSERT(ret, margo_bulk_free);
         }
         m_bulk     = other.m_bulk;
         m_engine   = other.m_engine;
         m_is_local = other.m_is_local;
         if(m_bulk != HG_BULK_NULL) {
-            margo_bulk_ref_incr(m_bulk);
+            hg_return_t ret = margo_bulk_ref_incr(m_bulk);
+            MARGO_ASSERT(ret, margo_bulk_ref_incr);
         }
         return *this;
     }
@@ -175,7 +179,8 @@ public:
 	bulk& operator=(bulk&& other) {
         if(this == &other) return *this;
         if(m_bulk != HG_BULK_NULL) {
-            margo_bulk_free(m_bulk);
+            hg_return_t ret = margo_bulk_free(m_bulk);
+            MARGO_ASSERT(ret, margo_bulk_free);
         }
         m_engine     = other.m_engine;
         m_bulk       = other.m_bulk;
@@ -187,9 +192,10 @@ public:
     /**
      * @brief Destructor.
      */
-	~bulk() {
+	~bulk() throw(margo_exception) {
         if(m_bulk != HG_BULK_NULL) {
-            margo_bulk_free(m_bulk);
+            hg_return_t ret = margo_bulk_free(m_bulk);
+            MARGO_ASSERT(ret, margo_bulk_free);
         }
     }
 
@@ -276,8 +282,8 @@ public:
         } else {
             hg_size_t s = margo_bulk_get_serialize_size(m_bulk, HG_TRUE);
             std::vector<char> buf(s);
-            margo_bulk_serialize(&buf[0], s, HG_TRUE, m_bulk);
-            // XXX check return values
+            hg_return_t ret = margo_bulk_serialize(&buf[0], s, HG_TRUE, m_bulk);
+            MARGO_ASSERT(ret, margo_bulk_serialize);
             ar & buf;
         }
     }
@@ -308,8 +314,8 @@ void bulk::load(A& ar) {
     ar & buf;
     if(buf.size() > 0) {
         m_engine = &(ar.get_engine());
-        margo_bulk_deserialize(m_engine->m_mid, &m_bulk, &buf[0], buf.size());
-        // XXX check return value
+        hg_return_t ret = margo_bulk_deserialize(m_engine->m_mid, &m_bulk, &buf[0], buf.size());
+        MARGO_ASSERT(ret, margo_bulk_deserialize);
         m_is_local = false;
     }
 }

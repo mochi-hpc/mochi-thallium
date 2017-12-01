@@ -24,6 +24,7 @@ std::size_t remote_bulk::operator>>(const bulk::bulk_segment& dest) const {
     hg_return_t ret = margo_bulk_transfer(mid, op,
                         origin_addr, origin_handle, origin_offset,
                         local_handle, local_offset, size);
+    MARGO_ASSERT(ret, margo_bulk_transfer);
 
     return size;
 }
@@ -44,6 +45,7 @@ std::size_t remote_bulk::operator<<(const bulk::bulk_segment& src) const {
     hg_return_t ret = margo_bulk_transfer(mid, op,
                         origin_addr, origin_handle, origin_offset,
                         local_handle, local_offset, size);
+    MARGO_ASSERT(ret, margo_bulk_transfer);
 
     return size;
 }

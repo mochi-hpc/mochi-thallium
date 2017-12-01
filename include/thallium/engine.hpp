@@ -87,9 +87,12 @@ private:
 		auto f = function_cast<G>(cb_data->m_function);
 		request req(*(cb_data->m_engine), handle, disable_response);
 		buffer input;
-		margo_get_input(handle, &input);
+		hg_return_t ret;
+        ret = margo_get_input(handle, &input);
+        MARGO_ASSERT(ret, margo_get_input);
 		(*f)(req, input);
-        margo_free_input(handle, &input);
+        ret = margo_free_input(handle, &input);
+        MARGO_ASSERT(ret, margo_free_input);
 	}
 
     /**
@@ -143,7 +146,7 @@ public:
 		m_mid = margo_init(addr.c_str(), mode,
 				use_progress_thread ? 1 : 0,
 				rpc_thread_count);
-		// TODO throw exception if m_mid is null
+        // XXX throw an exception if m_mid not initialized
         m_owns_mid = true;
 	}
 
@@ -177,9 +180,8 @@ public:
     /**
      * @brief Destructor.
      */
-	~engine() {
+	~engine() throw(margo_exception) {
         if(m_is_server && m_owns_mid) {
-            // TODO an exception if following call fails
             margo_wait_for_finalize(m_mid);
         }
 	}
@@ -189,7 +191,6 @@ public:
      * @brief Finalize the engine. Can be called by any thread.
      */
 	void finalize() {
-		// TODO  an exception if the following call fails
 		margo_finalize(m_mid);
 	}
 
@@ -278,7 +279,6 @@ namespace thallium {
 template<typename ... Args>
 remote_procedure engine::define(const std::string& name, 
         const std::function<void(const request&, Args...)>& fun) {
-    // TODO throw an exception if the following call fails
 
     hg_id_t id = margo_register_name(m_mid, name.c_str(),
                     process_buffer,
@@ -301,8 +301,9 @@ remote_procedure engine::define(const std::string& name,
     cb_data->m_engine   = this;
     cb_data->m_function = void_cast(&m_rpcs[id]);
 
-    margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
-    
+    hg_return_t ret = margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
+    MARGO_ASSERT(ret, margo_register_data);
+
     return remote_procedure(*this, id);
 }
 

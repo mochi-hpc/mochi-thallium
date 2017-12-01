@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <string>
 #include <margo.h>
+#include <thallium/margo_exception.hpp>
 
 namespace thallium {
 
@@ -77,7 +78,7 @@ public:
     /**
      * @brief Destructor.
      */
-	~endpoint();
+	~endpoint() throw(margo_exception);
 
     /**
      * @brief Creates a string representation of the endpoint's address.

@@ -15,6 +15,7 @@
 #include <thallium/serialization/serialize.hpp>
 #include <thallium/serialization/stl/vector.hpp>
 #include <thallium/serialization/buffer_output_archive.hpp>
+#include <thallium/margo_exception.hpp>
 
 namespace thallium {
 
@@ -57,11 +58,15 @@ private:
      * @return a packed_response object from which the returned value can be deserialized.
      */
      packed_response forward(const buffer& buf) const {
-		margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
+        hg_return_t ret;
+        ret = margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
+        MARGO_ASSERT(ret, margo_forward);
         buffer output;
         if(m_ignore_response) return packed_response(std::move(output), *m_engine);
-        margo_get_output(m_handle, &output);
-        margo_free_output(m_handle, &output); // won't do anything on a buffer type
+        ret = margo_get_output(m_handle, &output);
+        MARGO_ASSERT(ret, margo_get_output);
+        ret = margo_free_output(m_handle, &output); // won't do anything on a buffer type
+        MARGO_ASSERT(ret, margo_free_output);
         return packed_response(std::move(output), *m_engine);
 	}
 
@@ -71,12 +76,15 @@ public:
       * @brief Copy-constructor.
       */
 	callable_remote_procedure(const callable_remote_procedure& other) {
-		if(m_handle != HG_HANDLE_NULL) {
-			margo_destroy(m_handle);
+        hg_return_t ret;
+        if(m_handle != HG_HANDLE_NULL) {
+			ret = margo_destroy(m_handle);
+            MARGO_ASSERT(ret, margo_destroy);
 		}
 		m_handle = other.m_handle;
 		if(m_handle != HG_HANDLE_NULL) {
-			margo_ref_incr(m_handle);
+            ret = margo_ref_incr(m_handle);
+            MARGO_ASSERT(ret, margo_ref_incr);
 		}
 	}
 
@@ -85,7 +93,8 @@ public:
      */
 	callable_remote_procedure(callable_remote_procedure&& other) {
 		if(m_handle != HG_HANDLE_NULL) {
-            margo_destroy(m_handle);
+            hg_return_t ret = margo_destroy(m_handle);
+            MARGO_ASSERT(ret, margo_destroy);
         }
 		m_handle = other.m_handle;
 		other.m_handle = HG_HANDLE_NULL;
@@ -95,12 +104,15 @@ public:
      * @brief Copy-assignment operator.
      */
 	callable_remote_procedure& operator=(const callable_remote_procedure& other) {
+        hg_return_t ret;
 		if(&other == this) return *this;
 		if(m_handle != HG_HANDLE_NULL) {
-			margo_destroy(m_handle);
+            ret = margo_destroy(m_handle);
+            MARGO_ASSERT(ret, margo_destroy);
 		}
 		m_handle = other.m_handle;
-		margo_ref_incr(m_handle);
+		ret = margo_ref_incr(m_handle);
+        MARGO_ASSERT(ret, margo_ref_incr);
 		return *this;
 	}
 
@@ -111,7 +123,8 @@ public:
 	callable_remote_procedure& operator=(callable_remote_procedure&& other) {
 		if(&other == this) return *this;
 		if(m_handle != HG_HANDLE_NULL) {
-			margo_destroy(m_handle);
+			hg_return_t ret = margo_destroy(m_handle);
+            MARGO_ASSERT(ret, margo_destroy);
 		}
 		m_handle = other.m_handle;
 		other.m_handle = HG_HANDLE_NULL;
@@ -121,9 +134,10 @@ public:
     /**
      * @brief Destructor.
      */
-	~callable_remote_procedure() {
+	~callable_remote_procedure() throw(margo_exception) {
 		if(m_handle != HG_HANDLE_NULL) {
-			margo_destroy(m_handle);
+            hg_return_t ret = margo_destroy(m_handle);
+            MARGO_ASSERT(ret, margo_destroy);
 		}
 	}
 
