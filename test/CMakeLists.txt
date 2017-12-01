@@ -1,8 +1,14 @@
-add_executable(TestHelloWorld TestHelloWorld.cpp)
-target_link_libraries(TestHelloWorld thallium)
+add_executable(TestHelloWorldServer TestHelloWorldServer.cpp)
+target_link_libraries(TestHelloWorldServer thallium)
+
+add_executable(TestHelloWorldClient TestHelloWorldClient.cpp)
+target_link_libraries(TestHelloWorldClient thallium)
 
 add_executable(TestSerialization TestSerialization.cpp)
 target_link_libraries(TestSerialization thallium)
 
-add_executable(TestBulk TestBulk.cpp)
-target_link_libraries(TestBulk thallium)
+add_executable(TestBulkClient TestBulkClient.cpp)
+target_link_libraries(TestBulkClient thallium)
+
+add_executable(TestBulkServer TestBulkServer.cpp)
+target_link_libraries(TestBulkServer thallium)
