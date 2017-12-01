@@ -69,3 +69,5 @@ install (FILES "${CMAKE_CURRENT_BINARY_DIR}/thallium-config.cmake"
 install (DIRECTORY ../include/thallium
          DESTINATION include
          FILES_MATCHING PATTERN "*.hpp")
+install (FILES ../include/thallium.hpp
+	 DESTINATION include)
