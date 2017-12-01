@@ -47,8 +47,9 @@ private:
     using rpc_t = std::function<void(const request&, const buffer&)>;
 
 	margo_instance_id                  m_mid;
-    bool                               m_is_server;
     std::unordered_map<hg_id_t, rpc_t> m_rpcs;
+    bool                               m_is_server;
+    bool                               m_owns_mid;
 
     /**
      * @brief Encapsulation of some data needed by RPC callbacks
@@ -143,7 +144,14 @@ public:
 				use_progress_thread ? 1 : 0,
 				rpc_thread_count);
 		// TODO throw exception if m_mid is null
+        m_owns_mid = true;
 	}
+
+    engine(margo_instance_id mid, int mode) {
+        m_mid = mid;
+        m_is_server = (mode == THALLIUM_SERVER_MODE);
+        m_owns_mid = false;
+    }
 
     /**
      * @brief Copy-constructor is deleted.
@@ -170,7 +178,7 @@ public:
      * @brief Destructor.
      */
 	~engine() {
-        if(m_is_server) {
+        if(m_is_server && m_owns_mid) {
             // TODO an exception if following call fails
             margo_wait_for_finalize(m_mid);
         }
