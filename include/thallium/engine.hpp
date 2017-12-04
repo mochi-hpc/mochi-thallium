@@ -181,8 +181,12 @@ public:
      * @brief Destructor.
      */
 	~engine() throw(margo_exception) {
-        if(m_is_server && m_owns_mid) {
-            margo_wait_for_finalize(m_mid);
+        if(m_owns_mid) {
+            if(m_is_server) {
+                margo_wait_for_finalize(m_mid);
+            } else {
+                margo_finalize(m_mid);
+            }
         }
 	}
 
