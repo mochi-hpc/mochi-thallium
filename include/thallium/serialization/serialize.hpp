@@ -133,14 +133,14 @@ struct saver;
 
 template<class A, typename T> 
 struct saver<A,T,true> {
-	static void apply(A& ar, T&& t) {
+	static void apply(A& ar, T& t) {
 		t.save(ar);
 	}
 };
 
 template<class A, typename T>
 struct saver<A,T,false> {
-	static void apply(A& ar, T&& t) {
+	static void apply(A& ar, T& t) {
 		serialize(ar,std::forward<T>(t));
 	}
 };
@@ -150,12 +150,17 @@ struct saver<A,T,false> {
  */
 template<class A, typename T>
 inline void save(A& ar, T& t) {
-	saver<A,T,has_save_method<A,T>::value>::apply(ar,std::forward<T>(t));
+	saver<A,T,has_save_method<A,T>::value>::apply(ar,t);
 }
 
 template<class A, typename T>
 inline void save(A& ar, T&& t) {
     save(ar, t);
+}
+
+template<class A, typename T>
+inline void save(A& ar, const T&& t) {
+    save(ar, const_cast<T&>(t));
 }
 
 /**
@@ -167,14 +172,14 @@ struct loader;
 
 template<class A, typename T>
 struct loader<A,T,true> {
-	static void apply(A& ar, T&& t) {
+	static void apply(A& ar, T& t) {
 		t.load(ar);
 	}
 };
 
 template<class A, typename T>
 struct loader<A,T,false> {
-	static void apply(A& ar, T&& t) {
+	static void apply(A& ar, T& t) {
 		serialize(ar,std::forward<T>(t));
 	}
 };
@@ -184,7 +189,7 @@ struct loader<A,T,false> {
  */
 template<class A, typename T>
 inline void load(A& ar, T& t) {
-	loader<A,T,has_load_method<A,T>::value>::apply(ar,std::forward<T>(t));
+	loader<A,T,has_load_method<A,T>::value>::apply(ar,t);
 }
 
 template<class A, typename T>
