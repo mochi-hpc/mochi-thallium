@@ -1,0 +1,8 @@
+add_subdirectory(00_init)
+add_subdirectory(01_hello)
+add_subdirectory(02_sum)
+add_subdirectory(03_lambda)
+add_subdirectory(04_stop)
+add_subdirectory(05_stl)
+add_subdirectory(06_custom)
+add_subdirectory(07_rdma)

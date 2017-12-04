@@ -1,0 +1,4 @@
+add_executable(03_lambda_server server.cpp)
+target_link_libraries(03_lambda_server thallium)
+add_executable(03_lambda_client client.cpp)
+target_link_libraries(03_lambda_client thallium)

@@ -56,3 +56,4 @@ xpkg_import_module (margo REQUIRED margo)
 
 add_subdirectory (src)
 add_subdirectory (test)
+add_subdirectory (examples)
