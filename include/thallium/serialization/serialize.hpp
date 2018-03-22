@@ -120,7 +120,7 @@ struct serializer<A,T,false> {
  * Generic serialize method calling apply on a serializer.
  */
 template<class A, typename T>
-void serialize(A& ar, T&& t) {
+void serialize(A& ar, T& t) {
 	serializer<A,T,has_serialize_method<A,T>::value>::apply(ar,std::forward<T>(t));
 }
 
@@ -141,7 +141,7 @@ struct saver<A,T,true> {
 template<class A, typename T>
 struct saver<A,T,false> {
 	static void apply(A& ar, T& t) {
-		serialize(ar,std::forward<T>(t));
+		serialize(ar,t);
 	}
 };
 
@@ -154,12 +154,7 @@ inline void save(A& ar, T& t) {
 }
 
 template<class A, typename T>
-inline void save(A& ar, T&& t) {
-    save(ar, t);
-}
-
-template<class A, typename T>
-inline void save(A& ar, const T&& t) {
+inline void save(A& ar, const T& t) {
     save(ar, const_cast<T&>(t));
 }
 
@@ -180,7 +175,7 @@ struct loader<A,T,true> {
 template<class A, typename T>
 struct loader<A,T,false> {
 	static void apply(A& ar, T& t) {
-		serialize(ar,std::forward<T>(t));
+		serialize(ar,t);
 	}
 };
 
@@ -190,11 +185,6 @@ struct loader<A,T,false> {
 template<class A, typename T>
 inline void load(A& ar, T& t) {
 	loader<A,T,has_load_method<A,T>::value>::apply(ar,t);
-}
-
-template<class A, typename T>
-inline void load(A& ar, T&& t) {
-    load(ar, t);
 }
 
 /**
