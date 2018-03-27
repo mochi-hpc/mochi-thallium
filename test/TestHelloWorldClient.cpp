@@ -8,13 +8,13 @@
 
 namespace tl = thallium;
 
-int client() {
+int client(const char* addr) {
 
-	tl::engine margo("bmi+tcp", MARGO_CLIENT_MODE);
+	tl::engine margo("tcp", MARGO_CLIENT_MODE);
 	auto remote_hello = margo.define("hello").ignore_response();
 	auto remote_sum   = margo.define("sum");
     auto remote_stop  = margo.define("stop").ignore_response();
-	std::string server_addr = "bmi+tcp://127.0.0.1:1234";
+	std::string server_addr = addr;
 	sleep(1);
 
 	auto server_endpoint = margo.lookup(server_addr);
@@ -32,6 +32,10 @@ int client() {
 }
 
 int main(int argc, char** argv) {
-	client();
+    if(argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " <addr>" << std::endl;
+        exit(0);
+    }
+    client(argv[1]);
 	return 0;
 }

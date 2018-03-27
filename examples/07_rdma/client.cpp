@@ -4,10 +4,13 @@
 namespace tl = thallium;
 
 int main(int argc, char** argv) {
-
-    tl::engine myEngine("bmi+tcp", MARGO_CLIENT_MODE);
+    if(argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " <address>" << std::endl;
+        exit(0);
+    }
+    tl::engine myEngine("tcp", MARGO_CLIENT_MODE);
     tl::remote_procedure remote_do_rdma = myEngine.define("do_rdma").ignore_response();
-    tl::endpoint server_endpoint = myEngine.lookup("bmi+tcp://127.0.0.1:1234");
+    tl::endpoint server_endpoint = myEngine.lookup(argv[1]);
 
     std::string buffer = "Matthieu";
     std::vector<std::pair<void*,std::size_t>> segments(1);

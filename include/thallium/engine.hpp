@@ -10,6 +10,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
+#include <atomic>
 #include <margo.h>
 #include <thallium/tuple_util.hpp>
 #include <thallium/function_cast.hpp>
@@ -50,6 +51,7 @@ private:
     std::unordered_map<hg_id_t, rpc_t> m_rpcs;
     bool                               m_is_server;
     bool                               m_owns_mid;
+    std::atomic<bool>                  m_finalize_called;
 
     /**
      * @brief Encapsulation of some data needed by RPC callbacks
@@ -126,6 +128,11 @@ private:
         return HG_SUCCESS;
     }
 
+    static void on_finalize(void* arg) {
+        engine* e = static_cast<engine*>(arg);
+        e->m_finalize_called = true;
+    }
+
 public:
 
     /**
@@ -142,12 +149,14 @@ public:
 	              std::int32_t rpc_thread_count = 0) {
 
         m_is_server = (mode == THALLIUM_SERVER_MODE);
-
+        m_finalize_called = false;
 		m_mid = margo_init(addr.c_str(), mode,
 				use_progress_thread ? 1 : 0,
 				rpc_thread_count);
         // XXX throw an exception if m_mid not initialized
         m_owns_mid = true;
+        margo_push_finalize_callback(m_mid,
+                &engine::on_finalize, static_cast<void*>(this));
 	}
 
     engine(margo_instance_id mid, int mode) {
@@ -183,7 +192,8 @@ public:
 	~engine() throw(margo_exception) {
         if(m_owns_mid) {
             if(m_is_server) {
-                margo_wait_for_finalize(m_mid);
+                if(!m_finalize_called) 
+                    margo_wait_for_finalize(m_mid);
             } else {
                 margo_finalize(m_mid);
             }

@@ -14,8 +14,9 @@ void hello(const tl::request& req, const std::string& name) {
 
 int server() {
 
-	tl::engine margo("bmi+tcp://127.0.0.1:1234", MARGO_SERVER_MODE);
-	margo.define("hello", hello).ignore_response();
+	tl::engine margo("tcp", MARGO_SERVER_MODE);
+
+    margo.define("hello", hello).ignore_response();
 
     std::function<void(const tl::request&, int, int)> f =
         [](const tl::request& req, int x, int y) {
@@ -31,7 +32,7 @@ int server() {
         };
     margo.define("stop", g);
 
-	std::string addr = margo.self();
+    std::string addr = margo.self();
 	std::cout << "Server running at address " << addr << std::endl;
 
 	return 0;
