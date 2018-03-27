@@ -9,14 +9,10 @@ set(thallium-src bulk.cpp
 		 endpoint.cpp 
                  engine.cpp 
 		 margo_exception.cpp
-		 pool.cpp
 		 proc_buffer.cpp
                  remote_procedure.cpp 
 		 request.cpp
-		 remote_bulk.cpp
-		 scheduler.cpp
-		 task.cpp
-		 thread.cpp)
+		 remote_bulk.cpp)
 
 # load package helper for generating cmake CONFIG packages
 include (CMakePackageConfigHelpers)
