@@ -57,6 +57,11 @@ write_basic_package_version_file(
 # generate our config file for find_package()
 configure_file (thallium-config.cmake.in thallium-config.cmake @ONLY)
 
+# some bits for the pkg-config file
+set (DEST_DIR "${CMAKE_INSTALL_PREFIX}")
+set (PRIVATE_LIBS "-lthallium")
+CONFIGURE_FILE("thallium.pc.in" "thallium.pc" @ONLY)
+
 #
 # "make install" rules
 #
@@ -70,6 +75,8 @@ install (FILES "${CMAKE_CURRENT_BINARY_DIR}/thallium-config.cmake"
                "${CMAKE_CURRENT_BINARY_DIR}/thallium-config-version.cmake"
                "../cmake/xpkg-import.cmake"
          DESTINATION ${thallium-pkg} )
+install (FILES "${CMAKE_CURRENT_BINARY_DIR}/thallium.pc"
+	DESTINATION "lib/pkgconfig/")
 install (DIRECTORY ../include/thallium
          DESTINATION include
          FILES_MATCHING PATTERN "*.hpp")
