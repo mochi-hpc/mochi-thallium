@@ -189,7 +189,7 @@ public:
     /**
      * @brief Destructor.
      */
-	~engine() throw(margo_exception) {
+	~engine() {
         if(m_owns_mid) {
             if(m_is_server) {
                 if(!m_finalize_called) 

@@ -48,7 +48,7 @@ endpoint& endpoint::operator=(endpoint&& other) {
 	return *this;
 }
 
-endpoint::~endpoint() throw(margo_exception) {
+endpoint::~endpoint() {
 	if(m_addr != HG_ADDR_NULL) {
         hg_return_t ret = margo_addr_free(m_engine->m_mid, m_addr);
         MARGO_ASSERT(ret, margo_addr_free);

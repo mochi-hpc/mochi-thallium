@@ -78,7 +78,7 @@ public:
     /**
      * @brief Destructor.
      */
-	~endpoint() throw(margo_exception);
+	~endpoint();
 
     /**
      * @brief Creates a string representation of the endpoint's address.

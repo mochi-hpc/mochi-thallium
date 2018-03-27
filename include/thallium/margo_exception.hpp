@@ -60,7 +60,6 @@ std::string translate_margo_error_code(hg_return_t ret);
         std::stringstream msg; \
         msg << "Function returned "; \
         msg << translate_margo_error_code(__ret__); \
-        throw margo_exception(#__fun__, __FILE__, __LINE__, msg.str());\
     }\
     } while(0);
 

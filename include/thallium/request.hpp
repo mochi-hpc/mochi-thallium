@@ -95,7 +95,7 @@ public:
     /**
      * @brief Destructor.
      */
-	~request() throw(margo_exception) {
+	~request() {
 		hg_return_t ret = margo_destroy(m_handle);
         MARGO_ASSERT(ret, margo_destroy);
 	}
