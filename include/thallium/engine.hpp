@@ -111,15 +111,11 @@ private:
         int ret;
         ABT_pool pool;
         margo_instance_id mid;
-        const struct hg_info *hgi = margo_get_info(handle);
         mid = margo_hg_handle_get_instance(handle);
         if(mid == MARGO_INSTANCE_NULL) {
             return HG_OTHER_ERROR;
         }
-        ret = margo_lookup_mplex(mid, hgi->id, hgi->target_id, &pool);
-        if(ret != HG_SUCCESS) {
-            return HG_INVALID_PARAM;
-        }
+        pool = margo_hg_handle_get_handler_pool(handle);
         ret = ABT_thread_create(pool, (void (*)(void *)) rpc_handler_ult<F,disable_response>, 
                 handle, ABT_THREAD_ATTR_NULL, NULL);
         if(ret != 0) {
