@@ -13,6 +13,7 @@
 namespace thallium {
 
 class callable_remote_procedure;
+class async_response;
 
 /**
  * @brief packed_response objects are created as a reponse to
@@ -22,6 +23,7 @@ class callable_remote_procedure;
 class packed_response {
 
     friend class callable_remote_procedure;
+    friend class async_response;
 
 private:
 

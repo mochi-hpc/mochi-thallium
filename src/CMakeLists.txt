@@ -4,7 +4,8 @@
 #
 
 # list of source files
-set(thallium-src bulk.cpp
+set(thallium-src async_response.cpp
+		 bulk.cpp
 		 callable_remote_procedure.cpp
 		 endpoint.cpp 
                  engine.cpp 
