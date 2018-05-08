@@ -12,6 +12,7 @@
 #include <margo.h>
 #include <thallium/buffer.hpp>
 #include <thallium/packed_response.hpp>
+#include <thallium/async_response.hpp>
 #include <thallium/serialization/serialize.hpp>
 #include <thallium/serialization/stl/vector.hpp>
 #include <thallium/serialization/buffer_output_archive.hpp>
@@ -32,6 +33,7 @@ class endpoint;
 class callable_remote_procedure {
 
 	friend class remote_procedure;
+    friend class async_response;
 
 private:
     engine*     m_engine;
@@ -70,17 +72,29 @@ private:
         return packed_response(std::move(output), *m_engine);
 	}
 
+    /**
+     * @brief Sends the RPC to the endpoint (calls margo_iforward), passing a buffer
+     * in which the arguments have been serialized. The RPC is sent in a non-blocking manner.
+     *
+     * @param buf Buffer containing a serialized version of the arguments.
+     *
+     * @return an async_response object that can be waited on.
+     */
+    async_response iforward(const buffer& buf) {
+        hg_return_t ret;
+        margo_request req;
+        ret = margo_iforward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)), &req);
+        MARGO_ASSERT(ret, margo_iforward);
+        return async_response(req, *m_engine, *this, m_ignore_response);
+    }
+
 public:
 
-     /**
-      * @brief Copy-constructor.
-      */
+    /**
+     * @brief Copy-constructor.
+     */
 	callable_remote_procedure(const callable_remote_procedure& other) {
         hg_return_t ret;
-        if(m_handle != HG_HANDLE_NULL) {
-			ret = margo_destroy(m_handle);
-            MARGO_ASSERT(ret, margo_destroy);
-		}
 		m_handle = other.m_handle;
 		if(m_handle != HG_HANDLE_NULL) {
             ret = margo_ref_incr(m_handle);
@@ -92,10 +106,6 @@ public:
      * @brief Move-constructor.
      */
 	callable_remote_procedure(callable_remote_procedure&& other) {
-		if(m_handle != HG_HANDLE_NULL) {
-            hg_return_t ret = margo_destroy(m_handle);
-            MARGO_ASSERT(ret, margo_destroy);
-        }
 		m_handle = other.m_handle;
 		other.m_handle = HG_HANDLE_NULL;
 	}
@@ -166,6 +176,33 @@ public:
     packed_response operator()() const {
         buffer b;
         return forward(b);
+    }
+
+    /**
+     * @brief Issues an RPC in a non-blocking way. Will serialize the arguments
+     * in a buffer and send the RPC to the endpoint.
+     *
+     * @tparam T Types of the parameters.
+     * @param t Parameters of the RPC.
+     *
+     * @return an async_response object that the caller can wait on.
+     */
+    template<typename ... T>
+    async_response async(T&& ... t) {
+        buffer b;
+        buffer_output_archive arch(b, *m_engine);
+        serialize_many(arch, std::forward<T>(t)...);
+        return iforward(b);
+    }
+
+    /**
+     * @brief Non-blocking call to the RPC without any argument.
+     *
+     * @return an async_response object that the caller can wait on.
+     */
+    async_response async() {
+        buffer b;
+        return iforward(b);
     }
 };
 
