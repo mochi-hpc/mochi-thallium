@@ -39,6 +39,7 @@ private:
     engine*     m_engine;
 	hg_handle_t m_handle;
     bool        m_ignore_response;
+    uint16_t    m_provider_id;
 
     /**
      * @brief Constructor. Made private since callable_remote_procedure can only
@@ -49,7 +50,8 @@ private:
      * @param ep endpoint on which to call the RPC.
      * @param ignore_resp whether the response should be ignored.
      */
-	callable_remote_procedure(engine& e, hg_id_t id, const endpoint& ep, bool ignore_resp);
+	callable_remote_procedure(engine& e, hg_id_t id, const endpoint& ep, 
+            bool ignore_resp, uint16_t provider_id=0);
 
     /**
      * @brief Sends the RPC to the endpoint (calls margo_forward), passing a buffer
@@ -61,7 +63,8 @@ private:
      */
      packed_response forward(const buffer& buf) const {
         hg_return_t ret;
-        ret = margo_forward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
+        ret = margo_provider_forward(m_provider_id, 
+                m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
         MARGO_ASSERT(ret, margo_forward);
         buffer output;
         if(m_ignore_response) return packed_response(std::move(output), *m_engine);
@@ -83,7 +86,8 @@ private:
     async_response iforward(const buffer& buf) {
         hg_return_t ret;
         margo_request req;
-        ret = margo_iforward(m_handle, const_cast<void*>(static_cast<const void*>(&buf)), &req);
+        ret = margo_provider_iforward(m_provider_id, 
+                m_handle, const_cast<void*>(static_cast<const void*>(&buf)), &req);
         MARGO_ASSERT(ret, margo_iforward);
         return async_response(req, *m_engine, *this, m_ignore_response);
     }

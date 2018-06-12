@@ -12,6 +12,7 @@ namespace thallium {
 
 class engine;
 class endpoint;
+class provider_handle;
 class callable_remote_procedure;
 
 /**
@@ -26,9 +27,9 @@ class remote_procedure {
 	friend class engine;
 
 private:
-    engine* m_engine;
-	hg_id_t m_id;
-    bool    m_ignore_response;
+    engine*  m_engine;
+	hg_id_t  m_id;
+    bool     m_ignore_response;
 
     /**
      * @brief Constructor. Made private because remote_procedure
@@ -76,6 +77,17 @@ public:
      */
 	callable_remote_procedure on(const endpoint& ep) const;
     
+
+    /**
+     * @brief Creates a callable remote_procedure by associating the
+     * remote_procedure with a particular provider_handle.
+     *
+     * @param ph provider_handle with which to associate the procedure.
+     *
+     * @return a callable_remote_procedure.
+     */
+    callable_remote_procedure on(const provider_handle& ph) const;
+
     /**
      * @brief Tell the remote_procedure that it should not expect responses.
      *

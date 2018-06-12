@@ -27,6 +27,7 @@ class bulk;
 class endpoint;
 class remote_bulk;
 class remote_procedure;
+template<typename T> class provider;
 
 /**
  * @brief The engine class is at the core of Thallium,
@@ -42,6 +43,8 @@ class engine {
     friend class remote_bulk;
     friend class remote_procedure;
 	friend class callable_remote_procedure;
+    template<typename T>
+    friend class provider;
 
 private:
 
@@ -205,6 +208,16 @@ public:
 	}
 
     /**
+     * @brief Makes the calling thread block until someone calls
+     * finalize on this engine. This function will not do anything
+     * if finalize was already called.
+     */
+    void wait_for_finalize() {
+        if(!m_finalize_called)
+            margo_wait_for_finalize(m_mid);
+    }
+
+    /**
      * @brief Creates an endpoint from this engine.
      *
      * @return An endpoint corresponding to this engine.
@@ -228,12 +241,15 @@ public:
      * @tparam Args Types of arguments accepted by the RPC.
      * @param name Name of the RPC.
      * @param fun Function to associate with the RPC.
+     * @param provider_id ID of the provider registering this RPC.
+     * @param pool Argobots pool to use when receiving this type of RPC
      *
      * @return a remote_procedure object.
      */
 	template<typename ... Args>
 	remote_procedure define(const std::string& name, 
-        const std::function<void(const request&, Args...)>& fun);
+        const std::function<void(const request&, Args...)>& fun,
+        uint16_t provider_id=0, ABT_pool pool=ABT_POOL_NULL);
 
     /**
      * @brief Defines an RPC with a name and a function pointer
@@ -242,11 +258,14 @@ public:
      * @tparam Args Types of arguments accepted by the RPC.
      * @param name Name of the RPC.
      * @param f Function to associate with the RPC.
+     * @param provider_id ID of the provider registering this RPC.
+     * @param pool Argobots pool to use when receiving this type of RPC.
      *
      * @return a remote_procedure object.
      */
     template<typename ... Args>
-    remote_procedure define(const std::string& name, void (*f)(const request&, Args...));
+    remote_procedure define(const std::string& name, void (*f)(const request&, Args...),
+            uint16_t provider_id=0, ABT_pool pool=ABT_POOL_NULL);
 
     /**
      * @brief Lookup an address and returns an endpoint object
@@ -268,12 +287,6 @@ public:
      */
     bulk expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_mode flag);
 
-    /**
-     * @brief String representation of the engine's address.
-     *
-     * @return String representation of the engine's address.
-     */
-	operator std::string() const;
 };
 
 } // namespace thallium
@@ -288,12 +301,15 @@ namespace thallium {
 
 template<typename ... Args>
 remote_procedure engine::define(const std::string& name, 
-        const std::function<void(const request&, Args...)>& fun) {
+        const std::function<void(const request&, Args...)>& fun,
+        uint16_t provider_id, ABT_pool pool) {
 
-    hg_id_t id = margo_register_name(m_mid, name.c_str(),
-                    process_buffer,
-                    process_buffer,
-                    rpc_callback<rpc_t, false>);
+    hg_id_t id = margo_provider_register_name(m_mid, name.c_str(),
+                process_buffer,
+                process_buffer,
+                rpc_callback<rpc_t, false>,
+                provider_id,
+                pool);
 
     m_rpcs[id] = [fun,this](const request& r, const buffer& b) {
         std::function<void(Args...)> l = [&fun, &r](Args&&... args) {
@@ -318,8 +334,12 @@ remote_procedure engine::define(const std::string& name,
 }
 
 template<typename ... Args>
-remote_procedure engine::define(const std::string& name, void (*f)(const request&, Args...)) {
-    return define(name, std::function<void(const request&,Args...)>(f));
+remote_procedure engine::define(
+        const std::string& name,
+        void (*f)(const request&, Args...),
+        uint16_t provider_id, ABT_pool pool) {
+
+    return define(name, std::function<void(const request&,Args...)>(f), provider_id, pool);
 }
 
 }
