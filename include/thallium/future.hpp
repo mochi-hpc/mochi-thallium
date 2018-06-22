@@ -9,8 +9,32 @@
 #include <functional>
 #include <vector>
 #include <abt.h>
+#include <thallium/exception.hpp>
 
 namespace thallium {
+
+/**
+ * Exception class thrown by the future class.
+ */
+class future_exception : public exception {
+
+    public:
+
+        template<typename ... Args>
+            future_exception(Args&&... args)
+            : exception(std::forward<Args>(args)...) {}
+};
+
+#define TL_FUTURE_EXCEPTION(__fun,__ret) \
+    future_exception(#__fun," returned ", abt_error_get_name(__ret),\
+            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__);
+
+#define TL_FUTURE_ASSERT(__call) {\
+    int __ret = __call; \
+    if(__ret != ABT_SUCCESS) {\
+        throw TL_FUTURE_EXCEPTION(__call, __ret);\
+    }\
+}
 
 /**
  * @brief The future class wraps an ABT_future oject.
@@ -45,7 +69,7 @@ class future {
      * @return The underlying native handle.
      */
     native_handle_type native_handle() const noexcept {
-        return m_mutex;
+        return m_future;
     }
 
     /**
@@ -55,7 +79,9 @@ class future {
      */
     future(uint32_t compartments)
     : m_num_compartments(compartments) {
-        ABT_future_create(compartments, nullptr, &m_future);
+        TL_FUTURE_ASSERT(ABT_future_create(compartments+2, nullptr, &m_future));
+        TL_FUTURE_ASSERT(ABT_future_set(m_future,nullptr));
+        TL_FUTURE_ASSERT(ABT_future_set(m_future,(void*)this));
     }
 
     /**
@@ -69,10 +95,10 @@ class future {
     future(uint32_t compartments, F&& cb_fun)
     : m_num_compartments(compartments) {
         auto fp = new std::function<void(const std::vector<T*>&)>(std::forward<F>(cb_fun));
-        std::intptr_t n = compartment+2;
-        ABT_future_create(n, when_ready, &m_future);
-        ABT_future_set(m_future,(void*)fp);
-        ABT_future_set(m_future,(void*)n);
+        std::intptr_t n = compartments+2;
+        TL_FUTURE_ASSERT(ABT_future_create(n, when_ready, &m_future));
+        TL_FUTURE_ASSERT(ABT_future_set(m_future,(void*)fp));
+        TL_FUTURE_ASSERT(ABT_future_set(m_future,(void*)n));
     }
 
     /**
@@ -95,15 +121,24 @@ class future {
     future& operator=(const future&) = delete;
 
     /**
-     * @brief Move assignment operator is deleted.
+     * @brief Move assignment operator.
      */
-    future& operator=(future&&) = delete;
+    future& operator=(future&& other) {
+        if(this == &other) {
+            return *this;
+        }
+        if(m_future != ABT_FUTURE_NULL) {
+            TL_FUTURE_ASSERT(ABT_future_free(&m_future));
+        }
+        m_future = other.m_future;
+        other.m_future = ABT_FUTURE_NULL;
+    }
 
     /**
      * @brief Wait for the future to be ready.
      */
     void wait() {
-        ABT_future_wait(m_future);
+        TL_FUTURE_ASSERT(ABT_future_wait(m_future));
     }
 
     /**
@@ -111,7 +146,7 @@ class future {
      */
     bool test() const {
         ABT_bool flag;
-        ABT_future_test(m_future, &flag);
+        TL_FUTURE_ASSERT(ABT_future_test(m_future, &flag));
         return flag == ABT_TRUE ? true : false;
     }
 
@@ -128,27 +163,21 @@ class future {
      * @param value pointer to the value to set.
      */
     void set(T* value) {
-        ABT_future_set(m_future, value);
-    }
-
-    /**
-     * @brief Reset the future.
-     */
-    void reset() {
-        ABT_future_reset(m_future);
-        if(m_callback) {
-            ABT_future_set(m_future,(void*)this);
-        }
+        TL_FUTURE_ASSERT(ABT_future_set(m_future, value));
     }
 
     /**
      * @brief Destructor.
      */
     ~future() {
-        ABT_future_free(&m_future);
+        if(m_future != ABT_FUTURE_NULL)
+            ABT_future_free(&m_future);
     }
 };
 
 }
+
+#undef TL_FUTURE_EXCEPTION
+#undef TL_FUTURE_ASSERT
 
 #endif /* end of include guard */

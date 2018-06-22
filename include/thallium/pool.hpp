@@ -68,6 +68,10 @@ class pool {
         mpmc = ABT_POOL_ACCESS_MPMC
     };
 
+    /**
+     * @brief Type of work units. Used when defining 
+     * custom pools.
+     */
     enum class unit_type : std::uint8_t {
         thread  = ABT_UNIT_TYPE_THREAD,
         task    = ABT_UNIT_TYPE_TASK,

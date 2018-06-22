@@ -22,5 +22,6 @@
 #include <thallium/rwlock.hpp>
 #include <thallium/exception.hpp>
 #include <thallium/timer.hpp>
+#include <thallium/future.hpp>
 
 #endif
