@@ -16,6 +16,7 @@
 #include <thallium/condition_variable.hpp>
 #include <thallium/eventual.hpp>
 #include <thallium/thread.hpp>
+#include <thallium/unit_type.hpp>
 #include <thallium/pool.hpp>
 #include <thallium/scheduler.hpp>
 #include <thallium/mutex.hpp>
@@ -23,5 +24,6 @@
 #include <thallium/exception.hpp>
 #include <thallium/timer.hpp>
 #include <thallium/future.hpp>
+#include <thallium/xstream_barrier.hpp>
 
 #endif

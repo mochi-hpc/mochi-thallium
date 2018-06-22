@@ -14,6 +14,7 @@
 #include <thallium/managed.hpp>
 #include <thallium/exception.hpp>
 #include <thallium/abt_errors.hpp>
+#include <thallium/unit_type.hpp>
 
 namespace thallium {
 
@@ -66,17 +67,6 @@ class pool {
         mpsc = ABT_POOL_ACCESS_MPSC,
         spmc = ABT_POOL_ACCESS_SPMC,
         mpmc = ABT_POOL_ACCESS_MPMC
-    };
-
-    /**
-     * @brief Type of work units. Used when defining 
-     * custom pools.
-     */
-    enum class unit_type : std::uint8_t {
-        thread  = ABT_UNIT_TYPE_THREAD,
-        task    = ABT_UNIT_TYPE_TASK,
-        xstream = ABT_UNIT_TYPE_XSTREAM,
-        other   = ABT_UNIT_TYPE_EXT
     };
 
     private:

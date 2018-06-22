@@ -18,7 +18,7 @@ class my_unit {
        
     tl::thread          m_thread;
     tl::task            m_task;
-    tl::pool::unit_type m_type;
+    tl::unit_type m_type;
     bool                m_in_pool;
 
     friend class my_pool;
@@ -26,12 +26,12 @@ class my_unit {
     public:
                 
     my_unit(const tl::thread& t)
-    : m_thread(t), m_type(tl::pool::unit_type::thread), m_in_pool(false) {}
+    : m_thread(t), m_type(tl::unit_type::thread), m_in_pool(false) {}
 
     my_unit(const tl::task& t)
-    : m_task(t), m_type(tl::pool::unit_type::task), m_in_pool(false) {}
+    : m_task(t), m_type(tl::unit_type::task), m_in_pool(false) {}
 
-    tl::pool::unit_type get_type() const {
+    tl::unit_type get_type() const {
         return m_type;
     }
 
