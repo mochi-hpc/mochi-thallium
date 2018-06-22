@@ -63,6 +63,7 @@ public:
      */
 	provider& operator=(const provider& other) = delete;
 
+    protected:
     /**
      * @brief Waits for the engine to finalize.
      */
@@ -118,7 +119,7 @@ private:
         m_engine.define(std::forward<S>(name), fun, m_provider_id).ignore_response();
     }
 
-public:
+protected:
 
     /**
      * @brief Defines an RPC from a member function of the child class.
@@ -140,6 +141,8 @@ public:
     inline void define(S&& name, R(T::*func)(Args...), X x = X()) {
         define_member(std::forward<S>(name), func, x);
     }
+
+public:
 
     /**
      * @brief Get the engine associated with this provider.

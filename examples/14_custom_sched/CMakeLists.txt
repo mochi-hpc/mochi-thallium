@@ -1,0 +1,2 @@
+add_executable(14_custom_sched main.cpp)
+target_link_libraries(14_custom_sched thallium)
