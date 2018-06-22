@@ -127,6 +127,7 @@ class pool {
 
             static void u_free(ABT_unit* u) {
                 auto uu = static_cast<U*>(*u);
+                uu->~U();
                 unit_allocator.deallocate(uu, 1);
                 *u = nullptr;
             }
@@ -172,6 +173,7 @@ class pool {
                 void* data;
                 int ret = ABT_pool_get_data(p, &data);
                 auto impl = static_cast<P*>(data);
+                impl->~P();
                 pool_allocator.deallocate(impl, 1);
             }
     };

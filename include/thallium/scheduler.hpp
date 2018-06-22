@@ -91,6 +91,7 @@ class scheduler {
             void* data;
             ABT_sched_get_data(s, &data);
             S* impl = static_cast<S*>(data);
+            impl->~S();
             scheduler_allocator.deallocate(impl,1);
         }
         
