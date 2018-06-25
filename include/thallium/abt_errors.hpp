@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2017 UChicago Argonne, LLC
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __THALLIUM_ABT_ERRORS_HPP
 #define __THALLIUM_ABT_ERRORS_HPP
 

@@ -104,27 +104,27 @@ class pool {
             }
 
             static ABT_unit u_create_from_thread(ABT_thread t) {
-                auto uu = unit_allocator.allocate(1);
-                unit_allocator.construct(uu, thread(t));
+                auto uu = std::allocator_traits<Ualloc>::allocate(unit_allocator,1);
+                std::allocator_traits<Ualloc>::construct(unit_allocator, uu, thread(t));
                 return  static_cast<ABT_unit>(uu);
             }
 
             static ABT_unit u_create_from_task(ABT_task t) {
-                auto uu = unit_allocator.allocate(1);
-                unit_allocator.construct(uu, task(t));
+                auto uu = std::allocator_traits<Ualloc>::allocate(unit_allocator,1);
+                std::allocator_traits<Ualloc>::construct(unit_allocator, uu, task(t));
                 return  static_cast<ABT_unit>(uu);
             }
 
             static void u_free(ABT_unit* u) {
                 auto uu = static_cast<U*>(*u);
-                uu->~U();
-                unit_allocator.deallocate(uu, 1);
+                std::allocator_traits<Ualloc>::destroy(unit_allocator, uu);
+                std::allocator_traits<Ualloc>::deallocate(unit_allocator, uu, 1);
                 *u = nullptr;
             }
 
             static int p_init(ABT_pool p, ABT_pool_config cfg) {
-                P* impl = pool_allocator.allocate(1);
-                pool_allocator.construct(impl);
+                P* impl = std::allocator_traits<Palloc>::allocate(pool_allocator, 1);
+                std::allocator_traits<Palloc>::construct(pool_allocator, impl);
                 int ret = ABT_pool_set_data(p, static_cast<void*>(impl));
                 return ret;
             }
@@ -162,9 +162,12 @@ class pool {
             static int p_free(ABT_pool p) {
                 void* data;
                 int ret = ABT_pool_get_data(p, &data);
+                if(ret != ABT_SUCCESS)
+                    return ret;
                 auto impl = static_cast<P*>(data);
-                impl->~P();
-                pool_allocator.deallocate(impl, 1);
+                std::allocator_traits<Palloc>::destroy(pool_allocator, impl);
+                std::allocator_traits<Palloc>::deallocate(pool_allocator, impl, 1);
+                return ret;
             }
     };
 
@@ -446,6 +449,21 @@ class pool {
         return thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp));
     }
 
+    /**
+     * @brief Create a thread running the specified function and push it
+     * into the pool.
+     *
+     * @tparam F type of function to run as a task. Must have operator()().
+     * @param f Function to run as a task.
+     * @param attr Thread attributes.
+     *
+     * @return a thread object managing the created thread.
+     */
+    template<typename F>
+    managed<thread> make_thread(F&& f, const thread::attribute& attr) {
+        auto fp = new std::function<void(void)>(std::forward<F>(f));
+        return thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), attr);
+    }
 };
 
 template<typename P, typename U, typename Palloc, typename Ualloc>

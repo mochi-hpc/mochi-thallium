@@ -447,6 +447,22 @@ class xstream {
     }
 
     /**
+     * @brief Create a thread running the specified function and push it
+     * into the pool.
+     *
+     * @tparam F type of function to run as a thread. Must have operator()().
+     * @param f Function to run as a thread.
+     * @param attr Thread attributes.
+     *
+     * @return a managed<thread> object managing the created thread.
+     */
+    template<typename F>
+    managed<thread> make_thread(F&& f, const thread::attribute& attr) {
+        auto fp = new std::function<void(void)>(std::forward<F>(f));
+        return thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), attr);
+    }
+
+    /**
      * @brief Create a task running the specified function and push it
      * into the pool.
      *

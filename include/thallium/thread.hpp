@@ -49,10 +49,6 @@ enum class thread_state : std::int32_t {
     terminated = ABT_THREAD_STATE_TERMINATED
 };
 
-/* MISSING:
-   ABT_thread_get_attr
- */
-
 /**
  * @brief The thread class wraps an Argobot's ABT_thread resource.
  * Note that the task object does NOT manage the internal ABT_thread.
@@ -66,6 +62,133 @@ class thread {
     friend class pool;
     friend class xstream;
     friend class managed<thread>;
+
+    public:
+
+    class attribute {
+
+        friend class thread;
+
+        ABT_thread_attr m_attr;
+
+        /**
+         * @brief Makes an attribute object from an ABT_thread_attr.
+         * Used by thread::get_attribute().
+         *
+         * @param attr ABT_thread_attr handle.
+         */
+        explicit attribute(ABT_thread_attr attr)
+            : m_attr(attr) {}
+
+        public:
+
+        /**
+         * @brief Native handle type.
+         */
+        typedef ABT_thread_attr native_handle_type;
+
+        /**
+         * @brief Constructor.
+         */
+        attribute() {
+            TL_THREAD_ASSERT(ABT_thread_attr_create(&m_attr));
+        }
+
+        /**
+         * @brief Copy-constructor is deleted.
+         */
+        attribute(const attribute&) = delete;
+
+        /**
+         * @brief Move constructor.
+         */
+        attribute(attribute&& other) 
+        : m_attr(other.m_attr) {
+            other.m_attr = ABT_THREAD_ATTR_NULL;
+        }
+
+        /**
+         * @brief Copy-assignment operator is deleted.
+         */
+        attribute& operator=(const attribute&) = delete;
+
+        /**
+         * @brief Move-assignment operator.
+         */
+        attribute& operator=(attribute&& other) {
+            if(this == &other)
+                return *this;
+            if(m_attr != ABT_THREAD_ATTR_NULL) {
+                TL_THREAD_ASSERT(ABT_thread_attr_free(&m_attr));
+            }
+            m_attr = other.m_attr;
+            other.m_attr = ABT_THREAD_ATTR_NULL;
+            return *this;
+        }
+
+        /**
+         * @brief Destructor.
+         */
+        ~attribute() {
+            if(m_attr != ABT_THREAD_ATTR_NULL) {
+                ABT_thread_attr_free(&m_attr);
+            }
+        }
+
+        /**
+         * @brief Get the underlying native handle.
+         *
+         * @return the native handle.
+         */
+        native_handle_type native_handle() const {
+            return m_attr;
+        }
+
+        /**
+         * @brief Sets the address and size of the stack to use.
+         *
+         * @param addr address of the stack.
+         * @param size size of the stack.
+         */
+        void set_stack(void* addr, size_t size) {
+            TL_THREAD_ASSERT(ABT_thread_attr_set_stack(m_attr, addr, size));
+        }
+
+        /**
+         * @brief Gets the address of the stack.
+         *
+         * @return the address of the stack.
+         */
+        void* get_stack_address() const {
+            void* addr;
+            size_t size;
+            TL_THREAD_ASSERT(ABT_thread_attr_get_stack(m_attr, &addr, &size));
+            return addr;
+        }
+
+        /**
+         * @brief Get the size of the stack.
+         *
+         * @return the size of the stack.
+         */
+        size_t get_stack_size() const {
+            void* addr;
+            size_t size;
+            TL_THREAD_ASSERT(ABT_thread_attr_get_stack(m_attr, &addr, &size));
+            return size;
+        }
+
+        /**
+         * @brief Set the migratability of the stack.
+         */
+        void set_migratable(bool migratable) {
+            ABT_bool flag = migratable ? ABT_TRUE : ABT_FALSE;
+            TL_THREAD_ASSERT(ABT_thread_attr_set_migratable(m_attr, flag));
+        }
+
+    };
+
+    private:
 
 	ABT_thread m_thread;
 
@@ -84,6 +207,17 @@ class thread {
         return managed<thread>(t);
     }
 
+    static managed<thread> create_on_xstream(ABT_xstream es, void(*f)(void*), void* arg, const attribute& attr) {
+        ABT_thread t;
+        TL_THREAD_ASSERT(ABT_thread_create_on_xstream(es, f, arg, attr.native_handle(), &t));
+        return managed<thread>(t);
+    }
+
+    static managed<thread> create_on_pool(ABT_pool p, void(*f)(void*), void* arg, const attribute& attr) {
+        ABT_thread t;
+        TL_THREAD_ASSERT(ABT_thread_create(p, f, arg, attr.native_handle(), &t));
+        return managed<thread>(t);
+    }
     void destroy() {
         if(m_thread != ABT_THREAD_NULL) 
             ABT_thread_free(&m_thread);
@@ -194,6 +328,12 @@ class thread {
         std::size_t s;
         TL_THREAD_ASSERT(ABT_thread_get_stacksize(m_thread, &s));
         return s;
+    }
+
+    attribute get_attribute() const {
+        ABT_thread_attr attr;
+        TL_THREAD_ASSERT(ABT_thread_get_attr(m_thread, &attr));
+        return attribute(attr);
     }
 
     /**
