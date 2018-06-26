@@ -21,7 +21,7 @@ class pool;
 class xstream;
 
 /**
- * Exception class thrown by the mutex class.
+ * Exception class thrown by the scheduler class.
  */
 class scheduler_exception : public exception {
 

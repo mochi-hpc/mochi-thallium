@@ -147,7 +147,7 @@ void hello() {
 
 int main(int argc, char** argv) {
 
-    tl::engine myEngine("tcp", THALLIUM_CLIENT_MODE);
+    tl::abt scope;
 
     // create pools
     std::vector<tl::managed<tl::pool>> pools;
