@@ -25,7 +25,7 @@ int server() {
             for(auto c : v) std::cout << c;
             std::cout << std::endl;
         };
-	margo.define("send_bulk",f).ignore_response();
+	margo.define("send_bulk",f).disable_response();
 
     std::function<void(const tl::request&)> g =
         [&margo](const tl::request& req) {

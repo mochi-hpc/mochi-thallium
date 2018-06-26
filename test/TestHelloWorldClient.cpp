@@ -11,14 +11,14 @@ namespace tl = thallium;
 int client(const char* addr) {
 
 	tl::engine margo("tcp", MARGO_CLIENT_MODE);
-	auto remote_hello = margo.define("hello").ignore_response();
+	auto remote_hello = margo.define("hello").disable_response();
 	auto remote_sum   = margo.define("sum");
-    auto remote_stop  = margo.define("stop").ignore_response();
+    auto remote_stop  = margo.define("stop").disable_response();
 	std::string server_addr = addr;
 	sleep(1);
 
 	auto server_endpoint = margo.lookup(server_addr);
-	std::cout << "Lookup done for endpoint " << (std::string)server_endpoint << std::endl;
+	std::cout << "Lookup done for endpoint " << server_endpoint << std::endl;
 
 	remote_hello.on(server_endpoint)(std::string("Matt"));
 	

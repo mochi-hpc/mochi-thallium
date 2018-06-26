@@ -33,7 +33,7 @@ class my_sum_provider : public tl::provider<my_sum_provider> {
     : tl::provider<my_sum_provider>(e, provider_id) {
         define("prod", &my_sum_provider::prod);
         define("sum", &my_sum_provider::sum);
-        define("hello", &my_sum_provider::hello);
+        define("hello", &my_sum_provider::hello).disable_response();
         define("print", &my_sum_provider::print, tl::ignore_return_value());
     }
 

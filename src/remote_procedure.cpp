@@ -21,7 +21,7 @@ callable_remote_procedure remote_procedure::on(const provider_handle& ph) const 
     return callable_remote_procedure(*m_engine, m_id, ph, m_ignore_response, ph.provider_id());
 }
 
-remote_procedure& remote_procedure::ignore_response() {
+remote_procedure& remote_procedure::disable_response() {
     m_ignore_response = true;
     margo_registered_disable_response(m_engine->m_mid, m_id, HG_TRUE);
     return *this;

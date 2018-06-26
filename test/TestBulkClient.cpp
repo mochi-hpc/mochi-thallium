@@ -11,13 +11,13 @@ namespace tl = thallium;
 int client() {
 
 	tl::engine margo("bmi+tcp", MARGO_CLIENT_MODE);
-	auto remote_send = margo.define("send_bulk").ignore_response();
-    auto remote_stop = margo.define("stop").ignore_response();
+	auto remote_send = margo.define("send_bulk").disable_response();
+    auto remote_stop = margo.define("stop").disable_response();
 	std::string server_addr = "bmi+tcp://127.0.0.1:1234";
 	sleep(1);
 
 	auto server_endpoint = margo.lookup(server_addr);
-	std::cout << "Lookup done for endpoint " << (std::string)server_endpoint << std::endl;
+	std::cout << "Lookup done for endpoint " << server_endpoint << std::endl;
 
     std::string buf = "Matthieu";
     std::vector<std::pair<void*,std::size_t>> seg(1);
