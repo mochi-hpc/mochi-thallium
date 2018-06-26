@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <atomic>
 #include <margo.h>
+#include <thallium/pool.hpp>
 #include <thallium/tuple_util.hpp>
 #include <thallium/function_cast.hpp>
 #include <thallium/buffer.hpp>
@@ -55,6 +56,8 @@ private:
     bool                               m_is_server;
     bool                               m_owns_mid;
     std::atomic<bool>                  m_finalize_called;
+    hg_context_t*                      m_hg_context = nullptr;
+    hg_class_t*                        m_hg_class = nullptr;
 
     /**
      * @brief Encapsulation of some data needed by RPC callbacks
@@ -158,6 +161,26 @@ public:
                 &engine::on_finalize, static_cast<void*>(this));
 	}
 
+    engine(const std::string& addr, int mode,
+            const pool& progress_pool,
+            const pool& default_handler_pool) {
+        m_is_server = (mode == THALLIUM_SERVER_MODE);
+        m_finalize_called = false;
+        m_owns_mid = true;
+
+        m_hg_class = HG_Init(addr.c_str(), mode);
+        //if(!hg_class); // XXX throw exception
+
+        m_hg_context = HG_Context_create(m_hg_class);
+        //if(!hg_context); // XXX throw exception
+
+        m_mid = margo_init_pool(progress_pool.native_handle(), 
+                default_handler_pool.native_handle(), m_hg_context);
+        // XXX throw an exception if m_mid not initialized
+        margo_push_finalize_callback(m_mid,
+                &engine::on_finalize, static_cast<void*>(this));
+    }
+
     engine(margo_instance_id mid, int mode) {
         m_mid = mid;
         m_is_server = (mode == THALLIUM_SERVER_MODE);
@@ -205,6 +228,10 @@ public:
      */
 	void finalize() {
 		margo_finalize(m_mid);
+        if(m_hg_context)
+            HG_Context_destroy(m_hg_context);
+        if(m_hg_class)
+            HG_Finalize(m_hg_class);
 	}
 
     /**
@@ -249,7 +276,7 @@ public:
 	template<typename ... Args>
 	remote_procedure define(const std::string& name, 
         const std::function<void(const request&, Args...)>& fun,
-        uint16_t provider_id=0, ABT_pool pool=ABT_POOL_NULL);
+        uint16_t provider_id=0, const pool& p = pool());
 
     /**
      * @brief Defines an RPC with a name and a function pointer
@@ -265,7 +292,7 @@ public:
      */
     template<typename ... Args>
     remote_procedure define(const std::string& name, void (*f)(const request&, Args...),
-            uint16_t provider_id=0, ABT_pool pool=ABT_POOL_NULL);
+            uint16_t provider_id=0, const pool& p = pool());
 
     /**
      * @brief Lookup an address and returns an endpoint object
@@ -302,14 +329,14 @@ namespace thallium {
 template<typename ... Args>
 remote_procedure engine::define(const std::string& name, 
         const std::function<void(const request&, Args...)>& fun,
-        uint16_t provider_id, ABT_pool pool) {
+        uint16_t provider_id, const pool& p) {
 
     hg_id_t id = margo_provider_register_name(m_mid, name.c_str(),
                 process_buffer,
                 process_buffer,
                 rpc_callback<rpc_t, false>,
                 provider_id,
-                pool);
+                p.native_handle());
 
     m_rpcs[id] = [fun,this](const request& r, const buffer& b) {
         std::function<void(Args...)> l = [&fun, &r](Args&&... args) {
@@ -337,9 +364,9 @@ template<typename ... Args>
 remote_procedure engine::define(
         const std::string& name,
         void (*f)(const request&, Args...),
-        uint16_t provider_id, ABT_pool pool) {
+        uint16_t provider_id, const pool& p) {
 
-    return define(name, std::function<void(const request&,Args...)>(f), provider_id, pool);
+    return define(name, std::function<void(const request&,Args...)>(f), provider_id, p);
 }
 
 }

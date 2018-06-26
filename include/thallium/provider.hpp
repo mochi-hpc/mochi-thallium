@@ -90,33 +90,33 @@ public:
      * @param T::*func member function
      */
     template<typename S, typename R, typename ... Args>
-    remote_procedure define(S&& name, R(T::*func)(const request&, Args...)) {
+    remote_procedure define(S&& name, R(T::*func)(const request&, Args...), const pool& p = pool()) {
         T* self = dynamic_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& r, Args... args) {
             (self->*func)(r, args...);
         };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id);
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
     }
 
 private:
 
     template<typename S, typename R, typename ... Args>
-    remote_procedure define_member(S&& name, R(T::*func)(Args...), const std::integral_constant<bool, false>&) {
+    remote_procedure define_member(S&& name, R(T::*func)(Args...), const std::integral_constant<bool, false>&, const pool& p = pool()) {
         T* self = dynamic_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             R r = (self->*func)(args...);
             req.respond(r);
         };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id);
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
     }
 
     template<typename S, typename R, typename ... Args>
-    remote_procedure define_member(S&& name, R(T::*func)(Args...), const std::integral_constant<bool, true>&) {
+    remote_procedure define_member(S&& name, R(T::*func)(Args...), const std::integral_constant<bool, true>&, const pool& p = pool()) {
         T* self = dynamic_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             (self->*func)(args...);
         };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id).disable_response();
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p).disable_response();
     }
 
 protected:
@@ -136,10 +136,19 @@ protected:
      * @tparam X Dispatcher type.
      * @param name Name of the RPC.
      * @param T::*func Member function.
+     * @param p Argobots pool to use to execute the RPC.
      */
     template<typename S, typename R, typename ... Args, typename X = typename std::is_void<R>::type>
-    inline remote_procedure define(S&& name, R(T::*func)(Args...), X x = X()) {
-        return define_member(std::forward<S>(name), func, x);
+    inline remote_procedure define(S&& name, R(T::*func)(Args...), const pool& p = pool(), X x = X()) {
+        return define_member(std::forward<S>(name), func, x, p);
+    }
+
+    /**
+     * @brief Same as the previous function but does not take a pool.
+     */
+    template<typename S, typename R, typename ... Args, typename X = typename std::is_void<R>::type>
+    inline remote_procedure define(S&& name, R(T::*func)(Args...), X x) {
+        return define_member(std::forward<S>(name), func, x, pool());
     }
 
 public:

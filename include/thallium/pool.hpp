@@ -206,6 +206,12 @@ class pool {
     public:
 
     /**
+     * @brief Default constructor handles a null pool.
+     */
+    pool()
+    : m_pool(ABT_POOL_NULL) {}
+
+    /**
      * @brief Type of the underlying native handle.
      */
     typedef ABT_pool native_handle_type;
