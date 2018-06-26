@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
         exit(0);
     }
     tl::engine myEngine("tcp", MARGO_CLIENT_MODE);
-    tl::remote_procedure remote_do_rdma = myEngine.define("do_rdma").ignore_response();
+    tl::remote_procedure remote_do_rdma = myEngine.define("do_rdma");
     tl::endpoint server_endpoint = myEngine.lookup(argv[1]);
 
     std::string buffer = "Matthieu";

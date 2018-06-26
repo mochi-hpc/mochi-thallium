@@ -16,7 +16,7 @@ int server() {
 
 	tl::engine margo("tcp", MARGO_SERVER_MODE);
 
-    margo.define("hello", hello).ignore_response();
+    margo.define("hello", hello).disable_response();
 
     std::function<void(const tl::request&, int, int)> f =
         [](const tl::request& req, int x, int y) {

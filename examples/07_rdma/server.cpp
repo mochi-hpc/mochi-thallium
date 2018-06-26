@@ -7,7 +7,7 @@ namespace tl = thallium;
 int main(int argc, char** argv) {
 
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
-    std::cout << "Server running at address " << (std::string)myEngine.self() << std::endl;
+    std::cout << "Server running at address " << myEngine.self() << std::endl;
 
     std::function<void(const tl::request&, tl::bulk&)> f =
         [&myEngine](const tl::request& req, tl::bulk& b) {
@@ -21,7 +21,8 @@ int main(int argc, char** argv) {
             std::cout << "Server received bulk: ";
             for(auto c : v) std::cout << c;
             std::cout << std::endl;
+            req.respond(1);
         };
-    myEngine.define("do_rdma",f).ignore_response();
+    myEngine.define("do_rdma",f);
 }
 

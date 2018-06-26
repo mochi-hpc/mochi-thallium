@@ -93,7 +93,12 @@ public:
      *
      * @return *this
      */
-    remote_procedure& ignore_response();
+    remote_procedure& disable_response();
+
+    [[deprecated("use disable_response() instead")]]
+    inline remote_procedure& ignore_response() {
+        return disable_response();
+    }
 
 };
 

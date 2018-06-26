@@ -90,33 +90,33 @@ public:
      * @param T::*func member function
      */
     template<typename S, typename R, typename ... Args>
-    void define(S&& name, R(T::*func)(const request&, Args...)) {
+    remote_procedure define(S&& name, R(T::*func)(const request&, Args...)) {
         T* self = dynamic_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& r, Args... args) {
             (self->*func)(r, args...);
         };
-        m_engine.define(std::forward<S>(name), fun, m_provider_id);
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id);
     }
 
 private:
 
     template<typename S, typename R, typename ... Args>
-    void define_member(S&& name, R(T::*func)(Args...), const std::integral_constant<bool, false>&) {
+    remote_procedure define_member(S&& name, R(T::*func)(Args...), const std::integral_constant<bool, false>&) {
         T* self = dynamic_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             R r = (self->*func)(args...);
             req.respond(r);
         };
-        m_engine.define(std::forward<S>(name), fun, m_provider_id);
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id);
     }
 
     template<typename S, typename R, typename ... Args>
-    void define_member(S&& name, R(T::*func)(Args...), const std::integral_constant<bool, true>&) {
+    remote_procedure define_member(S&& name, R(T::*func)(Args...), const std::integral_constant<bool, true>&) {
         T* self = dynamic_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             (self->*func)(args...);
         };
-        m_engine.define(std::forward<S>(name), fun, m_provider_id).ignore_response();
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id).disable_response();
     }
 
 protected:
@@ -138,8 +138,8 @@ protected:
      * @param T::*func Member function.
      */
     template<typename S, typename R, typename ... Args, typename X = typename std::is_void<R>::type>
-    inline void define(S&& name, R(T::*func)(Args...), X x = X()) {
-        define_member(std::forward<S>(name), func, x);
+    inline remote_procedure define(S&& name, R(T::*func)(Args...), X x = X()) {
+        return define_member(std::forward<S>(name), func, x);
     }
 
 public:
