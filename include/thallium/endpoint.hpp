@@ -12,6 +12,13 @@
 #include <thallium/margo_exception.hpp>
 
 namespace thallium {
+    class endpoint;
+}
+
+template<typename S>
+S& operator<<(S& s, const thallium::endpoint& e);
+
+namespace thallium {
 
 class engine;
 class request;
@@ -95,8 +102,30 @@ public:
     bool is_null() const {
         return m_addr == HG_ADDR_NULL;
     }
+
+    template<typename S>
+    friend S& ::operator<<(S& s, const endpoint& e);
 };
 
 }
 
+/**
+ * @brief Streaming operator for endpoint, converts the endpoint
+ * into a string before feeding it to the string operator. This
+ * enables, for instance, streaming the endpoint into std::cout
+ * for logging without having to explicitely convert it into a
+ * string.
+ *
+ * @tparam S Type of stream.
+ * @param s Stream.
+ * @param e Endpoint.
+ *
+ * @return Reference to the provided stream.
+ */
+template<typename S>
+S& operator<<(S& s, const thallium::endpoint& e) {
+    s << (std::string)e;
+    return s;
+}
+    
 #endif
