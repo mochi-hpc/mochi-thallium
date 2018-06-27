@@ -8,6 +8,7 @@
 #define __THALLIUM_POOL_HPP
 
 #include <memory>
+#include <functional>
 #include <abt.h>
 #include <thallium/task.hpp>
 #include <thallium/thread.hpp>
