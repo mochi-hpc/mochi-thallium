@@ -55,7 +55,11 @@ find_package (mercury CONFIG REQUIRED)
 xpkg_import_module (margo REQUIRED margo)
 
 add_subdirectory (src)
-add_subdirectory (test)
-add_subdirectory (examples)
+if (ENABLE_TESTS)
+	add_subdirectory (test)
+endif (ENABLE_TESTS)
+if (ENABLE_EXAMPLES)
+	add_subdirectory (examples)
+endif (ENABLE_EXAMPLES)
 
 
