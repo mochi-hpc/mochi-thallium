@@ -357,6 +357,7 @@ class thread {
     bool is_migratable() const {
         ABT_bool flag;
         TL_THREAD_ASSERT(ABT_thread_is_migratable(m_thread, &flag));
+        return flag == ABT_TRUE;
     }
 
     /**
@@ -367,6 +368,7 @@ class thread {
     bool is_primary() const {
         ABT_bool flag;
         TL_THREAD_ASSERT(ABT_thread_is_primary(m_thread, &flag));
+        return flag == ABT_TRUE;
     }
 
     /**

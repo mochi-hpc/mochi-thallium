@@ -203,6 +203,7 @@ class task {
     bool is_migratable() const {
         ABT_bool flag;
         TL_TASK_ASSERT(ABT_task_is_migratable(m_task, &flag));
+        return flag == ABT_TRUE;
     }
 
     /**
