@@ -49,7 +49,7 @@ class future {
 
     static void when_ready(void** arg) {
         auto f = static_cast<std::function<void(const std::vector<T*>&)>*>(arg[0]);
-        auto n = static_cast<std::intptr_t>(arg[1]);
+        auto n = reinterpret_cast<std::intptr_t>(arg[1]);
         std::vector<T*> v(n);
         for(unsigned i=0; i<n; i++) v[i] = static_cast<T*>(arg[i+2]);
         (*f)(v);

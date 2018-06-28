@@ -81,6 +81,7 @@ class rwlock {
         TL_RWLOCK_ASSERT(ABT_rwlock_free(&m_lock));
         m_lock = other.m_lock;
         other.m_lock = ABT_RWLOCK_NULL;
+        return *this;
     }
 
     /**

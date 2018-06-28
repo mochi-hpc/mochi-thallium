@@ -132,6 +132,7 @@ class mutex {
         } else {
            TL_MUTEX_EXCEPTION(ABT_mutex_trylock(m_mutex), ret); 
         }
+        return false;
 	}
 
     /**
