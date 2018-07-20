@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <functional>
+#include <stack>
 #include <unordered_map>
 #include <atomic>
 #include <margo.h>
@@ -51,13 +52,14 @@ private:
 
     using rpc_t = std::function<void(const request&, const buffer&)>;
 
-	margo_instance_id                  m_mid;
-    std::unordered_map<hg_id_t, rpc_t> m_rpcs;
-    bool                               m_is_server;
-    bool                               m_owns_mid;
-    std::atomic<bool>                  m_finalize_called;
-    hg_context_t*                      m_hg_context = nullptr;
-    hg_class_t*                        m_hg_class = nullptr;
+	margo_instance_id                     m_mid;
+    std::unordered_map<hg_id_t, rpc_t>    m_rpcs;
+    bool                                  m_is_server;
+    bool                                  m_owns_mid;
+    std::atomic<bool>                     m_finalize_called;
+    hg_context_t*                         m_hg_context = nullptr;
+    hg_class_t*                           m_hg_class = nullptr;
+    std::stack<std::function<void(void)>> m_finalize_callbacks;
 
     /**
      * @brief Encapsulation of some data needed by RPC callbacks
@@ -130,9 +132,14 @@ private:
         return HG_SUCCESS;
     }
 
-    static void on_finalize(void* arg) {
+    static void on_finalize_cb(void* arg) {
         engine* e = static_cast<engine*>(arg);
         e->m_finalize_called = true;
+        while(!(e->m_finalize_callbacks.empty())) {
+            auto& cb = e->m_finalize_callbacks.top();
+            cb();
+            e->m_finalize_callbacks.pop();
+        }
     }
 
 public:
@@ -158,7 +165,7 @@ public:
         // XXX throw an exception if m_mid not initialized
         m_owns_mid = true;
         margo_push_finalize_callback(m_mid,
-                &engine::on_finalize, static_cast<void*>(this));
+                &engine::on_finalize_cb, static_cast<void*>(this));
 	}
 
     engine(const std::string& addr, int mode,
@@ -178,7 +185,7 @@ public:
                 default_handler_pool.native_handle(), m_hg_context);
         // XXX throw an exception if m_mid not initialized
         margo_push_finalize_callback(m_mid,
-                &engine::on_finalize, static_cast<void*>(this));
+                &engine::on_finalize_cb, static_cast<void*>(this));
     }
 
     engine(margo_instance_id mid, int mode) {
@@ -313,6 +320,18 @@ public:
      * @return a bulk object representing the memory exposed for RDMA.
      */
     bulk expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_mode flag);
+
+    /**
+     * @brief Pushes a finalization callback into the engine. This callback will be
+     * called when margo_finalize is called (e.g. through engine::finalize()).
+     *
+     * @tparam F type of callback. Must have a operator() defined.
+     * @param f callback.
+     */
+    template<typename F>
+    void on_finalize(F&& f) {
+        m_finalize_callbacks.emplace(std::forward<F>(f));
+    }
 
 };
 
