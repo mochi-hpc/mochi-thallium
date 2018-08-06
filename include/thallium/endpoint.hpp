@@ -40,6 +40,8 @@ private:
 	engine*   m_engine;
 	hg_addr_t m_addr;
 
+public:
+
     /**
      * @brief Constructor. Made private since endpoint instances
      * can only be created using engine::lookup.
@@ -47,10 +49,14 @@ private:
      * @param e Engine that created the endpoint.
      * @param addr Mercury address.
      */
-	endpoint(engine& e, hg_addr_t addr)
-	: m_engine(&e), m_addr(addr) {}
-
-public:
+	endpoint(engine& e, hg_addr_t addr, bool take_ownership=true)
+	: m_engine(&e), m_addr(HG_ADDR_NULL) {
+        if(take_ownership) {
+            m_addr = addr;
+        } else {
+            margo_addr_dup(m_engine->m_mid, addr, &m_addr);
+        }
+    }
 
     /**
      * @brief Default constructor defined so that endpoints can
