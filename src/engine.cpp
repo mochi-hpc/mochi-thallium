@@ -28,10 +28,15 @@ endpoint engine::self() const {
 }
 
 remote_procedure engine::define(const std::string& name) {
-    hg_id_t id = margo_register_name(m_mid, name.c_str(),
+    hg_bool_t flag;
+    hg_id_t id;
+    margo_registered_name(m_mid, name.c_str(), &id, &flag);
+    if(flag == HG_FALSE) {
+        id = margo_register_name(m_mid, name.c_str(),
                     process_buffer,
                     process_buffer,
                     nullptr);
+    }
     return remote_procedure(*this, id);
 }
 
