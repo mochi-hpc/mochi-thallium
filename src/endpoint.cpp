@@ -9,6 +9,15 @@
 
 namespace thallium {
 
+endpoint::endpoint(engine& e, hg_addr_t addr, bool take_ownership)
+: m_engine(&e), m_addr(HG_ADDR_NULL) {
+    if(take_ownership) {
+        m_addr = addr;
+    } else {
+        margo_addr_dup(m_engine->m_mid, addr, &m_addr);
+    }
+}
+
 endpoint::endpoint(const endpoint& other)
 : m_engine(other.m_engine) {
 	if(other.m_addr != HG_ADDR_NULL) {
