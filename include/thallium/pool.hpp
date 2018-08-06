@@ -180,17 +180,6 @@ class pool {
     friend class task;
     friend class thread;
 
-    /**
-     * @brief Private constructor used to build a pool 
-     * out of an existing handle. m_borrowed is set to
-     * true so that the underlying handle is not freed
-     * when the pool object is destroyed.
-     *
-     * @param p existing ABT_pool handle. May be null.
-     */
-    explicit pool(ABT_pool p)
-    : m_pool(p) {}
-
     static void forward_work_unit(void* fp) {
         auto f = static_cast<std::function<void(void)>*>(fp);
         (*f)();
@@ -205,6 +194,14 @@ class pool {
     }
 
     public:
+
+    /**
+     * @brief Constructor used to build a pool  out of an existing handle. 
+     *
+     * @param p existing ABT_pool handle. May be null.
+     */
+    explicit pool(ABT_pool p)
+    : m_pool(p) {}
 
     /**
      * @brief Default constructor handles a null pool.
