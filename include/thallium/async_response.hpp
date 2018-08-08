@@ -85,7 +85,8 @@ public:
      * @brief Destructor.
      */
     ~async_response() {
-        margo_destroy(m_handle);
+        if(m_handle != HG_HANDLE_NULL)
+            margo_destroy(m_handle);
     }
 
     /**
