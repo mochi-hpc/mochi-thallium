@@ -14,9 +14,9 @@ packed_response async_response::wait() {
     MARGO_ASSERT(ret, margo_wait);
     buffer output;
     if(m_ignore_response) return packed_response(std::move(output), *m_engine);
-    ret = margo_get_output(m_rpc.m_handle, &output);
+    ret = margo_get_output(m_handle, &output);
     MARGO_ASSERT(ret, margo_get_output);
-    ret = margo_free_output(m_rpc.m_handle, &output); // won't do anything on a buffer type
+    ret = margo_free_output(m_handle, &output); // won't do anything on a buffer type
     MARGO_ASSERT(ret, margo_free_output);
     return packed_response(std::move(output), *m_engine);
 }

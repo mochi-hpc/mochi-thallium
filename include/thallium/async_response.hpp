@@ -30,7 +30,7 @@ private:
 
     margo_request              m_request;
     engine*                    m_engine;
-    callable_remote_procedure& m_rpc;
+    hg_handle_t                m_handle;
     buffer                     m_buffer;
     bool                       m_ignore_response;
 
@@ -43,10 +43,19 @@ private:
      * @param c callable_remote_procedure that created the async_response.
      * @param ignore_resp whether response should be ignored.
      */
-    async_response(margo_request req, engine& e, callable_remote_procedure& c, bool ignore_resp)
-    : m_request(req), m_engine(&e), m_rpc(c), m_ignore_response(ignore_resp) {}
+    async_response(margo_request req, engine& e, hg_handle_t handle, bool ignore_resp)
+    : m_request(req), m_engine(&e), m_handle(handle), m_ignore_response(ignore_resp) {
+        margo_ref_incr(handle);
+    }
 
 public:
+
+    /**
+     * @brief Destructor.
+     */
+    ~async_response() {
+        margo_destroy(m_handle);
+    }
 
     /**
      * @brief Waits for the async_response to be ready and returns

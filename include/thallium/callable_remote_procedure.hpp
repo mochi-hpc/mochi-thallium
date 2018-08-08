@@ -89,7 +89,7 @@ private:
         ret = margo_provider_iforward(m_provider_id, 
                 m_handle, const_cast<void*>(static_cast<const void*>(&buf)), &req);
         MARGO_ASSERT(ret, margo_iforward);
-        return async_response(req, *m_engine, *this, m_ignore_response);
+        return async_response(req, *m_engine, m_handle, m_ignore_response);
     }
 
 public:
