@@ -51,6 +51,37 @@ private:
 public:
 
     /**
+     * @brief Copy constructor is deleted.
+     */
+    async_response(const async_response& other) = delete;
+
+    /**
+     * @brief Move-constructor.
+     *
+     * @param other async_response to move from.
+     */
+    async_response(async_response&& other)
+    : m_request(other.m_request)
+    , m_engine(other.m_engine)
+    , m_handle(other.m_handle)
+    , m_buffer(std::move(other.m_buffer))
+    , m_ignore_response(other.m_ignore_response) {
+        other.m_request = MARGO_REQUEST_NULL;
+        other.m_engine = nullptr;
+        other.m_handle = HG_HANDLE_NULL;
+    }
+
+    /**
+     * @brief Copy-assignment operator is deleted.
+     */
+    async_response& operator=(const async_response& other) = delete;
+
+    /**
+     * @brief Move-assignment operator is deleted.
+     */
+    async_response& operator=(async_response&& other) = delete;
+
+    /**
      * @brief Destructor.
      */
     ~async_response() {
