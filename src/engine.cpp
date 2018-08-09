@@ -54,5 +54,15 @@ bulk engine::expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_m
     return bulk(*this, handle, true);
 }
 
+void engine::shutdown_remote_engine(const endpoint& ep) const {
+    int ret = margo_shutdown_remote_instance(m_mid, ep.m_addr);
+    hg_return_t r = ret == 0 ? HG_SUCCESS : HG_OTHER_ERROR;
+    MARGO_ASSERT(r, margo_shutdown_remote_instance);
+}
+
+void engine::enable_remote_shutdown() {
+    margo_enable_remote_shutdown(m_mid);
+}
+
 }
 

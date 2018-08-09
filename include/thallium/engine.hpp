@@ -333,6 +333,18 @@ public:
         m_finalize_callbacks.emplace(std::forward<F>(f));
     }
 
+    /**
+     * @brief Shuts down a remote thallium engine. The remote engine
+     * should have enabled remote shutdown by calling enable_remote_shutdown().
+     *
+     * @param ep endpoint of the remote engine.
+     */
+    void shutdown_remote_engine(const endpoint& ep) const;
+
+    /**
+     * @brief Enables this engine to be shutdown remotely.
+     */
+    void enable_remote_shutdown();
 };
 
 } // namespace thallium
