@@ -229,6 +229,16 @@ public:
         }
 	}
 
+    /**
+     * @brief Get the underlying margo instance. Useful
+     * when working in conjunction with C code that need
+     * to be initialized with the margo instance.
+     *
+     * @return The margo instance id.
+     */
+    margo_instance_id get_margo_instance() const {
+        return m_mid;
+    }
 
     /**
      * @brief Finalize the engine. Can be called by any thread.
