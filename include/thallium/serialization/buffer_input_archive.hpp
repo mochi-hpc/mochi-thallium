@@ -91,7 +91,7 @@ public:
 		if(m_pos + count*sizeof(T) > m_buffer.size()) {
 			throw std::runtime_error("Reading beyond buffer size");
 		}
-		std::memcpy((void*)t,(const void*)(&m_buffer[m_pos]),count*sizeof(T));
+		std::memcpy((void*)t,(const void*)(m_buffer.data() + m_pos),count*sizeof(T));
 		m_pos += count*sizeof(T);
 	}
 

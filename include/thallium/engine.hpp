@@ -11,6 +11,7 @@
 #include <functional>
 #include <stack>
 #include <unordered_map>
+#include <vector>
 #include <atomic>
 #include <margo.h>
 #include <thallium/pool.hpp>

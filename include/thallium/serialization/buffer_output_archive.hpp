@@ -97,7 +97,7 @@ public:
 			}
 			m_buffer.resize(m_pos+s);
 		}
-		memcpy((void*)(&m_buffer[m_pos]),(void*)t,s);
+		memcpy((void*)(m_buffer.data() + m_pos),(void*)t,s);
 		m_pos += s;
 	}
 };
