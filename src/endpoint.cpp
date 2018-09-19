@@ -3,6 +3,7 @@
  * 
  * See COPYRIGHT in top-level directory.
  */
+#include <vector>
 #include <thallium/endpoint.hpp>
 #include <thallium/engine.hpp>
 #include <thallium/margo_exception.hpp>
@@ -72,11 +73,11 @@ endpoint::operator std::string() const {
     hg_return_t ret = margo_addr_to_string(m_engine->m_mid, NULL, &size, m_addr);
     MARGO_ASSERT(ret, margo_addr_to_string);
 
-	std::string result(size,' ');
+	std::vector<char> result(size);
 
     ret = margo_addr_to_string(m_engine->m_mid, &result[0], &size, m_addr);
     MARGO_ASSERT(ret, margo_addr_to_string);
-	return result;
+	return std::string(result.data());
 } 
 
 }
