@@ -72,8 +72,7 @@ endpoint::operator std::string() const {
     hg_return_t ret = margo_addr_to_string(m_engine->m_mid, NULL, &size, m_addr);
     MARGO_ASSERT(ret, margo_addr_to_string);
 
-	std::string result(size+1,' ');
-	size += 1;
+	std::string result(size,' ');
 
     ret = margo_addr_to_string(m_engine->m_mid, &result[0], &size, m_addr);
     MARGO_ASSERT(ret, margo_addr_to_string);
