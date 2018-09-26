@@ -74,7 +74,9 @@ public:
      */
     template<typename T1, typename T2, typename ... Tn>
     auto as() const {
-        std::tuple<std::decay_t<T1>, std::decay_t<T2>, std::decay_t<Tn>...> t;
+        std::tuple<typename std::decay<T1>::type, 
+            typename std::decay<T2>::type, 
+            typename std::decay_t<Tn>::type...> t;
         buffer_input_archive iarch(m_buffer);
         iarch & t;
         return t;

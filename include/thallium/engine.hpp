@@ -90,7 +90,7 @@ private:
      */
 	template<typename F, bool disable_response>
 	static void rpc_handler_ult(hg_handle_t handle) {
-		using G = std::remove_reference_t<F>;
+		using G = typename std::remove_reference<F>::type;
 		const struct hg_info* info = margo_get_info(handle);
 		margo_instance_id mid = margo_hg_handle_get_instance(handle);
 		void* data = margo_registered_data(mid, info->id);
@@ -384,7 +384,7 @@ remote_procedure engine::define(const std::string& name,
         std::function<void(Args...)> l = [&fun, &r](Args&&... args) {
             fun(r, std::forward<Args>(args)...);
         };
-        std::tuple<std::decay_t<Args>...> iargs;
+        std::tuple<typename std::decay<Args>::type...> iargs;
         if(sizeof...(Args) > 0) {
             buffer_input_archive iarch(b, *this);
             iarch & iargs;
