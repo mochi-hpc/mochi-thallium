@@ -50,7 +50,7 @@ class eventual {
     /**
      * @brief Type of value stored by the eventual.
      */
-    using value_type = std::remove_reference_t<std::remove_cv_t<T>>;
+    using value_type = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
     /**
      * @brief Native handle type.
      */

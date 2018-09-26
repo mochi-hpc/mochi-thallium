@@ -67,7 +67,7 @@ public:
 	 */
 	template<typename T>
 	buffer_input_archive& operator&(T&& obj) {
-		read_impl(std::forward<T>(obj), std::is_arithmetic<std::decay_t<T>>());
+		read_impl(std::forward<T>(obj), std::is_arithmetic<typename std::decay<T>::type>());
 		return *this;
 	}
 

@@ -69,7 +69,7 @@ public:
 	 */
 	template<typename T>
 	buffer_output_archive& operator&(T&& obj) {
-		write_impl(std::forward<T>(obj), std::is_arithmetic<std::decay_t<T>>());
+		write_impl(std::forward<T>(obj), std::is_arithmetic<typename std::decay<T>::type>());
 		return *this;
 	}
 
