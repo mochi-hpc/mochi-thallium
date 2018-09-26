@@ -23,7 +23,9 @@ int main(int argc, char** argv) {
     std::cout << "(prod) Server answered " << ret << std::endl;
     std::string name("Matthieu");
     hello.on(ph)(name);
+    std::cout << "Done sending hello RPC, no response expected" << std::endl;
     print.on(ph)(name);
+    std::cout << "Done sending print RPC, no response expected" << std::endl;
 
     return 0;
 }
