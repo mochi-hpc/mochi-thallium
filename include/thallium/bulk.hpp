@@ -280,9 +280,9 @@ public:
             std::vector<char> buf;
             ar & buf;
         } else {
-            hg_size_t s = margo_bulk_get_serialize_size(m_bulk, HG_TRUE);
+            hg_size_t s = margo_bulk_get_serialize_size(m_bulk, HG_FALSE);
             std::vector<char> buf(s);
-            hg_return_t ret = margo_bulk_serialize(&buf[0], s, HG_TRUE, m_bulk);
+            hg_return_t ret = margo_bulk_serialize(&buf[0], s, HG_FALSE, m_bulk);
             MARGO_ASSERT(ret, margo_bulk_serialize);
             ar & buf;
         }
