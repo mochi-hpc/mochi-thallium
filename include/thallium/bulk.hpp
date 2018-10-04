@@ -33,6 +33,7 @@ private:
     engine*   m_engine;
 	hg_bulk_t m_bulk;
     bool      m_is_local;
+    bool      m_eager_mode;
 
     /**
      * @brief Constructor. Made private as bulk objects
@@ -45,7 +46,7 @@ private:
      * local to this process.
      */
 	bulk(engine& e, hg_bulk_t b, bool local)
-	: m_engine(&e), m_bulk(b), m_is_local(local) {}
+	: m_engine(&e), m_bulk(b), m_is_local(local), m_eager_mode(false) {}
 
     /**
      * @brief The bulk_segment class represents a portion
@@ -135,13 +136,14 @@ public:
      * object as class member and associate it later with an actual bulk.
      */
     bulk()
-    : m_engine(nullptr), m_bulk(HG_BULK_NULL), m_is_local(false) {}
+    : m_engine(nullptr), m_bulk(HG_BULK_NULL), m_is_local(false), m_eager_mode(false) {}
 
     /**
      * @brief Copy constructor.
      */
 	bulk(const bulk& other)
-    : m_engine(other.m_engine), m_bulk(other.m_bulk), m_is_local(other.m_is_local) {
+    : m_engine(other.m_engine), m_bulk(other.m_bulk), 
+      m_is_local(other.m_is_local), m_eager_mode(other.m_eager_mode) {
         hg_return_t ret = margo_bulk_ref_incr(m_bulk);
         MARGO_ASSERT(ret, margo_bulk_ref_incr);
     }
@@ -150,7 +152,9 @@ public:
      * @brief Move constructor.
      */
 	bulk(bulk&& other)
-	: m_engine(other.m_engine), m_bulk(other.m_bulk), m_is_local(std::move(other.m_is_local)) {
+	: m_engine(other.m_engine), m_bulk(other.m_bulk),
+      m_is_local(other.m_is_local), 
+      m_eager_mode(other.m_eager_mode) {
 		other.m_bulk     = HG_BULK_NULL;
 	}
 
@@ -166,6 +170,7 @@ public:
         m_bulk     = other.m_bulk;
         m_engine   = other.m_engine;
         m_is_local = other.m_is_local;
+        m_eager_mode = other.m_eager_mode;
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_ref_incr(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_ref_incr);
@@ -185,6 +190,7 @@ public:
         m_engine     = other.m_engine;
         m_bulk       = other.m_bulk;
         m_is_local   = other.m_is_local;
+        m_eager_mode = other.m_eager_mode;
         other.m_bulk = HG_BULK_NULL;
         return *this;
     }
@@ -218,6 +224,17 @@ public:
      */
     bool is_null() const {
         return m_bulk == HG_BULK_NULL;
+    }
+
+    /**
+     * @brief Set the eager mode. When eager mode is true,
+     * Mercury will try to send the bulk's exposed data along
+     * with the bulk handle when sending the bulk handle over RPC.
+     *
+     * @param eager Whether to use eager mode or not.
+     */
+    void set_eager_mode(bool eager) {
+        m_eager_mode = eager;
     }
 
     /**
@@ -280,9 +297,10 @@ public:
             std::vector<char> buf;
             ar & buf;
         } else {
-            hg_size_t s = margo_bulk_get_serialize_size(m_bulk, HG_FALSE);
+            auto use_eager = m_eager_mode ? HG_TRUE : HG_FALSE;
+            hg_size_t s = margo_bulk_get_serialize_size(m_bulk, use_eager);
             std::vector<char> buf(s);
-            hg_return_t ret = margo_bulk_serialize(&buf[0], s, HG_FALSE, m_bulk);
+            hg_return_t ret = margo_bulk_serialize(&buf[0], s, use_eager, m_bulk);
             MARGO_ASSERT(ret, margo_bulk_serialize);
             ar & buf;
         }
