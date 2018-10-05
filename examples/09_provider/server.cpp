@@ -13,7 +13,7 @@ class my_sum_provider : public tl::provider<my_sum_provider> {
         req.respond(x+y);
     }
 
-    int sum(int x, int y) {
+    int sum(int x, int y) const {
         std::cout << "Computing " << x << "+" << y << std::endl;
         return x+y;
     }

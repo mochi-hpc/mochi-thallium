@@ -149,6 +149,77 @@ private:
         return m_engine.define(std::forward<S>(name), fun, m_provider_id, p).disable_response();
     }
 
+    // ---
+    // the following 4 functions are the same but for "const" member functions
+    // ---
+
+    // define_member as RPC for the case return value is NOT void and
+    // the first argument is a request. The return value should be ignored,
+    // since the user is expected to call req.respond(...).
+    template<typename S, typename R, typename A1, typename ... Args>
+    remote_procedure define_member(
+            S&& name,
+            R(T::*func)(A1, Args...) const,
+            const std::integral_constant<bool, false>& r_is_void,
+            const std::integral_constant<bool, true>& first_arg_is_request,
+            const pool& p) {
+        T* self = dynamic_cast<T*>(this);
+        std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
+            (self->*func)(req, args...);
+        };
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+    }
+
+    // define_member as RPC for the case the return value is NOT void
+    // and the request is not passed to the function. The return value
+    // should be sent using req.respond(...).
+    template<typename S, typename R, typename ... Args>
+    remote_procedure define_member(
+            S&& name,
+            R(T::*func)(Args...) const,
+            const std::integral_constant<bool, false>& r_is_void,
+            const std::integral_constant<bool, false>& first_arg_is_request,
+            const pool& p) {
+        T* self = dynamic_cast<T*>(this);
+        std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
+            R r = (self->*func)(args...);
+            req.respond(r);
+        };
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+    }
+
+    // define_memver as RPC for the case the return value IS void
+    // and the first argument is a request. The user is expected to call
+    // req.respond(...) himself.
+    template<typename S, typename R, typename A1, typename ... Args>
+    remote_procedure define_member(
+            S&& name,
+            R(T::*func)(A1, Args...) const,
+            const std::integral_constant<bool, true>& r_is_void,
+            const std::integral_constant<bool, true>& first_arg_is_request,
+            const pool& p = pool()) {
+        T* self = dynamic_cast<T*>(this);
+        std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
+            (self->*func)(req, args...);
+        };
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+    }
+
+    // define_member as RPC for the case the return value IS void
+    // and the first argument IS NOT a request. We call disable_response.
+    template<typename S, typename R, typename ... Args>
+    remote_procedure define_member(
+            S&& name,
+            R(T::*func)(Args...) const,
+            const std::integral_constant<bool, true>& r_is_void,
+            const std::integral_constant<bool, false>& first_arg_is_request,
+            const pool& p = pool()) {
+        T* self = dynamic_cast<T*>(this);
+        std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
+            (self->*func)(args...);
+        };
+        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p).disable_response();
+    }
 protected:
 
     /**
@@ -190,6 +261,35 @@ protected:
         return define_member(std::forward<S>(name), func, r_is_void, first_arg_is_request, pool());
     }
 
+    // ---
+    // the following 4 functions are the same but for "const" member functions
+    // ---
+
+    template<typename S, typename R, typename A1, typename ... Args, 
+             typename FIRST_ARG_IS_REQUEST = typename std::is_same<A1, const request&>::type,
+             typename R_IS_VOID = typename std::is_void<R>::type>
+    inline remote_procedure define(S&& name, R(T::*func)(A1, Args...) const, const pool& p, R_IS_VOID r_is_void = R_IS_VOID()) {
+        return define_member(std::forward<S>(name), func, r_is_void, FIRST_ARG_IS_REQUEST(), p);
+    }
+
+    template<typename S, typename R, typename A1, typename ... Args, 
+             typename FIRST_ARG_IS_REQUEST = typename std::is_same<A1, const request&>::type,
+             typename R_IS_VOID = typename std::is_void<R>::type>
+    inline remote_procedure define(S&& name, R(T::*func)(A1, Args...) const, R_IS_VOID r_is_void = R_IS_VOID()) {
+        return define_member(std::forward<S>(name), func, r_is_void, FIRST_ARG_IS_REQUEST(), pool());
+    }
+
+    template<typename S, typename R, typename R_IS_VOID = typename std::is_void<R>::type>
+    inline remote_procedure define(S&& name, R(T::*func)() const, const pool& p, R_IS_VOID r_is_void = R_IS_VOID()) {
+        std::integral_constant<bool, false> first_arg_is_request;
+        return define_member(std::forward<S>(name), func, r_is_void, first_arg_is_request, p);
+    }
+
+    template<typename S, typename R, typename R_IS_VOID = typename std::is_void<R>::type>
+    inline remote_procedure define(S&& name, R(T::*func)() const, R_IS_VOID r_is_void = R_IS_VOID()) {
+        std::integral_constant<bool, false> first_arg_is_request;
+        return define_member(std::forward<S>(name), func, r_is_void, first_arg_is_request, pool());
+    }
 public:
 
     /**
