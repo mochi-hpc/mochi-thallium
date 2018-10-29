@@ -189,10 +189,28 @@ public:
                 &engine::on_finalize_cb, static_cast<void*>(this));
     }
 
+    /**
+     * @brief Builds an engine around an existing margo instance.
+     *
+     * @param mid Margo instance.
+     * @param mode THALLIUM_SERVER_MODE or THALLIUM_CLIENT_MODE.
+     */
+    [[deprecated]]
     engine(margo_instance_id mid, int mode) {
         m_mid = mid;
         m_is_server = (mode == THALLIUM_SERVER_MODE);
         m_owns_mid = false;
+    }
+
+    /**
+     * @brief Builds an engine around an existing margo instance.
+     *
+     * @param mid Margo instance.
+     */
+    engine(margo_instance_id mid) {
+        m_mid = mid;
+        m_owns_mid = false;
+        m_is_server = margo_is_listening(mid);
     }
 
     /**
