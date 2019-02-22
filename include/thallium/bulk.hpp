@@ -144,8 +144,10 @@ public:
 	bulk(const bulk& other)
     : m_engine(other.m_engine), m_bulk(other.m_bulk), 
       m_is_local(other.m_is_local), m_eager_mode(other.m_eager_mode) {
-        hg_return_t ret = margo_bulk_ref_incr(m_bulk);
-        MARGO_ASSERT(ret, margo_bulk_ref_incr);
+        if(other.m_bulk != HG_BULK_NULL) {
+            hg_return_t ret = margo_bulk_ref_incr(m_bulk);
+            MARGO_ASSERT(ret, margo_bulk_ref_incr);
+        }
     }
 
     /**
