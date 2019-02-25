@@ -91,7 +91,7 @@ private:
             const std::integral_constant<bool, false>& r_is_void,
             const std::integral_constant<bool, true>& first_arg_is_request,
             const pool& p) {
-        T* self = dynamic_cast<T*>(this);
+        T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             (self->*func)(req, args...);
         };
@@ -108,7 +108,7 @@ private:
             const std::integral_constant<bool, false>& r_is_void,
             const std::integral_constant<bool, false>& first_arg_is_request,
             const pool& p) {
-        T* self = dynamic_cast<T*>(this);
+        T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             R r = (self->*func)(args...);
             req.respond(r);
@@ -126,7 +126,7 @@ private:
             const std::integral_constant<bool, true>& r_is_void,
             const std::integral_constant<bool, true>& first_arg_is_request,
             const pool& p = pool()) {
-        T* self = dynamic_cast<T*>(this);
+        T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             (self->*func)(req, args...);
         };
@@ -142,7 +142,7 @@ private:
             const std::integral_constant<bool, true>& r_is_void,
             const std::integral_constant<bool, false>& first_arg_is_request,
             const pool& p = pool()) {
-        T* self = dynamic_cast<T*>(this);
+        T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             (self->*func)(args...);
         };
@@ -163,7 +163,7 @@ private:
             const std::integral_constant<bool, false>& r_is_void,
             const std::integral_constant<bool, true>& first_arg_is_request,
             const pool& p) {
-        T* self = dynamic_cast<T*>(this);
+        T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             (self->*func)(req, args...);
         };
@@ -180,7 +180,7 @@ private:
             const std::integral_constant<bool, false>& r_is_void,
             const std::integral_constant<bool, false>& first_arg_is_request,
             const pool& p) {
-        T* self = dynamic_cast<T*>(this);
+        T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             R r = (self->*func)(args...);
             req.respond(r);
@@ -198,7 +198,7 @@ private:
             const std::integral_constant<bool, true>& r_is_void,
             const std::integral_constant<bool, true>& first_arg_is_request,
             const pool& p = pool()) {
-        T* self = dynamic_cast<T*>(this);
+        T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             (self->*func)(req, args...);
         };
@@ -214,7 +214,7 @@ private:
             const std::integral_constant<bool, true>& r_is_void,
             const std::integral_constant<bool, false>& first_arg_is_request,
             const pool& p = pool()) {
-        T* self = dynamic_cast<T*>(this);
+        T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun = [self, func](const request& req, Args... args) {
             (self->*func)(args...);
         };
