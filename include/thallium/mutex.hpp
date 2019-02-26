@@ -80,8 +80,9 @@ class mutex {
      * @brief Move assignment operator is deleted.
      */
     mutex& operator=(mutex&& other) {
-        if(m_mutex != ABT_MUTEX_NULL) 
-            ABT_mutex_free(&m_mutex);
+        if(m_mutex != ABT_MUTEX_NULL) {
+            TL_MUTEX_ASSERT(ABT_mutex_free(&m_mutex));
+        }
         m_mutex = other.m_mutex;
         other.m_mutex = ABT_MUTEX_NULL;
         return *this;
