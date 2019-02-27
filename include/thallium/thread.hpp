@@ -41,6 +41,7 @@ class thread_exception : public exception {
 class pool;
 class xstream;
 class scheduler;
+class engine;
 
 enum class thread_state : std::int32_t {
     ready      = ABT_THREAD_STATE_READY,
@@ -218,6 +219,7 @@ class thread {
         TL_THREAD_ASSERT(ABT_thread_create(p, f, arg, attr.native_handle(), &t));
         return managed<thread>(t);
     }
+
     void destroy() {
         if(m_thread != ABT_THREAD_NULL) 
             ABT_thread_free(&m_thread);
@@ -517,6 +519,17 @@ class thread {
     static void yield_to(const thread& other) {
         TL_THREAD_ASSERT(ABT_thread_yield_to(other.m_thread));
     }
+
+    /**
+     * @brief Makes the current thread sleep for at least the given 
+     * amount of time. The provided engine must be in an active progress
+     * loop, since it this progress loops that periodically checks for
+     * timer expiration.
+     *
+     * @param eng engine that will check for timer expiration.
+     * @param ms time to sleep in milliseconds.
+     */
+    static void sleep(engine& eng, double ms);
 };
 
 }

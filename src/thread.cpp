@@ -2,6 +2,7 @@
 #include <thallium/pool.hpp>
 #include <thallium/xstream.hpp>
 #include <thallium/scheduler.hpp>
+#include <thallium/engine.hpp>
 
 namespace thallium {
 
@@ -21,6 +22,10 @@ pool thread::get_last_pool() const {
     ABT_pool p;
     ABT_thread_get_last_pool(m_thread, &p);
     return pool(p);
+}
+
+void thread::sleep(engine& eng, double ms) {
+    margo_thread_sleep(eng.get_margo_instance(), ms);
 }
 
 }
