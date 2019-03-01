@@ -243,7 +243,8 @@ public:
                 if(!m_finalize_called) 
                     margo_wait_for_finalize(m_mid);
             } else {
-                margo_finalize(m_mid);
+                if(!m_finalize_called)
+                    margo_finalize(m_mid);
             }
         }
 	}
