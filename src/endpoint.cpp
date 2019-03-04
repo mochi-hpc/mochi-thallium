@@ -78,7 +78,17 @@ endpoint::operator std::string() const {
     ret = margo_addr_to_string(m_engine->m_mid, &result[0], &size, m_addr);
     MARGO_ASSERT(ret, margo_addr_to_string);
 	return std::string(result.data());
-} 
+}
+
+hg_addr_t endpoint::get_addr(bool copy) const {
+    if(!copy || m_addr == HG_ADDR_NULL) return m_addr;
+    if(m_engine == nullptr) return HG_ADDR_NULL;
+    hg_addr_t new_addr;
+    hg_return_t ret = margo_addr_dup(m_engine->get_margo_instance(), m_addr, &new_addr);
+    // TODO throw an exception if the call fails
+    if(ret != HG_SUCCESS) return HG_ADDR_NULL;
+    return new_addr;
+}
 
 }
 

@@ -102,6 +102,18 @@ public:
         return m_addr == HG_ADDR_NULL;
     }
 
+    /**
+     * @brief Returns the underlying Mercury address.
+     *
+     * @param copy If set to true, a copy of the address will be made.
+     * (the user will be responsible for calling margo_addr_free on this
+     * address) Otherwise, the hg_addr_t returned is the one managed by
+     * the endpoint instance and will be deleted when this enpoint is destroyed.
+     *
+     * @return The underlying hg_addr_t.
+     */
+    hg_addr_t get_addr(bool copy=false) const;
+
     template<typename S>
     friend S& ::operator<<(S& s, const endpoint& e);
 };
