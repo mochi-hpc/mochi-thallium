@@ -61,6 +61,7 @@ std::string translate_margo_error_code(hg_return_t ret);
         std::stringstream msg; \
         msg << "Function returned "; \
         msg << translate_margo_error_code(__ret__); \
+        std::cerr << msg.str() << std::endl; \
         MARGO_THROW(__fun__, msg.str()); \
     }\
     } while(0)
@@ -77,10 +78,10 @@ std::string translate_margo_error_code(hg_return_t ret);
 
 #define THALLIUM_ASSERT_CONDITION(__cond__, __msg__) do {\
     if(!(__cond__)) { \
-        std::stringstream msg; \
-        msg << "Condition " << #__cond__ << " failed (" << __FILE__ << __LINE__ \
-            << ", " << __msg__; \
-        throw std::runtime_error(msg.str()); \
+        std::cerr << "Condition " << #__cond__ \
+                  << " failed (" << __FILE__ << __LINE__ \
+                  << "), " << __msg__ << std::endl; \
+        exit(-1); \
     }\
     } while(0)
 }
