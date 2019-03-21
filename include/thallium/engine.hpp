@@ -104,6 +104,7 @@ private:
 		(*f)(req, input);
         ret = margo_free_input(handle, &input);
         MARGO_ASSERT(ret, margo_free_input);
+        margo_destroy(handle); // because of margo_ref_incr in rpc_callback
 	}
 
     /**
@@ -125,6 +126,7 @@ private:
             return HG_OTHER_ERROR;
         }
         pool = margo_hg_handle_get_handler_pool(handle);
+        margo_ref_incr(handle);
         ret = ABT_thread_create(pool, (void (*)(void *)) rpc_handler_ult<F,disable_response>, 
                 handle, ABT_THREAD_ATTR_NULL, NULL);
         if(ret != 0) {
