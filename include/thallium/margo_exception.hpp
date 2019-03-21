@@ -6,6 +6,7 @@
 #ifndef __THALLIUM_MARGO_EXCEPTION_HPP
 #define __THALLIUM_MARGO_EXCEPTION_HPP
 
+#include <iostream>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -53,16 +54,35 @@ std::string translate_margo_error_code(hg_return_t ret);
 
 #define MARGO_THROW(__fun__,__msg__) do {\
     throw margo_exception(#__fun__,__FILE__,__LINE__,__msg__); \
-    } while(0);
+    } while(0)
 
 #define MARGO_ASSERT(__ret__, __fun__) do {\
     if(__ret__ != HG_SUCCESS) { \
         std::stringstream msg; \
         msg << "Function returned "; \
         msg << translate_margo_error_code(__ret__); \
+        MARGO_THROW(__fun__, msg.str()); \
     }\
-    } while(0);
+    } while(0)
 
+#define MARGO_ASSERT_TERMINATE(__ret__, __fun__, __failcode__) do {\
+    if(__ret__ != HG_SUCCESS) { \
+        std::stringstream msg; \
+        msg << "Function returned "; \
+        msg << translate_margo_error_code(__ret__); \
+        std::cerr << #__fun__ << ":" << __FILE__ << ":" << __LINE__ << ": " << msg.str(); \
+        exit(__failcode__);\
+    }\
+    } while(0)
+
+#define THALLIUM_ASSERT_CONDITION(__cond__, __msg__) do {\
+    if(!(__cond__)) { \
+        std::stringstream msg; \
+        msg << "Condition " << #__cond__ << " failed (" << __FILE__ << __LINE__ \
+            << ", " << __msg__; \
+        throw std::runtime_error(msg.str()); \
+    }\
+    } while(0)
 }
 
 #endif

@@ -92,8 +92,11 @@ private:
 	static void rpc_handler_ult(hg_handle_t handle) {
 		using G = typename std::remove_reference<F>::type;
 		const struct hg_info* info = margo_get_info(handle);
+        THALLIUM_ASSERT_CONDITION(info != nullptr, "margo_get_info returned null");
 		margo_instance_id mid = margo_hg_handle_get_instance(handle);
+        THALLIUM_ASSERT_CONDITION(mid != 0, "margo_hg_handle_get_instance returned null");
 		void* data = margo_registered_data(mid, info->id);
+        THALLIUM_ASSERT_CONDITION(data != nullptr, "margo_registered_data returned null");
         auto cb_data  = static_cast<rpc_callback_data*>(data);
 		auto f = function_cast<G>(cb_data->m_function);
 		request req(*(cb_data->m_engine), handle, disable_response);
@@ -130,6 +133,7 @@ private:
         ret = ABT_thread_create(pool, (void (*)(void *)) rpc_handler_ult<F,disable_response>, 
                 handle, ABT_THREAD_ATTR_NULL, NULL);
         if(ret != 0) {
+            margo_destroy(handle);
             return HG_NOMEM_ERROR;
         }
         return HG_SUCCESS;

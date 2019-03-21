@@ -97,7 +97,7 @@ public:
      */
 	~request() {
 		hg_return_t ret = margo_destroy(m_handle);
-        MARGO_ASSERT(ret, margo_destroy);
+        MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
 	}
 
     /**

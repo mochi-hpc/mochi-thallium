@@ -151,7 +151,7 @@ public:
 	~callable_remote_procedure()  {
 		if(m_handle != HG_HANDLE_NULL) {
             hg_return_t ret = margo_destroy(m_handle);
-            MARGO_ASSERT(ret, margo_destroy);
+            MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
 		}
 	}
 

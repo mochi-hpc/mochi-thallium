@@ -203,7 +203,7 @@ public:
 	~bulk() {
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_free(m_bulk);
-            MARGO_ASSERT(ret, margo_bulk_free);
+            MARGO_ASSERT_TERMINATE(ret, margo_bulk_free, -1);
         }
     }
 

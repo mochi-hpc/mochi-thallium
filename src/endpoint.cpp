@@ -61,7 +61,7 @@ endpoint& endpoint::operator=(endpoint&& other) {
 endpoint::~endpoint() {
 	if(m_addr != HG_ADDR_NULL) {
         hg_return_t ret = margo_addr_free(m_engine->m_mid, m_addr);
-        MARGO_ASSERT(ret, margo_addr_free);
+        MARGO_ASSERT_TERMINATE(ret, margo_addr_free, -1);
 	}
 }
 
