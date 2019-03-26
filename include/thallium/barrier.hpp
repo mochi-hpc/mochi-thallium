@@ -40,10 +40,10 @@ class barrier_exception : public exception {
  * @brief Wrapper for Argobots' ABT_barrier.
  */
 class barrier {
-	
-	ABT_barrier m_barrier;
 
-	public:
+    ABT_barrier m_barrier;
+
+    public:
 
     /**
      * @brief Native handle type (ABT_barrier)

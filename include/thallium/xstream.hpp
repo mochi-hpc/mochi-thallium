@@ -62,7 +62,7 @@ class xstream {
     friend class task;
     friend class managed<xstream>;
 
-	ABT_xstream m_xstream;
+    ABT_xstream m_xstream;
 
     xstream(ABT_xstream es)
     : m_xstream(es) {}

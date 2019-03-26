@@ -44,8 +44,8 @@ public:
      * @param e enpoint to encapsulate.
      * @param provider_id provider id.
      */
-	provider_handle(endpoint e, uint16_t provider_id=0)
-	: endpoint(std::move(e)), m_provider_id(provider_id) {}
+    provider_handle(endpoint e, uint16_t provider_id=0)
+    : endpoint(std::move(e)), m_provider_id(provider_id) {}
 
     /**
      * @brief Default constructor defined so that provider_handlers can
@@ -56,27 +56,27 @@ public:
     /**
      * @brief Copy constructor.
      */
-	provider_handle(const provider_handle& other) = default;
+    provider_handle(const provider_handle& other) = default;
 
     /**
      * @brief Move constructor.
      */
-	provider_handle(provider_handle&& other) = default;
+    provider_handle(provider_handle&& other) = default;
 
     /**
      * @brief Copy-assignment operator.
      */
-	provider_handle& operator=(const provider_handle& other) = default;
+    provider_handle& operator=(const provider_handle& other) = default;
 
     /**
      * @brief Move-assignment operator.
      */
-	provider_handle& operator=(provider_handle&& other) = default;
-	
+    provider_handle& operator=(provider_handle&& other) = default;
+
     /**
      * @brief Destructor.
      */
-	~provider_handle() = default;
+    ~provider_handle() = default;
 
     /**
      * @brief Get the provider id.

@@ -43,9 +43,9 @@ class eventual_exception : public exception {
  */
 template<typename T>
 class eventual {
-	
 
-	public:
+
+    public:
 
     /**
      * @brief Type of value stored by the eventual.
@@ -58,7 +58,7 @@ class eventual {
 
     private:
 
-	ABT_eventual m_eventual;
+    ABT_eventual m_eventual;
     value_type   m_value;
 
     public:
@@ -163,8 +163,8 @@ class eventual {
  */
 template<>
 class eventual<void> {
-	
-	public:
+
+    public:
 
     /**
      * @brief Native handle type.
@@ -173,7 +173,7 @@ class eventual<void> {
 
     private:
 
-	ABT_eventual m_eventual;
+    ABT_eventual m_eventual;
 
     public:
 

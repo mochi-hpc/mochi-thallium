@@ -40,10 +40,10 @@ class xstream_barrier_exception : public exception {
  * @brief Wrapper for Argobots' ABT_xstream_barrier.
  */
 class xstream_barrier {
-	
-	ABT_xstream_barrier m_es_barrier;
 
-	public:
+    ABT_xstream_barrier m_es_barrier;
+
+    public:
 
     /**
      * @brief Native handle type (ABT_xstream_barrier)

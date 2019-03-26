@@ -25,12 +25,12 @@ class endpoint;
  */
 class request {
 
-	friend class engine;
+    friend class engine;
 
 private:
 
     engine*     m_engine;
-	hg_handle_t m_handle;
+    hg_handle_t m_handle;
     bool        m_disable_response;
 
     /**
@@ -41,64 +41,64 @@ private:
      * @param h handle of the RPC that was received.
      * @param disable_resp whether responses are disabled.
      */
-	request(engine& e, hg_handle_t h, bool disable_resp)
-	: m_engine(&e), m_handle(h), m_disable_response(disable_resp) {}
+    request(engine& e, hg_handle_t h, bool disable_resp)
+    : m_engine(&e), m_handle(h), m_disable_response(disable_resp) {}
 
 public:
 
     /**
      * @brief Copy constructor.
      */
-	request(const request& other)
-	: m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
+    request(const request& other)
+    : m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
         hg_return_t ret = margo_ref_incr(m_handle);
         MARGO_ASSERT(ret, margo_ref_incr);
-	}
+    }
 
     /**
      * @brief Move constructor.
      */
-	request(request&& other)
-	: m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
-		other.m_handle = HG_HANDLE_NULL;
-	}
+    request(request&& other)
+    : m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
+        other.m_handle = HG_HANDLE_NULL;
+    }
 
     /**
      * @brief Copy-assignment operator.
      */
-	request& operator=(const request& other) {
-		if(m_handle == other.m_handle) return *this;
+    request& operator=(const request& other) {
+        if(m_handle == other.m_handle) return *this;
         hg_return_t ret;
         ret = margo_destroy(m_handle);
         MARGO_ASSERT(ret, margo_destroy);
         m_engine           = other.m_engine;
-		m_handle           = other.m_handle;
+        m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
         ret = margo_ref_incr(m_handle);
         MARGO_ASSERT(ret, margo_ref_incr);
-		return *this;
-	}
+        return *this;
+    }
 
     /**
      * @brief Move-assignment operator.
      */
-	request& operator=(request&& other) {
-		if(m_handle == other.m_handle) return *this;
-		margo_destroy(m_handle);
+    request& operator=(request&& other) {
+        if(m_handle == other.m_handle) return *this;
+        margo_destroy(m_handle);
         m_engine           = other.m_engine;
-		m_handle           = other.m_handle;
+        m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
-		other.m_handle = HG_HANDLE_NULL;
-		return *this;
-	}
+        other.m_handle = HG_HANDLE_NULL;
+        return *this;
+    }
 
     /**
      * @brief Destructor.
      */
-	~request() {
-		hg_return_t ret = margo_destroy(m_handle);
+    ~request() {
+        hg_return_t ret = margo_destroy(m_handle);
         MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
-	}
+    }
 
     /**
      * @brief Responds to the sender of the RPC.
@@ -108,17 +108,17 @@ public:
      * @tparam T Types of parameters to serialize.
      * @param t Parameters to serialize.
      */
-	template<typename ... T>
-	void respond(T&&... t) const {
+    template<typename ... T>
+    void respond(T&&... t) const {
         if(m_disable_response) return; // XXX throwing an exception?
-		if(m_handle != HG_HANDLE_NULL) {
+        if(m_handle != HG_HANDLE_NULL) {
             buffer b;
             buffer_output_archive arch(b, *m_engine);
             serialize_many(arch, std::forward<T>(t)...);
-			hg_return_t ret = margo_respond(m_handle, &b);
+            hg_return_t ret = margo_respond(m_handle, &b);
             MARGO_ASSERT(ret, margo_respond);
-		}
-	}
+        }
+    }
 
     /**
      * @brief Get the endpoint corresponding to the sender of the RPC.

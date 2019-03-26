@@ -42,10 +42,10 @@ class engine {
 
     friend class request;
     friend class bulk;
-	friend class endpoint;
+    friend class endpoint;
     friend class remote_bulk;
     friend class remote_procedure;
-	friend class callable_remote_procedure;
+    friend class callable_remote_procedure;
     template<typename T>
     friend class provider;
 
@@ -53,7 +53,7 @@ private:
 
     using rpc_t = std::function<void(const request&, const buffer&)>;
 
-	margo_instance_id                     m_mid;
+    margo_instance_id                     m_mid;
     std::unordered_map<hg_id_t, rpc_t>    m_rpcs;
     bool                                  m_is_server;
     bool                                  m_owns_mid;
@@ -88,27 +88,27 @@ private:
      * @tparam disable_response whether the caller expects a response.
      * @param handle handle of the RPC.
      */
-	template<typename F, bool disable_response>
-	static void rpc_handler_ult(hg_handle_t handle) {
-		using G = typename std::remove_reference<F>::type;
-		const struct hg_info* info = margo_get_info(handle);
+    template<typename F, bool disable_response>
+    static void rpc_handler_ult(hg_handle_t handle) {
+        using G = typename std::remove_reference<F>::type;
+        const struct hg_info* info = margo_get_info(handle);
         THALLIUM_ASSERT_CONDITION(info != nullptr, "margo_get_info returned null");
-		margo_instance_id mid = margo_hg_handle_get_instance(handle);
+        margo_instance_id mid = margo_hg_handle_get_instance(handle);
         THALLIUM_ASSERT_CONDITION(mid != 0, "margo_hg_handle_get_instance returned null");
-		void* data = margo_registered_data(mid, info->id);
+        void* data = margo_registered_data(mid, info->id);
         THALLIUM_ASSERT_CONDITION(data != nullptr, "margo_registered_data returned null");
         auto cb_data  = static_cast<rpc_callback_data*>(data);
-		auto f = function_cast<G>(cb_data->m_function);
-		request req(*(cb_data->m_engine), handle, disable_response);
-		buffer input;
-		hg_return_t ret;
+        auto f = function_cast<G>(cb_data->m_function);
+        request req(*(cb_data->m_engine), handle, disable_response);
+        buffer input;
+        hg_return_t ret;
         ret = margo_get_input(handle, &input);
         MARGO_ASSERT(ret, margo_get_input);
-		(*f)(req, input);
+        (*f)(req, input);
         ret = margo_free_input(handle, &input);
         MARGO_ASSERT(ret, margo_free_input);
         margo_destroy(handle); // because of margo_ref_incr in rpc_callback
-	}
+    }
 
     /**
      * @brief Callback called when an RPC is received.
@@ -160,20 +160,20 @@ public:
      * @param rpc_thread_count number of threads to use for servicing RPCs.
      * Use -1 to indicate that RPCs should be serviced in the progress ES.
      */
-	engine(const std::string& addr, int mode, 
-	              bool use_progress_thread = false,
-	              std::int32_t rpc_thread_count = 0) {
+    engine(const std::string& addr, int mode, 
+            bool use_progress_thread = false,
+            std::int32_t rpc_thread_count = 0) {
 
         m_is_server = (mode == THALLIUM_SERVER_MODE);
         m_finalize_called = false;
-		m_mid = margo_init(addr.c_str(), mode,
-				use_progress_thread ? 1 : 0,
-				rpc_thread_count);
+        m_mid = margo_init(addr.c_str(), mode,
+                use_progress_thread ? 1 : 0,
+                rpc_thread_count);
         // XXX throw an exception if m_mid not initialized
         m_owns_mid = true;
         margo_push_finalize_callback(m_mid,
                 &engine::on_finalize_cb, static_cast<void*>(this));
-	}
+    }
 
     engine(const std::string& addr, int mode,
             const pool& progress_pool,
@@ -222,28 +222,28 @@ public:
     /**
      * @brief Copy-constructor is deleted.
      */
-	engine(const engine& other)            = delete;
+    engine(const engine& other)            = delete;
 
     /**
      * @brief Move-constructor is deleted.
      */
-	engine(engine&& other)                 = delete;
+    engine(engine&& other)                 = delete;
     
     /**
      * @brief Move-assignment operator is deleted.
      */
-	engine& operator=(engine&& other)      = delete;
+    engine& operator=(engine&& other)      = delete;
 
     /**
      * @brief Copy-assignment operator is deleted.
      */
-	engine& operator=(const engine& other) = delete;
+    engine& operator=(const engine& other) = delete;
 
 
     /**
      * @brief Destructor.
      */
-	~engine() {
+    ~engine() {
         if(m_owns_mid) {
             if(m_is_server) {
                 if(!m_finalize_called) 
@@ -253,7 +253,7 @@ public:
                     margo_finalize(m_mid);
             }
         }
-	}
+    }
 
     /**
      * @brief Get the underlying margo instance. Useful
@@ -269,13 +269,13 @@ public:
     /**
      * @brief Finalize the engine. Can be called by any thread.
      */
-	void finalize() {
-		margo_finalize(m_mid);
+    void finalize() {
+        margo_finalize(m_mid);
         if(m_hg_context)
             HG_Context_destroy(m_hg_context);
         if(m_hg_class)
             HG_Finalize(m_hg_class);
-	}
+    }
 
     /**
      * @brief Makes the calling thread block until someone calls
@@ -292,7 +292,7 @@ public:
      *
      * @return An endpoint corresponding to this engine.
      */
-	endpoint self() const;
+    endpoint self() const;
 
     /**
      * @brief Defines an RPC with a name, without providing a
@@ -302,7 +302,7 @@ public:
      *
      * @return a remote_procedure object.
      */
-	remote_procedure define(const std::string& name);
+    remote_procedure define(const std::string& name);
 
     /**
      * @brief Defines an RPC with a name and an std::function 
@@ -316,8 +316,8 @@ public:
      *
      * @return a remote_procedure object.
      */
-	template<typename ... Args>
-	remote_procedure define(const std::string& name, 
+    template<typename ... Args>
+    remote_procedure define(const std::string& name, 
         const std::function<void(const request&, Args...)>& fun,
         uint16_t provider_id=0, const pool& p = pool());
 
@@ -345,7 +345,7 @@ public:
      *
      * @return an endpoint object associated with the given address.
      */
-	endpoint lookup(const std::string& address) const;
+    endpoint lookup(const std::string& address) const;
 
     /**
      * @brief Exposes a series of memory segments for bulk operations.

@@ -30,15 +30,15 @@ class remote_bulk;
  */
 class endpoint {
 
-	friend class engine;
+    friend class engine;
     friend class request;
-	friend class callable_remote_procedure;
+    friend class callable_remote_procedure;
     friend class remote_bulk;
 
 private:
 
-	engine*   m_engine;
-	hg_addr_t m_addr;
+    engine*   m_engine;
+    hg_addr_t m_addr;
 
 public:
 
@@ -49,7 +49,7 @@ public:
      * @param e Engine that created the endpoint.
      * @param addr Mercury address.
      */
-	endpoint(engine& e, hg_addr_t addr, bool take_ownership=true);
+    endpoint(engine& e, hg_addr_t addr, bool take_ownership=true);
 
     /**
      * @brief Default constructor defined so that endpoints can
@@ -61,37 +61,37 @@ public:
     /**
      * @brief Copy constructor.
      */
-	endpoint(const endpoint& other);
+    endpoint(const endpoint& other);
 
     /**
      * @brief Move constructor.
      */
-	endpoint(endpoint&& other)
-	: m_engine(other.m_engine), m_addr(other.m_addr) {
-		other.m_addr = HG_ADDR_NULL;
-	}
+    endpoint(endpoint&& other)
+    : m_engine(other.m_engine), m_addr(other.m_addr) {
+        other.m_addr = HG_ADDR_NULL;
+    }
 
     /**
      * @brief Copy-assignment operator.
      */
-	endpoint& operator=(const endpoint& other);
+    endpoint& operator=(const endpoint& other);
 
     /**
      * @brief Move-assignment operator.
      */
-	endpoint& operator=(endpoint&& other);
-	
+    endpoint& operator=(endpoint&& other);
+
     /**
      * @brief Destructor.
      */
-	~endpoint();
+    ~endpoint();
 
     /**
      * @brief Creates a string representation of the endpoint's address.
      *
      * @return A string representation of the endpoint's address.
      */
-	operator std::string() const;
+    operator std::string() const;
 
     /**
      * @brief Indicates whether the endpoint is null or not.

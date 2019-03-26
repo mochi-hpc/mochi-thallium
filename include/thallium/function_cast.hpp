@@ -20,7 +20,7 @@ namespace thallium {
  */
 template<typename F>
 F* function_cast(void* f) {
-	return reinterpret_cast<F*>(reinterpret_cast<std::intptr_t>(f));
+    return reinterpret_cast<F*>(reinterpret_cast<std::intptr_t>(f));
 }
 
 /**
@@ -33,7 +33,7 @@ F* function_cast(void* f) {
  */
 template<typename F>
 void* void_cast(F&& fun) {
-	return reinterpret_cast<void*>(reinterpret_cast<std::intptr_t>(fun));
+    return reinterpret_cast<void*>(reinterpret_cast<std::intptr_t>(fun));
 }
 
 }

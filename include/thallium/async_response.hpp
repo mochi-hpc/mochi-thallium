@@ -31,7 +31,6 @@ private:
     margo_request              m_request;
     engine*                    m_engine;
     hg_handle_t                m_handle;
-    buffer                     m_buffer;
     bool                       m_ignore_response;
 
     /**
@@ -64,7 +63,6 @@ public:
     : m_request(other.m_request)
     , m_engine(other.m_engine)
     , m_handle(other.m_handle)
-    , m_buffer(std::move(other.m_buffer))
     , m_ignore_response(other.m_ignore_response) {
         other.m_request = MARGO_REQUEST_NULL;
         other.m_engine = nullptr;

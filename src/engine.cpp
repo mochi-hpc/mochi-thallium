@@ -13,18 +13,17 @@
 namespace thallium {
 
 endpoint engine::lookup(const std::string& address) const {
-
-	hg_addr_t addr;
-	hg_return_t ret = margo_addr_lookup(m_mid, address.c_str(), &addr);
+    hg_addr_t addr;
+    hg_return_t ret = margo_addr_lookup(m_mid, address.c_str(), &addr);
     MARGO_ASSERT(ret, margo_addr_lookup);
-	return endpoint(const_cast<engine&>(*this), addr);
+    return endpoint(const_cast<engine&>(*this), addr);
 }
 
 endpoint engine::self() const {
-	hg_addr_t self_addr;
-	hg_return_t ret = margo_addr_self(m_mid, &self_addr);
+    hg_addr_t self_addr;
+    hg_return_t ret = margo_addr_self(m_mid, &self_addr);
     MARGO_ASSERT(ret, margo_addr_self);
-	return endpoint(const_cast<engine&>(*this), self_addr);
+    return endpoint(const_cast<engine&>(*this), self_addr);
 }
 
 remote_procedure engine::define(const std::string& name) {

@@ -38,10 +38,10 @@ class rwlock_exception : public exception {
  * @brief The rwlock class wraps and managed an ABT_rwlock.
  */
 class rwlock {
-	
-	ABT_rwlock m_lock;
 
-	public:
+    ABT_rwlock m_lock;
+
+    public:
 
     /**
      * @brief Native handle type.
@@ -51,22 +51,22 @@ class rwlock {
     /**
      * @brief Constructor.
      */
-	explicit rwlock() {
+    explicit rwlock() {
         TL_RWLOCK_ASSERT(ABT_rwlock_create(&m_lock));
-	}
+    }
 
     /**
      * @brief Copy constructor is deleted.
      */
-	rwlock(const rwlock&) = delete;
+    rwlock(const rwlock&) = delete;
 
     /**
      * @brief Move constructor.
      */
-	rwlock(rwlock&& other) {
-		m_lock = other.m_lock;
-		other.m_lock = ABT_RWLOCK_NULL;
-	}
+    rwlock(rwlock&& other) {
+        m_lock = other.m_lock;
+        other.m_lock = ABT_RWLOCK_NULL;
+    }
 
     /**
      * @brief Copy assignment operator is deleted.
@@ -87,30 +87,30 @@ class rwlock {
     /**
      * @brief Destructor.
      */
-	~rwlock() noexcept {
-		ABT_rwlock_free(&m_lock);
-	}
+    ~rwlock() noexcept {
+        ABT_rwlock_free(&m_lock);
+    }
 
     /**
      * @brief Lock for reading.
      */
-	void rdlock() {
+    void rdlock() {
         TL_RWLOCK_ASSERT(ABT_rwlock_rdlock(m_lock));
-	}
+    }
 
     /**
      * @brief Lock for writing.
      */
-	void wrlock() {
-	    TL_RWLOCK_ASSERT(ABT_rwlock_wrlock(m_lock));
-	}
+    void wrlock() {
+        TL_RWLOCK_ASSERT(ABT_rwlock_wrlock(m_lock));
+    }
 
     /**
      * @brief Unlock.
      */
-	void unlock() {
-		TL_RWLOCK_ASSERT(ABT_rwlock_unlock(m_lock));
-	}
+    void unlock() {
+        TL_RWLOCK_ASSERT(ABT_rwlock_unlock(m_lock));
+    }
 
     /**
      * @brief Get the underlying native handle.

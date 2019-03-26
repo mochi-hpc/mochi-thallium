@@ -191,7 +191,7 @@ class thread {
 
     private:
 
-	ABT_thread m_thread;
+    ABT_thread m_thread;
 
     thread(ABT_thread t)
     : m_thread(t) {}
@@ -223,9 +223,9 @@ class thread {
     void destroy() {
         if(m_thread != ABT_THREAD_NULL) 
             ABT_thread_free(&m_thread);
-	}
+    }
 
-	public:
+    public:
 
     /**
      * @brief Native handle type.
@@ -241,7 +241,7 @@ class thread {
     /**
      * @brief Copy constructor.
      */
-	thread(const thread& other) = default;
+    thread(const thread& other) = default;
 
     /**
      * @brief Copy-assignment operator.
@@ -264,15 +264,15 @@ class thread {
      * @brief Move constructor. The object moved from will
      * be invalidated.
      */
-	thread(thread&& other) {
-		m_thread = other.m_thread;
-		other.m_thread = ABT_THREAD_NULL;
-	}
+    thread(thread&& other) {
+        m_thread = other.m_thread;
+        other.m_thread = ABT_THREAD_NULL;
+    }
 
     /**
      * @brief Destructor.
      */
-	~thread() = default;
+    ~thread() = default;
 
     /**
      * @brief Blocks until thread terminates.

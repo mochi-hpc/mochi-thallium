@@ -31,7 +31,7 @@ class bulk {
 private:
 
     engine*   m_engine;
-	hg_bulk_t m_bulk;
+    hg_bulk_t m_bulk;
     bool      m_is_local;
     bool      m_eager_mode;
 
@@ -45,8 +45,8 @@ private:
      * @param local Whether the bulk handle referes to memory that is
      * local to this process.
      */
-	bulk(engine& e, hg_bulk_t b, bool local)
-	: m_engine(&e), m_bulk(b), m_is_local(local), m_eager_mode(false) {}
+    bulk(engine& e, hg_bulk_t b, bool local)
+    : m_engine(&e), m_bulk(b), m_is_local(local), m_eager_mode(false) {}
 
     /**
      * @brief The bulk_segment class represents a portion
@@ -141,7 +141,7 @@ public:
     /**
      * @brief Copy constructor.
      */
-	bulk(const bulk& other)
+    bulk(const bulk& other)
     : m_engine(other.m_engine), m_bulk(other.m_bulk), 
       m_is_local(other.m_is_local), m_eager_mode(other.m_eager_mode) {
         if(other.m_bulk != HG_BULK_NULL) {
@@ -153,17 +153,17 @@ public:
     /**
      * @brief Move constructor.
      */
-	bulk(bulk&& other)
-	: m_engine(other.m_engine), m_bulk(other.m_bulk),
+    bulk(bulk&& other)
+    : m_engine(other.m_engine), m_bulk(other.m_bulk),
       m_is_local(other.m_is_local), 
       m_eager_mode(other.m_eager_mode) {
-		other.m_bulk     = HG_BULK_NULL;
-	}
+          other.m_bulk     = HG_BULK_NULL;
+    }
 
     /**
      * @brief Copy-assignment operator.
      */
-	bulk& operator=(const bulk& other) {
+    bulk& operator=(const bulk& other) {
         if(this == &other) return *this;
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_free(m_bulk);
@@ -183,7 +183,7 @@ public:
     /**
      * @brief Move-assignment operator.
      */
-	bulk& operator=(bulk&& other) {
+    bulk& operator=(bulk&& other) {
         if(this == &other) return *this;
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_free(m_bulk);
@@ -196,11 +196,11 @@ public:
         other.m_bulk = HG_BULK_NULL;
         return *this;
     }
-	
+
     /**
      * @brief Destructor.
      */
-	~bulk() {
+    ~bulk() {
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_free(m_bulk);
             MARGO_ASSERT_TERMINATE(ret, margo_bulk_free, -1);

@@ -14,7 +14,7 @@ remote_procedure::remote_procedure(engine& e, hg_id_t id)
 : m_engine(&e), m_id(id), m_ignore_response(false) { }
 
 callable_remote_procedure remote_procedure::on(const endpoint& ep) const {
-	return callable_remote_procedure(*m_engine, m_id, ep, m_ignore_response);
+    return callable_remote_procedure(*m_engine, m_id, ep, m_ignore_response);
 }
 
 callable_remote_procedure remote_procedure::on(const provider_handle& ph) const {

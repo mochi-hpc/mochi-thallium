@@ -41,10 +41,10 @@ class condition_variable_exception : public exception {
  * @brief Wrapper for Argobots' ABT_cond.
  */
 class condition_variable {
-	
-	ABT_cond m_cond;
 
-	public:
+    ABT_cond m_cond;
+
+    public:
 
     /**
      * @brief Native handle type.

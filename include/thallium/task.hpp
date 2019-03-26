@@ -64,7 +64,7 @@ class task {
     friend class xstream;
     friend class managed<task>;
 
-	ABT_task m_task;
+    ABT_task m_task;
 
     task(ABT_task t)
     : m_task(t) {}
@@ -84,9 +84,9 @@ class task {
     void destroy() {
         if(m_task != ABT_TASK_NULL)
             ABT_task_free(&m_task);
-	}
+    }
 
-	public:
+    public:
 
     /**
      * @brief Native handle type.
@@ -102,7 +102,7 @@ class task {
     /**
      * @brief Copy constructor.
      */
-	task(const task& other) = default;
+    task(const task& other) = default;
 
     /**
      * @brief Copy-assignment operator.
@@ -125,15 +125,15 @@ class task {
      * @brief Move constructor. The object moved from will
      * be invalidated.
      */
-	task(task&& other) 
+    task(task&& other) 
     : m_task(other.m_task) {
-		other.m_task = ABT_TASK_NULL;
-	}
+        other.m_task = ABT_TASK_NULL;
+    }
 
     /**
      * @brief Destructor.
      */
-	~task() = default;
+    ~task() = default;
     
     /**
      * @brief Blocks until the task terminates.

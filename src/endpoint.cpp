@@ -21,63 +21,63 @@ endpoint::endpoint(engine& e, hg_addr_t addr, bool take_ownership)
 
 endpoint::endpoint(const endpoint& other)
 : m_engine(other.m_engine) {
-	if(other.m_addr != HG_ADDR_NULL) {
-		hg_return_t ret = margo_addr_dup(m_engine->m_mid, other.m_addr, &m_addr);
+    if(other.m_addr != HG_ADDR_NULL) {
+        hg_return_t ret = margo_addr_dup(m_engine->m_mid, other.m_addr, &m_addr);
         MARGO_ASSERT(ret, margo_addr_dup);
-	} else {
-		m_addr = HG_ADDR_NULL;
-	}
+    } else {
+        m_addr = HG_ADDR_NULL;
+    }
 }
 
 endpoint& endpoint::operator=(const endpoint& other) {
     hg_return_t ret;
-	if(&other == this) return *this;
-	if(m_addr != HG_ADDR_NULL) {
-		ret = margo_addr_free(m_engine->m_mid, m_addr);
+    if(&other == this) return *this;
+    if(m_addr != HG_ADDR_NULL) {
+        ret = margo_addr_free(m_engine->m_mid, m_addr);
         MARGO_ASSERT(ret, margo_addr_free);
-	}
+    }
     m_engine = other.m_engine;
-	if(other.m_addr != HG_ADDR_NULL) {
+    if(other.m_addr != HG_ADDR_NULL) {
         ret = margo_addr_dup(m_engine->m_mid, other.m_addr, &m_addr);
         MARGO_ASSERT(ret, margo_addr_dup);
-	} else {
-		m_addr = HG_ADDR_NULL;
-	}
-	return *this;
+    } else {
+        m_addr = HG_ADDR_NULL;
+    }
+    return *this;
 }
 
 endpoint& endpoint::operator=(endpoint&& other) {
-	if(&other == this) return *this;
-	if(m_addr != HG_ADDR_NULL) {
+    if(&other == this) return *this;
+    if(m_addr != HG_ADDR_NULL) {
         hg_return_t ret = margo_addr_free(m_engine->m_mid, m_addr);
         MARGO_ASSERT(ret, margo_addr_free);
-	}
+    }
     m_engine = other.m_engine;
-	m_addr = other.m_addr;
-	other.m_addr = HG_ADDR_NULL;
-	return *this;
+    m_addr = other.m_addr;
+    other.m_addr = HG_ADDR_NULL;
+    return *this;
 }
 
 endpoint::~endpoint() {
-	if(m_addr != HG_ADDR_NULL) {
+    if(m_addr != HG_ADDR_NULL) {
         hg_return_t ret = margo_addr_free(m_engine->m_mid, m_addr);
         MARGO_ASSERT_TERMINATE(ret, margo_addr_free, -1);
-	}
+    }
 }
 
 endpoint::operator std::string() const {
     // TODO throw an exception if one of the following calls fail
-	if(m_addr == HG_ADDR_NULL) return std::string();
+    if(m_addr == HG_ADDR_NULL) return std::string();
 
-	hg_size_t size;
+    hg_size_t size;
     hg_return_t ret = margo_addr_to_string(m_engine->m_mid, NULL, &size, m_addr);
     MARGO_ASSERT(ret, margo_addr_to_string);
 
-	std::vector<char> result(size);
+    std::vector<char> result(size);
 
     ret = margo_addr_to_string(m_engine->m_mid, &result[0], &size, m_addr);
     MARGO_ASSERT(ret, margo_addr_to_string);
-	return std::string(result.data());
+    return std::string(result.data());
 }
 
 hg_addr_t endpoint::get_addr(bool copy) const {

@@ -38,7 +38,7 @@ private:
 
 public:
 
-	provider(engine& e, uint16_t provider_id)
+    provider(engine& e, uint16_t provider_id)
     : m_engine(e), m_provider_id(provider_id) {}
 
     virtual ~provider() {}
@@ -46,22 +46,22 @@ public:
     /**
      * @brief Copy-constructor is deleted.
      */
-	provider(const provider& other)            = delete;
+    provider(const provider& other)            = delete;
 
     /**
      * @brief Move-constructor is deleted.
      */
-	provider(provider&& other)                 = delete;
+    provider(provider&& other)                 = delete;
     
     /**
      * @brief Move-assignment operator is deleted.
      */
-	provider& operator=(provider&& other)      = delete;
+    provider& operator=(provider&& other)      = delete;
 
     /**
      * @brief Copy-assignment operator is deleted.
      */
-	provider& operator=(const provider& other) = delete;
+    provider& operator=(const provider& other) = delete;
 
     protected:
     /**

@@ -43,9 +43,9 @@ class future_exception : public exception {
  */
 template<typename T>
 class future {
-	
+
     uint32_t                                    m_num_compartments;
-	ABT_future                                  m_future;
+    ABT_future                                  m_future;
 
     static void when_ready(void** arg) {
         auto f = static_cast<std::function<void(const std::vector<T*>&)>*>(arg[0]);
@@ -56,7 +56,7 @@ class future {
         delete f;
     }
 
-	public:
+    public:
 
     /**
      * @brief Type of the underlying native handle.

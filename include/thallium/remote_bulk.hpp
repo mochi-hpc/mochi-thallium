@@ -36,8 +36,8 @@ private:
      * @param b bulk_segment that created the remote_bulk object.
      * @param ep endpoint on which the bulk_segment is.
      */
-	remote_bulk(bulk::bulk_segment b, endpoint ep)
-	: m_segment(std::move(b)), m_endpoint(std::move(ep)) {}
+    remote_bulk(bulk::bulk_segment b, endpoint ep)
+    : m_segment(std::move(b)), m_endpoint(std::move(ep)) {}
 
 public:
 

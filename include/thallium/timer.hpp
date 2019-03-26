@@ -40,10 +40,10 @@ class timer_exception : public exception {
  * @brief Wrapper for Argobots' ABT_timer.
  */
 class timer {
-	
-	ABT_timer m_timer;
 
-	public:
+    ABT_timer m_timer;
+
+    public:
 
     /**
      * @brief Native handle type.

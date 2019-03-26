@@ -32,12 +32,12 @@ class endpoint;
  */
 class callable_remote_procedure {
 
-	friend class remote_procedure;
+    friend class remote_procedure;
     friend class async_response;
 
 private:
     engine*     m_engine;
-	hg_handle_t m_handle;
+    hg_handle_t m_handle;
     bool        m_ignore_response;
     uint16_t    m_provider_id;
 
@@ -50,7 +50,7 @@ private:
      * @param ep endpoint on which to call the RPC.
      * @param ignore_resp whether the response should be ignored.
      */
-	callable_remote_procedure(engine& e, hg_id_t id, const endpoint& ep, 
+    callable_remote_procedure(engine& e, hg_id_t id, const endpoint& ep, 
             bool ignore_resp, uint16_t provider_id=0);
 
     /**
@@ -73,7 +73,7 @@ private:
         ret = margo_free_output(m_handle, &output); // won't do anything on a buffer type
         MARGO_ASSERT(ret, margo_free_output);
         return packed_response(std::move(output), *m_engine);
-	}
+     }
 
     /**
      * @brief Sends the RPC to the endpoint (calls margo_iforward), passing a buffer
@@ -97,63 +97,63 @@ public:
     /**
      * @brief Copy-constructor.
      */
-	callable_remote_procedure(const callable_remote_procedure& other) {
+    callable_remote_procedure(const callable_remote_procedure& other) {
         hg_return_t ret;
-		m_handle = other.m_handle;
-		if(m_handle != HG_HANDLE_NULL) {
+        m_handle = other.m_handle;
+        if(m_handle != HG_HANDLE_NULL) {
             ret = margo_ref_incr(m_handle);
             MARGO_ASSERT(ret, margo_ref_incr);
-		}
-	}
+        }
+    }
 
     /**
      * @brief Move-constructor.
      */
-	callable_remote_procedure(callable_remote_procedure&& other) {
-		m_handle = other.m_handle;
-		other.m_handle = HG_HANDLE_NULL;
-	}
+    callable_remote_procedure(callable_remote_procedure&& other) {
+        m_handle = other.m_handle;
+        other.m_handle = HG_HANDLE_NULL;
+    }
 
     /**
      * @brief Copy-assignment operator.
      */
-	callable_remote_procedure& operator=(const callable_remote_procedure& other) {
+    callable_remote_procedure& operator=(const callable_remote_procedure& other) {
         hg_return_t ret;
-		if(&other == this) return *this;
-		if(m_handle != HG_HANDLE_NULL) {
+        if(&other == this) return *this;
+        if(m_handle != HG_HANDLE_NULL) {
             ret = margo_destroy(m_handle);
             MARGO_ASSERT(ret, margo_destroy);
-		}
-		m_handle = other.m_handle;
-		ret = margo_ref_incr(m_handle);
+        }
+        m_handle = other.m_handle;
+        ret = margo_ref_incr(m_handle);
         MARGO_ASSERT(ret, margo_ref_incr);
-		return *this;
-	}
+        return *this;
+    }
 
     
     /**
      * @brief Move-assignment operator.
      */
-	callable_remote_procedure& operator=(callable_remote_procedure&& other) {
-		if(&other == this) return *this;
-		if(m_handle != HG_HANDLE_NULL) {
-			hg_return_t ret = margo_destroy(m_handle);
+    callable_remote_procedure& operator=(callable_remote_procedure&& other) {
+        if(&other == this) return *this;
+        if(m_handle != HG_HANDLE_NULL) {
+            hg_return_t ret = margo_destroy(m_handle);
             MARGO_ASSERT(ret, margo_destroy);
-		}
-		m_handle = other.m_handle;
-		other.m_handle = HG_HANDLE_NULL;
-		return *this;
-	}
+        }
+        m_handle = other.m_handle;
+        other.m_handle = HG_HANDLE_NULL;
+        return *this;
+    }
 
     /**
      * @brief Destructor.
      */
-	~callable_remote_procedure()  {
-		if(m_handle != HG_HANDLE_NULL) {
+    ~callable_remote_procedure()  {
+        if(m_handle != HG_HANDLE_NULL) {
             hg_return_t ret = margo_destroy(m_handle);
             MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
-		}
-	}
+        }
+    }
 
     /**
      * @brief Operator to call the RPC. Will serialize the arguments
@@ -164,13 +164,13 @@ public:
      *
      * @return a packed_response object containing the returned value.
      */
-	template<typename ... T>
-	packed_response operator()(T&& ... t) const {
-		buffer b;
+    template<typename ... T>
+    packed_response operator()(T&& ... t) const {
+        buffer b;
         buffer_output_archive arch(b, *m_engine);
         serialize_many(arch, std::forward<T>(t)...);
-		return forward(b);
-	}
+        return forward(b);
+    }
 
     /**
      * @brief Operator to call the RPC without any argument.

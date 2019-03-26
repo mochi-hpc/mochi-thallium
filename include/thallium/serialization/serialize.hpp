@@ -43,7 +43,7 @@ struct is_output_archive : public std::is_base_of<output_archive,T> {};
  */
 template <typename A, typename T, typename = void_t<>>
 struct has_serialize_method {
-	constexpr static bool value = false;
+    constexpr static bool value = false;
 };
 
 /**
@@ -52,17 +52,17 @@ struct has_serialize_method {
  */
 template <typename A, typename T>
 struct has_serialize_method<A, T, 
-		void_t<decltype(std::declval<T&>().serialize(std::declval<A&>()))>> {
-	constexpr static bool value = true;
+    void_t<decltype(std::declval<T&>().serialize(std::declval<A&>()))>> {
+        constexpr static bool value = true;
 };
-	
+
 /**
  * Compile-time check for a load method in a type T, and
  * appropriate for an archive of type A.
  */
 template <typename A, typename T, typename = void_t<>>
 struct has_load_method {
-	constexpr static bool value = false;
+    constexpr static bool value = false;
 };
 
 /**
@@ -71,8 +71,8 @@ struct has_load_method {
  */
 template <typename A, typename T>
 struct has_load_method<A, T, 
-		void_t<decltype(std::declval<T&>().load(std::declval<A&>()))>> {
-	constexpr static bool value = true;
+    void_t<decltype(std::declval<T&>().load(std::declval<A&>()))>> {
+        constexpr static bool value = true;
 };
 
 /**
@@ -81,7 +81,7 @@ struct has_load_method<A, T,
  */
 template <typename A, typename T, typename = void_t<>>
 struct has_save_method {
-	constexpr static bool value = false;
+    constexpr static bool value = false;
 };
 
 /**
@@ -90,8 +90,8 @@ struct has_save_method {
  */
 template <typename A, typename T>
 struct has_save_method<A, T, 
-		void_t<decltype(std::declval<T&>().save(std::declval<A&>()))>> {
-	constexpr static bool value = true;
+    void_t<decltype(std::declval<T&>().save(std::declval<A&>()))>> {
+        constexpr static bool value = true;
 };
 
 /**
@@ -103,17 +103,17 @@ struct serializer;
 
 template<class A, typename T>
 struct serializer<A,T,true> {
-	static void apply(A& ar, T&& t) {
-		t.serialize(ar);
-	}
+    static void apply(A& ar, T&& t) {
+        t.serialize(ar);
+    }
 };
 
 template<class A, typename T>
 struct serializer<A,T,false> {
-	static void apply(A& ar, T&& t) {
-		static_assert(has_serialize_method<A,T>::value, 
-			"Undefined \"serialize\" member function");
-	}
+    static void apply(A& ar, T&& t) {
+        static_assert(has_serialize_method<A,T>::value, 
+                "Undefined \"serialize\" member function");
+    }
 };
 
 /**
@@ -121,7 +121,7 @@ struct serializer<A,T,false> {
  */
 template<class A, typename T>
 void serialize(A& ar, T& t) {
-	serializer<A,T,has_serialize_method<A,T>::value>::apply(ar,std::forward<T>(t));
+    serializer<A,T,has_serialize_method<A,T>::value>::apply(ar,std::forward<T>(t));
 }
 
 /**
@@ -133,16 +133,16 @@ struct saver;
 
 template<class A, typename T> 
 struct saver<A,T,true> {
-	static void apply(A& ar, T& t) {
-		t.save(ar);
-	}
+    static void apply(A& ar, T& t) {
+        t.save(ar);
+    }
 };
 
 template<class A, typename T>
 struct saver<A,T,false> {
-	static void apply(A& ar, T& t) {
-		serialize(ar,t);
-	}
+    static void apply(A& ar, T& t) {
+        serialize(ar,t);
+    }
 };
 
 /**
@@ -150,7 +150,7 @@ struct saver<A,T,false> {
  */
 template<class A, typename T>
 inline void save(A& ar, T& t) {
-	saver<A,T,has_save_method<A,T>::value>::apply(ar,t);
+    saver<A,T,has_save_method<A,T>::value>::apply(ar,t);
 }
 
 template<class A, typename T>
@@ -167,16 +167,16 @@ struct loader;
 
 template<class A, typename T>
 struct loader<A,T,true> {
-	static void apply(A& ar, T& t) {
-		t.load(ar);
-	}
+    static void apply(A& ar, T& t) {
+        t.load(ar);
+    }
 };
 
 template<class A, typename T>
 struct loader<A,T,false> {
-	static void apply(A& ar, T& t) {
-		serialize(ar,t);
-	}
+    static void apply(A& ar, T& t) {
+        serialize(ar,t);
+    }
 };
 
 /**
@@ -184,7 +184,7 @@ struct loader<A,T,false> {
  */
 template<class A, typename T>
 inline void load(A& ar, T& t) {
-	loader<A,T,has_load_method<A,T>::value>::apply(ar,t);
+    loader<A,T,has_load_method<A,T>::value>::apply(ar,t);
 }
 
 /**
@@ -193,13 +193,13 @@ inline void load(A& ar, T& t) {
  */
 template<class A, typename T1, typename... Tn>
 void serialize_many(A& ar, T1&& t1, Tn&&... rest) {
-	ar & std::forward<T1>(t1);
-	serialize_many(ar, std::forward<Tn>(rest)...);
+    ar & std::forward<T1>(t1);
+    serialize_many(ar, std::forward<Tn>(rest)...);
 }
 
 template<class A, typename T>
 void serialize_many(A& ar, T&& t) {
-	ar & std::forward<T>(t);
+    ar & std::forward<T>(t);
 }
 
 }

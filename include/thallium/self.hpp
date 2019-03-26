@@ -41,7 +41,7 @@ class self_exception : public exception {
  */
 class self {
     
-	public:
+    public:
 
     self()  = delete;
     ~self() = delete;

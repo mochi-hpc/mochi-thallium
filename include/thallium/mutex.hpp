@@ -41,10 +41,10 @@ class mutex_exception : public exception {
  * but build around Argobot's mutex.
  */
 class mutex {
-	
-	ABT_mutex m_mutex;
 
-	public:
+    ABT_mutex m_mutex;
+
+    public:
 
     /**
      * @brief Type of the underlying native handle.
@@ -56,20 +56,20 @@ class mutex {
      *
      * @param recursive whether the mutex is recursive or not.
      */
-	explicit mutex(bool recursive = false) {
+    explicit mutex(bool recursive = false) {
         ABT_mutex_attr attr;
-		TL_MUTEX_ASSERT(ABT_mutex_attr_create(&attr));
-		if(recursive) {
+        TL_MUTEX_ASSERT(ABT_mutex_attr_create(&attr));
+        if(recursive) {
             TL_MUTEX_ASSERT(ABT_mutex_attr_set_recursive(attr, ABT_TRUE));
         }
-		TL_MUTEX_ASSERT(ABT_mutex_create_with_attr(attr, &m_mutex));
+        TL_MUTEX_ASSERT(ABT_mutex_create_with_attr(attr, &m_mutex));
         TL_MUTEX_ASSERT(ABT_mutex_attr_free(&attr));
-	}
+    }
 
     /**
      * @brief Copy constructor is deleted.
      */
-	mutex(const mutex& other) = delete;
+    mutex(const mutex& other) = delete;
 
     /**
      * @brief Copy assignment operator is deleted.
@@ -91,46 +91,46 @@ class mutex {
     /**
      * @brief Move constructor.
      */
-	mutex(mutex&& other) {
-		m_mutex = other.m_mutex;
-		other.m_mutex = ABT_MUTEX_NULL;
-	}
+    mutex(mutex&& other) {
+        m_mutex = other.m_mutex;
+        other.m_mutex = ABT_MUTEX_NULL;
+    }
 
     /**
      * @brief Destructor.
      */
-	virtual ~mutex() noexcept {
-		if(m_mutex != ABT_MUTEX_NULL)
-			ABT_mutex_free(&m_mutex);
-	}
+    virtual ~mutex() noexcept {
+        if(m_mutex != ABT_MUTEX_NULL)
+            ABT_mutex_free(&m_mutex);
+    }
 
     /**
      * @brief Lock the mutex.
      */
-	void lock() {
+    void lock() {
         TL_MUTEX_ASSERT(ABT_mutex_lock(m_mutex));
-	}
+    }
 
     /**
      * @brief Lock the mutex in low priority.
      */
-	void lock_low() {
-		TL_MUTEX_ASSERT(ABT_mutex_lock_low(m_mutex));
-	}
+    void lock_low() {
+        TL_MUTEX_ASSERT(ABT_mutex_lock_low(m_mutex));
+    }
 
     /**
      * @brief Lock the mutex without context switch.
      */
-	void spin_lock() {
-		TL_MUTEX_ASSERT(ABT_mutex_spinlock(m_mutex));
-	}
+    void spin_lock() {
+        TL_MUTEX_ASSERT(ABT_mutex_spinlock(m_mutex));
+    }
 
     /**
      * @brief Try locking the mutex without blocking.
      *
      * @return true if it managed to lock the mutex.
      */
-	bool try_lock() {
+    bool try_lock() {
         int ret = ABT_mutex_trylock(m_mutex);
         if(ABT_SUCCESS == ret) {
             return true;
@@ -140,21 +140,21 @@ class mutex {
            TL_MUTEX_EXCEPTION(ABT_mutex_trylock(m_mutex), ret); 
         }
         return false;
-	}
+    }
 
     /**
      * @brief Unlock the mutex.
      */
-	void unlock() {
-		TL_MUTEX_ASSERT(ABT_mutex_unlock(m_mutex));
-	}
+    void unlock() {
+        TL_MUTEX_ASSERT(ABT_mutex_unlock(m_mutex));
+    }
 
     /**
      * @brief Hand over the mutex within the ES.
      */
-	void unlock_se() {
-		TL_MUTEX_ASSERT(ABT_mutex_unlock_se(m_mutex));
-	}
+    void unlock_se() {
+        TL_MUTEX_ASSERT(ABT_mutex_unlock_se(m_mutex));
+    }
     
     /**
      * @brief Get the underlying native handle.

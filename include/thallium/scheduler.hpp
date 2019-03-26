@@ -106,7 +106,7 @@ class scheduler {
         }
     };
 
-	ABT_sched m_sched;
+    ABT_sched m_sched;
 
     protected:
 
@@ -123,7 +123,7 @@ class scheduler {
 //            ABT_sched_free(&m_sched);
     }
 
-	public:
+    public:
 
     /**
      * @brief Underlying native handle type.

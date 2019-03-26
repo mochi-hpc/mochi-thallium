@@ -172,7 +172,7 @@ class pool {
             }
     };
 
-	ABT_pool m_pool;
+    ABT_pool m_pool;
 
     friend class managed<pool>;
     friend class xstream;
