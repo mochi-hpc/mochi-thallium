@@ -10,6 +10,7 @@
 #include <memory>
 #include <functional>
 #include <abt.h>
+#include <thallium/anonymous.hpp>
 #include <thallium/task.hpp>
 #include <thallium/thread.hpp>
 #include <thallium/managed.hpp>
@@ -438,6 +439,12 @@ class pool {
         return task::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp));
     }
 
+    template<typename F>
+    void make_task(F&& f, const anonymous& a) {
+        auto fp = new std::function<void(void)>(std::forward<F>(f));
+        return task::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), a);
+    }
+
     /**
      * @brief Create a thread running the specified function and push it
      * into the pool.
@@ -451,6 +458,12 @@ class pool {
     managed<thread> make_thread(F&& f) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
         return thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp));
+    }
+
+    template<typename F>
+    void make_thread(F&& f, const anonymous& a) {
+        auto fp = new std::function<void(void)>(std::forward<F>(f));
+        return thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), a);
     }
 
     /**
@@ -467,6 +480,12 @@ class pool {
     managed<thread> make_thread(F&& f, const thread::attribute& attr) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
         return thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), attr);
+    }
+
+    template<typename F>
+    managed<thread> make_thread(F&& f, const thread::attribute& attr, const anonymous& a) {
+        auto fp = new std::function<void(void)>(std::forward<F>(f));
+        return thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), attr, a);
     }
 };
 

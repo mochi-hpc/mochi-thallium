@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <abt.h>
+#include <thallium/anonymous.hpp>
 #include <thallium/managed.hpp>
 #include <thallium/exception.hpp>
 #include <thallium/abt_errors.hpp>
@@ -75,10 +76,18 @@ class task {
         return managed<task>(t);
     }
 
+    static void create_on_xstream(ABT_xstream es, void(*f)(void*), void* arg, const anonymous&) {
+        TL_TASK_ASSERT(ABT_task_create_on_xstream(es, f, arg, NULL));
+    }
+
     static managed<task> create_on_pool(ABT_pool p, void(*f)(void*), void* arg) {
         ABT_task t;
         TL_TASK_ASSERT(ABT_task_create(p, f, arg, &t));
         return managed<task>(t);
+    }
+    
+    static void create_on_pool(ABT_pool p, void(*f)(void*), void* arg, const anonymous&) {
+        TL_TASK_ASSERT(ABT_task_create(p, f, arg, NULL));
     } 
 
     void destroy() {

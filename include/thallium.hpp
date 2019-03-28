@@ -3,6 +3,7 @@
 
 #include <margo.h>
 #include <thallium/abt.hpp>
+#include <thallium/anonymous.hpp>
 #include <thallium/bulk_mode.hpp>
 #include <thallium/bulk.hpp>
 #include <thallium/engine.hpp>

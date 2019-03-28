@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <abt.h>
+#include <thallium/anonymous.hpp>
 #include <thallium/managed.hpp>
 #include <thallium/exception.hpp>
 #include <thallium/abt_errors.hpp>
@@ -202,10 +203,18 @@ class thread {
         return managed<thread>(t);
     }
 
+    static void create_on_xstream(ABT_xstream es, void(*f)(void*), void* arg, const anonymous&) {
+        TL_THREAD_ASSERT(ABT_thread_create_on_xstream(es, f, arg, ABT_THREAD_ATTR_NULL, NULL));
+    }
+
     static managed<thread> create_on_pool(ABT_pool p, void(*f)(void*), void* arg) {
         ABT_thread t;
         TL_THREAD_ASSERT(ABT_thread_create(p, f, arg, ABT_THREAD_ATTR_NULL, &t));
         return managed<thread>(t);
+    }
+
+    static void create_on_pool(ABT_pool p, void(*f)(void*), void* arg, const anonymous&) {
+        TL_THREAD_ASSERT(ABT_thread_create(p, f, arg, ABT_THREAD_ATTR_NULL, NULL));
     }
 
     static managed<thread> create_on_xstream(ABT_xstream es, void(*f)(void*), void* arg, const attribute& attr) {
@@ -214,10 +223,20 @@ class thread {
         return managed<thread>(t);
     }
 
+    static void create_on_xstream(ABT_xstream es, void(*f)(void*), void* arg, 
+            const attribute& attr, const anonymous&) {
+        TL_THREAD_ASSERT(ABT_thread_create_on_xstream(es, f, arg, attr.native_handle(), NULL));
+    }
+
     static managed<thread> create_on_pool(ABT_pool p, void(*f)(void*), void* arg, const attribute& attr) {
         ABT_thread t;
         TL_THREAD_ASSERT(ABT_thread_create(p, f, arg, attr.native_handle(), &t));
         return managed<thread>(t);
+    }
+
+    static void create_on_pool(ABT_pool p, void(*f)(void*), void* arg, 
+            const attribute& attr, const anonymous&) {
+        TL_THREAD_ASSERT(ABT_thread_create(p, f, arg, attr.native_handle(), NULL));
     }
 
     void destroy() {
