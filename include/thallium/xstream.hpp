@@ -448,9 +448,9 @@ class xstream {
     }
 
     template<typename F>
-    managed<thread> make_thread(F&& f, const anonymous& a) {
+    void make_thread(F&& f, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), a);
+        thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), a);
     }
 
     /**
@@ -470,9 +470,9 @@ class xstream {
     }
 
     template<typename F>
-    managed<thread> make_thread(F&& f, const thread::attribute& attr, const anonymous& a) {
+    void make_thread(F&& f, const thread::attribute& attr, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), attr, a);
+        thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), attr, a);
     }
 
     /**
@@ -491,9 +491,9 @@ class xstream {
     }
 
     template<typename F>
-    managed<task> make_task(F&& f, const anonymous& a) {
+    void make_task(F&& f, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return task::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), a);
+        task::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), a);
     }
 
     /**
