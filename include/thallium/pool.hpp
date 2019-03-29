@@ -442,7 +442,7 @@ class pool {
     template<typename F>
     void make_task(F&& f, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return task::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), a);
+        task::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), a);
     }
 
     /**
@@ -463,7 +463,7 @@ class pool {
     template<typename F>
     void make_thread(F&& f, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), a);
+        thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), a);
     }
 
     /**
@@ -483,9 +483,9 @@ class pool {
     }
 
     template<typename F>
-    managed<thread> make_thread(F&& f, const thread::attribute& attr, const anonymous& a) {
+    void make_thread(F&& f, const thread::attribute& attr, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), attr, a);
+         thread::create_on_pool(m_pool, forward_work_unit, static_cast<void*>(fp), attr, a);
     }
 };
 
