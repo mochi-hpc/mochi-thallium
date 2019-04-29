@@ -16,7 +16,7 @@ template<size_t N>
 struct tuple_serializer {
 
     template<class A, class... Types>
-    static void apply(A& ar, std::tuple<Types...>& t) {
+    static inline void apply(A& ar, std::tuple<Types...>& t) {
         tuple_serializer<N-1>::apply(ar,t);
         ar & std::get<N-1>(t);
     }
@@ -26,18 +26,18 @@ template<>
 struct tuple_serializer<0> {
 
     template<class A, class... Types>
-    static void apply(A& ar, std::tuple<Types...>& t) {}
+    static inline void apply(A& ar, std::tuple<Types...>& t) {}
 };
 
 }
 
 template<class A, class... Types>
-void save(A& ar, std::tuple<Types...>& t) {
+inline void save(A& ar, std::tuple<Types...>& t) {
     detail::tuple_serializer<sizeof...(Types)>::apply(ar,t);
 }
 
 template<class A, typename... Types>
-void load(A& ar, std::tuple<Types...>& t) {
+inline void load(A& ar, std::tuple<Types...>& t) {
     detail::tuple_serializer<sizeof...(Types)>::apply(ar,t);
 }
 

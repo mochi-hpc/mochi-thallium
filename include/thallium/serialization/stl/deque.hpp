@@ -11,7 +11,7 @@
 namespace thallium {
 
 template<class A, typename T, typename Alloc>
-void save(A& ar, std::deque<T,Alloc>& l) {
+inline void save(A& ar, std::deque<T,Alloc>& l) {
     size_t size = l.size();
     ar.write(&size);
     for(auto& item : l) {
@@ -20,7 +20,7 @@ void save(A& ar, std::deque<T,Alloc>& l) {
 }
 
 template<class A, typename T, typename Alloc>
-void load(A& ar, std::deque<T,Alloc>& l) {
+inline void load(A& ar, std::deque<T,Alloc>& l) {
     size_t size;
     l.clear();
     ar.read(&size);

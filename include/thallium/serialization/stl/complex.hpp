@@ -11,13 +11,13 @@
 namespace thallium {
 
 template<class A, class T>
-void save(A& ar, std::complex<T>& t) {
+inline void save(A& ar, std::complex<T>& t) {
     ar & t.real();
     ar & t.imag();
 }
 
 template<class A, typename T>
-void load(A& ar, std::complex<T>& t) {
+inline void load(A& ar, std::complex<T>& t) {
     ar & t.real();
     ar & t.imag();
 }

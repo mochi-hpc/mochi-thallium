@@ -14,7 +14,7 @@ namespace thallium {
 namespace detail {
 
 template<class A, typename T, class Alloc, bool b>
-void save_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::integral_constant<bool, b>&) {
+inline void save_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::integral_constant<bool, b>&) {
     size_t size = v.size();
     ar.write(&size);
     for(auto& elem : v) {
@@ -23,14 +23,14 @@ void save_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::integral_consta
 }
 
 template<class A, typename T, class Alloc>
-void save_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::true_type&) {
+inline void save_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::true_type&) {
     size_t size = v.size();
     ar.write(&size);
     ar.write(&v[0],size);
 }
 
 template<class A, typename T, class Alloc, bool b>
-void load_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::integral_constant<bool, b>&) {
+inline void load_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::integral_constant<bool, b>&) {
     size_t size;
     ar.read(&size);
     v.clear();
@@ -41,7 +41,7 @@ void load_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::integral_consta
 }
 
 template<class A, typename T, class Alloc>
-void load_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::true_type&) {
+inline void load_vector_impl(A& ar, std::vector<T,Alloc>& v, const std::true_type&) {
     size_t size;
     ar.read(&size);
     v.clear();

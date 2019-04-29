@@ -103,14 +103,14 @@ struct serializer;
 
 template<class A, typename T>
 struct serializer<A,T,true> {
-    static void apply(A& ar, T&& t) {
+    static inline void apply(A& ar, T&& t) {
         t.serialize(ar);
     }
 };
 
 template<class A, typename T>
 struct serializer<A,T,false> {
-    static void apply(A& ar, T&& t) {
+    static inline void apply(A& ar, T&& t) {
         static_assert(has_serialize_method<A,T>::value, 
                 "Undefined \"serialize\" member function");
     }
@@ -120,7 +120,7 @@ struct serializer<A,T,false> {
  * Generic serialize method calling apply on a serializer.
  */
 template<class A, typename T>
-void serialize(A& ar, T& t) {
+inline void serialize(A& ar, T& t) {
     serializer<A,T,has_serialize_method<A,T>::value>::apply(ar,std::forward<T>(t));
 }
 
@@ -133,14 +133,14 @@ struct saver;
 
 template<class A, typename T> 
 struct saver<A,T,true> {
-    static void apply(A& ar, T& t) {
+    static inline void apply(A& ar, T& t) {
         t.save(ar);
     }
 };
 
 template<class A, typename T>
 struct saver<A,T,false> {
-    static void apply(A& ar, T& t) {
+    static inline void apply(A& ar, T& t) {
         serialize(ar,t);
     }
 };
@@ -167,14 +167,14 @@ struct loader;
 
 template<class A, typename T>
 struct loader<A,T,true> {
-    static void apply(A& ar, T& t) {
+    static inline void apply(A& ar, T& t) {
         t.load(ar);
     }
 };
 
 template<class A, typename T>
 struct loader<A,T,false> {
-    static void apply(A& ar, T& t) {
+    static inline void apply(A& ar, T& t) {
         serialize(ar,t);
     }
 };
@@ -192,13 +192,13 @@ inline void load(A& ar, T& t) {
  * objects passed as arguments.
  */
 template<class A, typename T1, typename... Tn>
-void serialize_many(A& ar, T1&& t1, Tn&&... rest) {
+inline void serialize_many(A& ar, T1&& t1, Tn&&... rest) {
     ar & std::forward<T1>(t1);
     serialize_many(ar, std::forward<Tn>(rest)...);
 }
 
 template<class A, typename T>
-void serialize_many(A& ar, T&& t) {
+inline void serialize_many(A& ar, T&& t) {
     ar & std::forward<T>(t);
 }
 

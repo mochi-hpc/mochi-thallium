@@ -12,7 +12,7 @@
 namespace thallium {
 
 template<class A, typename V, class Hash, class Pred, class Alloc>
-void save(A& ar, std::unordered_set<V,Hash,Pred,Alloc>& s) {
+inline void save(A& ar, std::unordered_set<V,Hash,Pred,Alloc>& s) {
     size_t size = s.size();
     ar.write(&size);
     for(auto& elem : s) {
@@ -21,7 +21,7 @@ void save(A& ar, std::unordered_set<V,Hash,Pred,Alloc>& s) {
 }
 
 template<class A, typename V, class Hash, class Pred, class Alloc>
-void load(A& ar, std::unordered_set<V,Hash,Pred,Alloc>& s) {
+inline void load(A& ar, std::unordered_set<V,Hash,Pred,Alloc>& s) {
     size_t size;
     ar.read(&size);
     s.clear();

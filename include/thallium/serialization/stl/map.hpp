@@ -6,7 +6,7 @@
 namespace thallium {
 
 template<class A, typename K, typename V, class Compare, class Alloc>
-void save(A& ar, std::map<K,V,Compare,Alloc>& m) {
+inline void save(A& ar, std::map<K,V,Compare,Alloc>& m) {
     size_t size = m.size();
     ar.write(&size);
     for(auto& elem : m) {
@@ -16,7 +16,7 @@ void save(A& ar, std::map<K,V,Compare,Alloc>& m) {
 }
 
 template<class A, typename K, typename V, class Compare, class Alloc>
-void load(A& ar, std::map<K,V,Compare,Alloc>& m) {
+inline void load(A& ar, std::map<K,V,Compare,Alloc>& m) {
     size_t size;
     ar.read(&size);
     m.clear();
