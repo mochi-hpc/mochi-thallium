@@ -206,6 +206,8 @@ public:
         m_mid = mid;
         m_is_server = (mode == THALLIUM_SERVER_MODE);
         m_owns_mid = false;
+        margo_push_finalize_callback(m_mid,
+                &engine::on_finalize_cb, static_cast<void*>(this));
     }
 
     /**
@@ -217,6 +219,8 @@ public:
         m_mid = mid;
         m_owns_mid = false;
         m_is_server = margo_is_listening(mid);
+        margo_push_finalize_callback(m_mid,
+                &engine::on_finalize_cb, static_cast<void*>(this));
     }
 
     /**
