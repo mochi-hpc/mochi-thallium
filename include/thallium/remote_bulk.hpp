@@ -42,6 +42,26 @@ private:
 public:
 
     /**
+     * @brief Default copy constructor.
+     */
+    remote_bulk(const remote_bulk&)            = default;
+
+    /**
+     * @brief Default move constructor.
+     */
+    remote_bulk(remote_bulk&&)                 = default;
+
+    /**
+     * @brief Default copy-assignment operator.
+     */
+    remote_bulk& operator=(const remote_bulk&) = default;
+
+    /**
+     * @brief Default move-assignment operator.
+     */
+    remote_bulk& operator=(remote_bulk&&)      = default;
+
+    /**
      * @brief Performs a pull operation from the remote_bulk
      * (left operand) to the destination bulk (right operand).
      * The destination must be local. If the sizes don't match,
@@ -64,6 +84,26 @@ public:
      * @return the size of data transfered.
      */
     std::size_t operator<<(const bulk::bulk_segment& src) const;
+
+    /**
+     * @brief Creates a bulk_segment object by selecting a given portion
+     * of the bulk object given an offset and a size.
+     *
+     * @param offset Offset at which the segment starts.
+     * @param size Size of the segment.
+     *
+     * @return a bulk_segment object.
+     */
+    remote_bulk select(std::size_t offset, std::size_t size) const {
+        return remote_bulk(m_segment.select(offset, size), m_endpoint);
+    }
+
+    /**
+     * @see remote_bulk::select
+     */
+    inline remote_bulk operator()(std::size_t offset, std::size_t size) const {
+        return select(offset, size);
+    }
 };
 
 }

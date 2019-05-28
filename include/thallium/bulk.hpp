@@ -92,6 +92,16 @@ private:
         bulk_segment(bulk_segment&&)      = default;
 
         /**
+         * @brief Copy assignment operator is default.
+         */
+        bulk_segment& operator=(const bulk_segment&) = default;
+
+        /**
+         * @brief Move assignment operator is default.
+         */
+        bulk_segment& operator=(bulk_segment&&) = default;
+
+        /**
          * @brief Destructor is default.
          */
         ~bulk_segment()                   = default;
@@ -127,6 +137,27 @@ private:
          * @return the size of data transfered.
          */
         std::size_t operator<<(const remote_bulk& b) const;
+
+        /**
+         * @brief Selects a subsegment from this segment. If the size is too large,
+         * the maximum possible size is chosen.
+         *
+         * @param offset Offset of the subsegment relative to the current segment.
+         * @param size Size of the subsegment.
+         *
+         * @return a new bulk_segment object.
+         */
+        bulk_segment select(std::size_t offset, std::size_t size) const {
+            std::size_t effective_size = offset+size > m_size ? m_size - offset : size;
+            return bulk_segment(m_bulk, m_offset+offset, effective_size);
+        }
+
+        /**
+         * @see bulk_segment::select.
+         */
+        inline bulk_segment operator()(std::size_t offset, std::size_t size) const {
+            return select(offset, size);
+        }
     };
 
 public:
