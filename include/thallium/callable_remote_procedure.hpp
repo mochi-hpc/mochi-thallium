@@ -9,8 +9,10 @@
 #include <tuple>
 #include <cstdint>
 #include <utility>
+#include <chrono>
 #include <margo.h>
 #include <thallium/buffer.hpp>
+#include <thallium/timeout.hpp>
 #include <thallium/packed_response.hpp>
 #include <thallium/async_response.hpp>
 #include <thallium/serialization/serialize.hpp>
@@ -58,13 +60,26 @@ private:
      * in which the arguments have been serialized.
      *
      * @param buf Buffer containing a serialized version of the arguments.
+     * @param timeout_ms Timeout in milliseconds. After this timeout, a timeout exception is thrown.
      *
      * @return a packed_response object from which the returned value can be deserialized.
      */
-     packed_response forward(const buffer& buf) const {
+     packed_response forward(const buffer& buf, double timeout_ms=-1.0) const {
         hg_return_t ret;
-        ret = margo_provider_forward(m_provider_id, 
-                m_handle, const_cast<void*>(static_cast<const void*>(&buf)));
+        if(timeout_ms > 0.0) {
+            ret = margo_provider_forward_timed(
+                    m_provider_id,
+                    m_handle,
+                    const_cast<void*>(static_cast<const void*>(&buf)),
+                    timeout_ms);
+            if(ret == HG_TIMEOUT)
+                throw timeout();
+        } else {
+            ret = margo_provider_forward(
+                    m_provider_id,
+                    m_handle,
+                    const_cast<void*>(static_cast<const void*>(&buf)));
+        }
         MARGO_ASSERT(ret, margo_forward);
         buffer output;
         if(m_ignore_response) return packed_response(std::move(output), *m_engine);
@@ -80,14 +95,30 @@ private:
      * in which the arguments have been serialized. The RPC is sent in a non-blocking manner.
      *
      * @param buf Buffer containing a serialized version of the arguments.
+     * @param timeout_ms Optional timeout after which to throw a timeout exception.
      *
      * @return an async_response object that can be waited on.
+     * 
+     * Note: If the request times out, the timeout exception will occure when calling wait()
+     * on the async_response.
      */
-    async_response iforward(const buffer& buf) {
+    async_response iforward(const buffer& buf, double timeout_ms=-1.0) const {
         hg_return_t ret;
         margo_request req;
-        ret = margo_provider_iforward(m_provider_id, 
-                m_handle, const_cast<void*>(static_cast<const void*>(&buf)), &req);
+        if(timeout_ms > 0.0) {
+            ret = margo_provider_iforward_timed(
+                    m_provider_id,
+                    m_handle,
+                    const_cast<void*>(static_cast<const void*>(&buf)),
+                    timeout_ms,
+                    &req);
+        } else {
+            ret = margo_provider_iforward(
+                    m_provider_id,
+                    m_handle,
+                    const_cast<void*>(static_cast<const void*>(&buf)),
+                    &req);
+        }
         MARGO_ASSERT(ret, margo_iforward);
         return async_response(req, *m_engine, m_handle, m_ignore_response);
     }
@@ -165,11 +196,35 @@ public:
      * @return a packed_response object containing the returned value.
      */
     template<typename ... T>
-    packed_response operator()(T&& ... t) const {
+    packed_response operator()(T&& ... args) const {
         buffer b;
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(t)...);
+        serialize_many(arch, std::forward<T>(args)...);
         return forward(b);
+    }
+
+    /**
+     * @brief Same as operator() but takes a first parameter representing
+     * a timeout (std::duration object). If no response is received from
+     * the server before this timeout, the request is cancelled and tl::timeout
+     * is thrown.
+     *
+     * @tparam R
+     * @tparam P
+     * @tparam T
+     * @param t Timeout.
+     * @param args Parameters of the RPC.
+     *
+     * @return a packed_response object containing the returned value.
+     */
+    template<typename R, typename P, typename ... T>
+    packed_response timed(const std::chrono::duration<R,P>& t, T&& ... args) const {
+        buffer b;
+        buffer_output_archive arch(b, *m_engine);
+        serialize_many(arch, std::forward<T>(args)...);
+        std::chrono::duration<double, std::milli> fp_ms = t;
+        double timeout_ms = fp_ms.count();
+        return forward(b, timeout_ms);
     }
 
     /**
@@ -180,6 +235,23 @@ public:
     packed_response operator()() const {
         buffer b;
         return forward(b);
+    }
+
+    /**
+     * @brief Same as operator() with only a timeout value.
+     *
+     * @tparam R
+     * @tparam P
+     * @param t Timeout.
+     *
+     * @return a packed_response object containing the returned value.
+     */
+    template<typename R, typename P>
+    packed_response timed(const std::chrono::duration<R,P>& t) const {
+        buffer b;
+        std::chrono::duration<double, std::milli> fp_ms = t;
+        double timeout_ms = fp_ms.count();
+        return forward(b, timeout_ms);
     }
 
     /**
@@ -200,6 +272,29 @@ public:
     }
 
     /**
+     * @brief Asynchronous RPC call with a timeout. If the operation times out,
+     * the wait() call on the returned async_response object will throw a tl::timeout
+     * exception.
+     *
+     * @tparam R
+     * @tparam P
+     * @tparam T
+     * @param t Timeout.
+     * @param args Parameters of the RPC.
+     *
+     * @return an async_response object that the caller can wait on.
+     */
+    template<typename R, typename P, typename ... T>
+    async_response timed_async(const std::chrono::duration<R,P>& t, T&& ... args) {
+        buffer b;
+        buffer_output_archive arch(b, *m_engine);
+        serialize_many(arch, std::forward<T>(args)...);
+        std::chrono::duration<double, std::milli> fp_ms = t;
+        double timeout_ms = fp_ms.count();
+        return iforward(b, timeout_ms);
+    }
+
+    /**
      * @brief Non-blocking call to the RPC without any argument.
      *
      * @return an async_response object that the caller can wait on.
@@ -207,6 +302,23 @@ public:
     async_response async() {
         buffer b;
         return iforward(b);
+    }
+
+    /**
+     * @brief Same as async() but with a specified timeout.
+     *
+     * @tparam R
+     * @tparam P
+     * @param t Timeout.
+     *
+     * @return an async_response object that the caller can wait on.
+     */
+    template<typename R, typename P>
+    async_response timed_async(const std::chrono::duration<R,P>& t) {
+        buffer b;
+        std::chrono::duration<double, std::milli> fp_ms = t;
+        double timeout_ms = fp_ms.count();
+        return iforward(b, timeout_ms);
     }
 };
 

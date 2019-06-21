@@ -6,6 +6,7 @@
 #include <thallium/anonymous.hpp>
 #include <thallium/bulk_mode.hpp>
 #include <thallium/bulk.hpp>
+#include <thallium/timeout.hpp>
 #include <thallium/engine.hpp>
 #include <thallium/endpoint.hpp>
 #include <thallium/remote_procedure.hpp>

@@ -24,11 +24,11 @@ class callable_remote_procedure;
  */
 class remote_procedure {
 
-	friend class engine;
+    friend class engine;
 
 private:
     engine*  m_engine;
-	hg_id_t  m_id;
+    hg_id_t  m_id;
     bool     m_ignore_response;
 
     /**
@@ -38,34 +38,34 @@ private:
      * @param e Engine object that created the remote_procedure.
      * @param id Mercury RPC id.
      */
-	remote_procedure(engine& e, hg_id_t id); 
+    remote_procedure(engine& e, hg_id_t id); 
 
 public:
 
     /**
      * @brief Copy-constructor is default.
      */
-	remote_procedure(const remote_procedure& other)            = default;
+    remote_procedure(const remote_procedure& other)            = default;
 
     /**
      * @brief Move-constructor is default.
      */
-	remote_procedure(remote_procedure&& other)                 = default;
+    remote_procedure(remote_procedure&& other)                 = default;
 
     /**
      * @brief Copy-assignment operator is default.
      */
-	remote_procedure& operator=(const remote_procedure& other) = default;
+    remote_procedure& operator=(const remote_procedure& other) = default;
 
     /**
      * @brief Move-assignment operator is default.
      */
-	remote_procedure& operator=(remote_procedure&& other)      = default;
+    remote_procedure& operator=(remote_procedure&& other)      = default;
 
     /**
      * @brief Destructor is default.
      */
-	~remote_procedure()                                        = default;
+    ~remote_procedure()                                        = default;
 
     /**
      * @brief Creates a callable_remote_procedure by associating the
@@ -75,7 +75,7 @@ public:
      *
      * @return a callable_remote_procedure.
      */
-	callable_remote_procedure on(const endpoint& ep) const;
+    callable_remote_procedure on(const endpoint& ep) const;
     
 
     /**
