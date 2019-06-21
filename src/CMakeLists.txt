@@ -30,8 +30,8 @@ set (thallium-pkg "share/cmake/thallium")
 # library version set here (e.g. for shared libs).
 #
 set (THALLIUM_VERSION_MAJOR 0)
-set (THALLIUM_VERSION_MINOR 3)
-set (THALLIUM_VERSION_PATCH 3)
+set (THALLIUM_VERSION_MINOR 4)
+set (THALLIUM_VERSION_PATCH 0)
 set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
 set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
 
