@@ -319,6 +319,19 @@ public:
     std::size_t operator<<(const remote_bulk& b) const;
 
     /**
+     * @brief Returns the underlying hg_bulk_t handle.
+     * If copy == false, the returned handle is a reference to the internal
+     * handle managed by this bulk object, it should not be destroyed by the
+     * user and its lifetime will not exceed that of the bulk object.
+     * If copy == true, the returned handle should be destroyed by the user.
+     *
+     * @param copy whether to make a copy or not.
+     *
+     * @return The underlying hg_bulk_t handle.
+     */
+    hg_bulk_t get_bulk(bool copy=false) const;
+
+    /**
      * @brief Function that serializes a bulk object into an archive.
      *
      * @tparam A Archive type.

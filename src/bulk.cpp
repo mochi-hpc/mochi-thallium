@@ -8,6 +8,12 @@
 
 namespace thallium {
 
+hg_bulk_t bulk::get_bulk(bool copy=false) const {
+    if(copy && m_bulk != HG_BULK_NULL)
+        margo_bulk_ref_incr(m_bulk);
+    return m_bulk;
+}
+
 bulk::bulk_segment bulk::select(std::size_t offset, std::size_t size) const {
     return bulk_segment(*this, offset, size);
 }
