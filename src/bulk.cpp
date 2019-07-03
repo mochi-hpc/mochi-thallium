@@ -8,7 +8,7 @@
 
 namespace thallium {
 
-hg_bulk_t bulk::get_bulk(bool copy=false) const {
+hg_bulk_t bulk::get_bulk(bool copy) const {
     if(copy && m_bulk != HG_BULK_NULL)
         margo_bulk_ref_incr(m_bulk);
     return m_bulk;
