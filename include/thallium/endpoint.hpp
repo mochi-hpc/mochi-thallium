@@ -84,7 +84,7 @@ public:
     /**
      * @brief Destructor.
      */
-    ~endpoint();
+    virtual ~endpoint();
 
     /**
      * @brief Creates a string representation of the endpoint's address.
