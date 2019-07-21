@@ -100,6 +100,14 @@ public:
         memcpy((void*)(m_buffer.data() + m_pos),(void*)t,s);
         m_pos += s;
     }
+
+    /**
+     * @brief Equivalent to write().
+     */
+    template<typename T>
+    inline void copy(T* const t, size_t count=1) {
+        write(t, count);
+    }
 };
 
 }

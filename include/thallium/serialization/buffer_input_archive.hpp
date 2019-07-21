@@ -95,6 +95,19 @@ public:
         m_pos += count*sizeof(T);
     }
 
+    /**
+     * @brief Equivalent to read().
+     */
+    template<typename T>
+    inline void copy(T* t, std::size_t count=1) {
+        read(t, count);
+    }
+
+    /**
+     * @brief Returns the engine registered in the archive.
+     *
+     * @return The engine registered in the archive.
+     */
     engine& get_engine() const {
         return *m_engine;
     }
