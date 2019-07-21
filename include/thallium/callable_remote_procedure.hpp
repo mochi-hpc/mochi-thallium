@@ -11,18 +11,15 @@
 #include <utility>
 #include <chrono>
 #include <margo.h>
+#include <thallium/config.hpp>
 #include <thallium/buffer.hpp>
 #include <thallium/timeout.hpp>
 #include <thallium/packed_response.hpp>
 #include <thallium/async_response.hpp>
 #include <thallium/margo_exception.hpp>
-#ifdef USE_CEREAL
-    #include <thallium/serialization/cereal/archives.hpp>
-#else
-    #include <thallium/serialization/serialize.hpp>
-    #include <thallium/serialization/stl/vector.hpp>
-    #include <thallium/serialization/buffer_output_archive.hpp>
-#endif
+#include <thallium/serialization/serialize.hpp>
+#include <thallium/serialization/buffer_output_archive.hpp>
+#include <thallium/serialization/stl/vector.hpp>
 
 namespace thallium {
 
@@ -202,13 +199,8 @@ public:
     template<typename ... T>
     packed_response operator()(T&& ... args) const {
         buffer b;
-#ifdef USE_CEREAL
-        cereal_output_archive arch(b, *m_engine);
-        arch(std::forward<T>(args)...);
-#else
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(args)...);
-#endif
+        arch(std::forward<T>(args)...);
         return forward(b);
     }
 
@@ -229,13 +221,8 @@ public:
     template<typename R, typename P, typename ... T>
     packed_response timed(const std::chrono::duration<R,P>& t, T&& ... args) const {
         buffer b;
-#ifdef USE_CEREAL
-        cereal_output_archive arch(b, *m_engine);
-        arch(std::forward<T>(args)...);
-#else
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(args)...);
-#endif
+        arch(std::forward<T>(args)...);
         std::chrono::duration<double, std::milli> fp_ms = t;
         double timeout_ms = fp_ms.count();
         return forward(b, timeout_ms);
@@ -280,13 +267,8 @@ public:
     template<typename ... T>
     async_response async(T&& ... t) {
         buffer b;
-#ifdef USE_CEREAL
-        cereal_output_archive arch(b, *m_engine);
-        arch(std::forward<T>(t)...);
-#else
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(t)...);
-#endif
+        arch(std::forward<T>(t)...);
         return iforward(b);
     }
 
@@ -306,13 +288,8 @@ public:
     template<typename R, typename P, typename ... T>
     async_response timed_async(const std::chrono::duration<R,P>& t, T&& ... args) {
         buffer b;
-#ifdef USE_CEREAL
-        cereal_output_archive arch(b, *m_engine);
-        arch(std::forward<T>(t)...);
-#else
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(args)...);
-#endif
+        arch(std::forward<T>(t)...);
         std::chrono::duration<double, std::milli> fp_ms = t;
         double timeout_ms = fp_ms.count();
         return iforward(b, timeout_ms);

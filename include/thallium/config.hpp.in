@@ -1,6 +1,9 @@
 
+#undef THALLIUM_USE_CEREAL
+#undef ENABLE_CEREAL
 #cmakedefine ENABLE_CEREAL
 
 #ifdef ENABLE_CEREAL
-#define USE_CEREAL
+#define THALLIUM_USE_CEREAL
+#undef ENABLE_CEREAL
 #endif

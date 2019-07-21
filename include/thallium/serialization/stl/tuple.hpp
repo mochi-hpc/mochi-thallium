@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_TUPLE_SERIALIZATION_HPP
 #define __THALLIUM_TUPLE_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/tuple.hpp>
+#else
+
 #include <tuple>
 
 namespace thallium {
@@ -43,4 +49,5 @@ inline void load(A& ar, std::tuple<Types...>& t) {
 
 }
 
+#endif
 #endif

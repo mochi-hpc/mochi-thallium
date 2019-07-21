@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_MULTIMAP_SERIALIZATION_HPP
 #define __THALLIUM_MULTIMAP_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/map.hpp>
+#else
+
 #include <map>
 
 namespace thallium {
@@ -34,4 +40,5 @@ inline void load(A& ar, std::multimap<K,V,Compare,Alloc>& m) {
 
 }
 
+#endif
 #endif

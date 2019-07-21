@@ -6,6 +6,21 @@
 #ifndef __THALLIUM_BUFFER_INPUT_ARCHIVE_HPP
 #define __THALLIUM_BUFFER_INPUT_ARCHIVE_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+
+#include <thallium/serialization/cereal/archives.hpp>
+
+namespace thallium {
+
+    using buffer_input_archive = cereal_input_archive;
+
+}
+
+
+#else
+
 #include <type_traits>
 #include <stdexcept>
 #include <cstring>
@@ -132,4 +147,5 @@ public:
 };
 
 }
+#endif
 #endif

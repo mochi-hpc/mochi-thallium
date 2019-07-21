@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_DEQUE_SERIALIZATION_HPP
 #define __THALLIUM_DEQUE_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/deque.hpp>
+#else
+
 #include <deque>
 
 namespace thallium {
@@ -32,4 +38,5 @@ inline void load(A& ar, std::deque<T,Alloc>& l) {
 
 }
 
+#endif
 #endif

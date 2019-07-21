@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_ARRAY_SERIALIZATION_HPP
 #define __THALLIUM_ARRAY_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/array.hpp>
+#else
+
 #include <type_traits>
 #include <array>
 
@@ -51,4 +57,5 @@ inline void load(A& ar, std::array<T,N>& v) {
 
 } // namespace thallium
 
+#endif
 #endif

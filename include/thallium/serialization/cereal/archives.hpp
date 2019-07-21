@@ -39,7 +39,7 @@ namespace thallium {
 
         ~cereal_output_archive() = default;
 
-        inline void write(void* const data, size_t size) {
+        inline void write(const void* data, size_t size) {
             if(m_pos+size > m_buffer.size()) {
                 if(m_pos+size > m_buffer.capacity()) {
                     m_buffer.reserve(m_buffer.capacity()*2);

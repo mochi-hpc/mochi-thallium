@@ -4,17 +4,21 @@
 #include <unistd.h>
 #include <iostream>
 #include <thallium.hpp>
-#include <thallium/serialization/stl/string.hpp>
+#ifdef USE_CEREAL
+    #include <cereal/types/string.hpp>
+#else
+    #include <thallium/serialization/stl/string.hpp>
+#endif
 
 namespace tl = thallium;
 
 void hello(const tl::request& req, const std::string& name) {
-	std::cout << "Hello " << name << std::endl;
+    std::cout << "Hello " << name << std::endl;
 }
 
 int server() {
 
-	tl::engine margo("tcp", MARGO_SERVER_MODE);
+    tl::engine margo("tcp", MARGO_SERVER_MODE);
 
     margo.define("hello", hello).disable_response();
 
@@ -33,12 +37,12 @@ int server() {
     margo.define("stop", g);
 
     std::string addr = margo.self();
-	std::cout << "Server running at address " << addr << std::endl;
+    std::cout << "Server running at address " << addr << std::endl;
 
-	return 0;
+    return 0;
 }
 
 int main(int argc, char** argv) {
-	server();
-	return 0;
+    server();
+    return 0;
 }

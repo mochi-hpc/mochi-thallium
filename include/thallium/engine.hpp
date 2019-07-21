@@ -14,6 +14,7 @@
 #include <vector>
 #include <atomic>
 #include <margo.h>
+#include <thallium/config.hpp>
 #include <thallium/pool.hpp>
 #include <thallium/tuple_util.hpp>
 #include <thallium/function_cast.hpp>
@@ -320,9 +321,13 @@ public:
      *
      * @return a remote_procedure object.
      */
-    template<typename ... Args>
+    template<typename A1, typename ... Args>
     remote_procedure define(const std::string& name, 
-        const std::function<void(const request&, Args...)>& fun,
+        const std::function<void(const request&, A1, Args...)>& fun,
+        uint16_t provider_id=0, const pool& p = pool());
+
+    remote_procedure define(const std::string& name, 
+        const std::function<void(const request&)>& fun,
         uint16_t provider_id=0, const pool& p = pool());
 
     /**
@@ -391,19 +396,15 @@ public:
 
 #include <thallium/remote_procedure.hpp>
 #include <thallium/proc_buffer.hpp>
-#ifdef USE_CEREAL
-    #include <thallium/serialization/cereal/archives.hpp>
-#else
-    #include <thallium/serialization/stl/tuple.hpp>
-    #include <thallium/serialization/buffer_input_archive.hpp>
-    #include <thallium/serialization/buffer_output_archive.hpp>
-#endif
+#include <thallium/serialization/buffer_input_archive.hpp>
+#include <thallium/serialization/buffer_output_archive.hpp>
+#include <thallium/serialization/stl/tuple.hpp>
 
 namespace thallium {
 
-template<typename ... Args>
+template<typename A1, typename ... Args>
 remote_procedure engine::define(const std::string& name, 
-        const std::function<void(const request&, Args...)>& fun,
+        const std::function<void(const request&, A1, Args...)>& fun,
         uint16_t provider_id, const pool& p) {
 
     hg_id_t id = margo_provider_register_name(m_mid, name.c_str(),
@@ -414,28 +415,13 @@ remote_procedure engine::define(const std::string& name,
                 p.native_handle());
 
     m_rpcs[id] = [fun,this](const request& r, const buffer& b) {
-#ifdef USE_CEREAL
-        std::function<void(Args...)> deserialize = [&b, this](Args&&... args) {
-            cereal_input_archive arch(b, *this);
-            arch(std::forward<Args>(args)...);
+        std::function<void(A1, Args...)> call_function = [&fun, &r](A1&& a1, Args&&... args) {
+            fun(r, std::forward<A1>(a1), std::forward<Args>(args)...);
         };
-        std::function<void(Args...)> call_function = [&fun, &r](Args&&... args) {
-            fun(r, std::forward<Args>(args)...);
-        };
-        std::tuple<typename std::decay<Args>::type...> iargs;
-        apply_function_to_tuple(deserialize, iargs);
+        std::tuple<typename std::decay<A1>::type, typename std::decay<Args>::type...> iargs;
+        buffer_input_archive iarch(b, *this);
+        iarch(iargs);
         apply_function_to_tuple(call_function, iargs);
-#else
-        std::function<void(Args...)> l = [&fun, &r](Args&&... args) {
-            fun(r, std::forward<Args>(args)...);
-        };
-        std::tuple<typename std::decay<Args>::type...> iargs;
-        if(sizeof...(Args) > 0) {
-            buffer_input_archive iarch(b, *this);
-            iarch & iargs;
-        }
-        apply_function_to_tuple(l,iargs);
-#endif
     };
 
     rpc_callback_data* cb_data = new rpc_callback_data;

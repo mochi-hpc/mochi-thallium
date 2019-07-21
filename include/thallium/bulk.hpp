@@ -12,6 +12,7 @@
 #include <margo.h>
 #include <thallium/endpoint.hpp>
 #include <thallium/margo_exception.hpp>
+#include <thallium/serialization/stl/vector.hpp>
 
 namespace thallium {
 
@@ -335,10 +336,10 @@ public:
      * @brief Function that serializes a bulk object into an archive.
      *
      * @tparam A Archive type.
-     * @param ar Input archive.
+     * @param ar Output archive.
      */
     template<typename A>
-    void save(A& ar) {
+    void save(A& ar) const {
         if(m_bulk == HG_BULK_NULL) {
             std::vector<char> buf;
             ar & buf;
@@ -356,7 +357,7 @@ public:
      * @brief Deserializes a bulk object from an output archive.
      *
      * @tparam A Archive type.
-     * @param ar Output archive.
+     * @param ar Input archive.
      */
     template<typename A>
     void load(A& ar);

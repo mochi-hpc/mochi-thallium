@@ -63,5 +63,30 @@ void engine::enable_remote_shutdown() {
     margo_enable_remote_shutdown(m_mid);
 }
 
+remote_procedure engine::define(const std::string& name,
+        const std::function<void(const request&)>& fun,
+        uint16_t provider_id, const pool& p) {
+
+    hg_id_t id = margo_provider_register_name(m_mid, name.c_str(),
+            process_buffer,
+            process_buffer,
+            rpc_callback<rpc_t, false>,
+            provider_id,
+            p.native_handle());
+
+    m_rpcs[id] = [fun](const request& r, const buffer& b) {
+        fun(r);
+    };
+
+    rpc_callback_data* cb_data = new rpc_callback_data;
+    cb_data->m_engine   = this;
+    cb_data->m_function = void_cast(&m_rpcs[id]);
+
+    hg_return_t ret = margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
+    MARGO_ASSERT(ret, margo_register_data);
+
+    return remote_procedure(*this, id);
+}
+
 }
 

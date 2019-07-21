@@ -4,13 +4,17 @@
 #include <unistd.h>
 #include <iostream>
 #include <thallium.hpp>
+#ifdef USE_CEREAL
+#include <cereal/types/string.hpp>
+#else
 #include <thallium/serialization/stl/string.hpp>
+#endif
 
 namespace tl = thallium;
 
 int server() {
 
-	tl::engine margo("bmi+tcp://127.0.0.1:1234", MARGO_SERVER_MODE);
+    tl::engine margo("tcp://127.0.0.1:1234", MARGO_SERVER_MODE);
 
     std::function<void(const tl::request&, tl::bulk& b)> f =
         [&margo](const tl::request& req, tl::bulk& b) {
@@ -25,7 +29,7 @@ int server() {
             for(auto c : v) std::cout << c;
             std::cout << std::endl;
         };
-	margo.define("send_bulk",f).disable_response();
+    margo.define("send_bulk",f).disable_response();
 
     std::function<void(const tl::request&)> g =
         [&margo](const tl::request& req) {
@@ -34,10 +38,10 @@ int server() {
         };
     margo.define("stop", g);
 
-	std::string addr = margo.self();
-	std::cout << "Server running at address " << addr << std::endl;
+    std::string addr = margo.self();
+    std::cout << "Server running at address " << addr << std::endl;
 
-	return 0;
+    return 0;
 }
 
 int main(int argc, char** argv) {

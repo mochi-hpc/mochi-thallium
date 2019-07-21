@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_VECTOR_SERIALIZATION_HPP
 #define __THALLIUM_VECTOR_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/vector.hpp>
+#else
+
 #include <type_traits>
 #include <vector>
 
@@ -63,4 +69,5 @@ inline void load(A& ar, std::vector<T,Alloc>& v) {
 
 } // namespace thallium
 
+#endif
 #endif
