@@ -7,8 +7,12 @@
 #define __THALLIUM_PACKED_RESPONSE_HPP
 
 #include <thallium/buffer.hpp>
-#include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/buffer_input_archive.hpp>
+#ifdef USE_CEREAL
+    #include <thallium/serialization/cereal/archives.hpp>
+#else
+    #include <thallium/serialization/serialize.hpp>
+    #include <thallium/serialization/buffer_input_archive.hpp>
+#endif
 
 namespace thallium {
 
@@ -52,8 +56,13 @@ public:
     template<typename T>
     T as() const {
         T t;
+#ifdef USE_CEREAL
+        cereal_input_archive iarch(m_buffer, *m_engine);
+        iarch(t);
+#else
         buffer_input_archive iarch(m_buffer, *m_engine);
         iarch & t;
+#endif
         return t;
     }
 
@@ -77,8 +86,18 @@ public:
         std::tuple<typename std::decay<T1>::type, 
             typename std::decay<T2>::type, 
             typename std::decay_t<Tn>::type...> t;
-        buffer_input_archive iarch(m_buffer);
+#ifdef USE_CEREAL
+        std::function<void(T1, T2, Tn...)> deserialize = [this](T1&& t1, T2&& t2, Tn&&... tn) {
+            cereal_input_archive arch(m_buffer, *m_engine);
+            arch(std::forward<T1>(t1),
+                 std::forward<T2>(t2),
+                 std::forward<Tn>(tn)...);
+        };
+        apply_function_to_tuple(deserialize, t);
+#else
+        buffer_input_archive iarch(m_buffer, *m_engine);
         iarch & t;
+#endif
         return t;
     }
 

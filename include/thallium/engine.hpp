@@ -391,9 +391,13 @@ public:
 
 #include <thallium/remote_procedure.hpp>
 #include <thallium/proc_buffer.hpp>
-#include <thallium/serialization/stl/tuple.hpp>
-#include <thallium/serialization/buffer_input_archive.hpp>
-#include <thallium/serialization/buffer_output_archive.hpp>
+#ifdef USE_CEREAL
+    #include <thallium/serialization/cereal/archives.hpp>
+#else
+    #include <thallium/serialization/stl/tuple.hpp>
+    #include <thallium/serialization/buffer_input_archive.hpp>
+    #include <thallium/serialization/buffer_output_archive.hpp>
+#endif
 
 namespace thallium {
 
@@ -410,6 +414,18 @@ remote_procedure engine::define(const std::string& name,
                 p.native_handle());
 
     m_rpcs[id] = [fun,this](const request& r, const buffer& b) {
+#ifdef USE_CEREAL
+        std::function<void(Args...)> deserialize = [&b, this](Args&&... args) {
+            cereal_input_archive arch(b, *this);
+            arch(std::forward<Args>(args)...);
+        };
+        std::function<void(Args...)> call_function = [&fun, &r](Args&&... args) {
+            fun(r, std::forward<Args>(args)...);
+        };
+        std::tuple<typename std::decay<Args>::type...> iargs;
+        apply_function_to_tuple(deserialize, iargs);
+        apply_function_to_tuple(call_function, iargs);
+#else
         std::function<void(Args...)> l = [&fun, &r](Args&&... args) {
             fun(r, std::forward<Args>(args)...);
         };
@@ -419,6 +435,7 @@ remote_procedure engine::define(const std::string& name,
             iarch & iargs;
         }
         apply_function_to_tuple(l,iargs);
+#endif
     };
 
     rpc_callback_data* cb_data = new rpc_callback_data;

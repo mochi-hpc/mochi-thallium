@@ -8,8 +8,12 @@
 
 #include <margo.h>
 #include <thallium/margo_exception.hpp>
-#include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/buffer_output_archive.hpp>
+#ifdef USE_CEREAL
+    #include <thallium/serialization/cereal/archives.hpp>
+#else
+    #include <thallium/serialization/serialize.hpp>
+    #include <thallium/serialization/buffer_output_archive.hpp>
+#endif
 
 namespace thallium {
 
@@ -113,8 +117,13 @@ public:
         if(m_disable_response) return; // XXX throwing an exception?
         if(m_handle != HG_HANDLE_NULL) {
             buffer b;
+#ifdef USE_CEREAL
+            cereal_output_archive arch(b, *m_engine);
+            arch(std::forward<T>(t)...);
+#else
             buffer_output_archive arch(b, *m_engine);
             serialize_many(arch, std::forward<T>(t)...);
+#endif
             hg_return_t ret = margo_respond(m_handle, &b);
             MARGO_ASSERT(ret, margo_respond);
         }

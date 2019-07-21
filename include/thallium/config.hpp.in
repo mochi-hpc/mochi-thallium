@@ -1,0 +1,6 @@
+
+#cmakedefine ENABLE_CEREAL
+
+#ifdef ENABLE_CEREAL
+#define USE_CEREAL
+#endif
