@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_COMPLEX_SERIALIZATION_HPP
 #define __THALLIUM_COMPLEX_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/complex.hpp>
+#else
+
 #include <complex>
 
 namespace thallium {
@@ -24,4 +30,5 @@ inline void load(A& ar, std::complex<T>& t) {
 
 }
 
+#endif
 #endif

@@ -1,6 +1,12 @@
 #ifndef __THALLIUM_STRING_SERIALIZATION_HPP
 #define __THALLIUM_STRING_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/string.hpp>
+#else
+
 #include <string>
 #include <iostream>
 
@@ -23,5 +29,5 @@ inline void load(A& ar, std::string& s) {
 }
 
 }
-
+#endif
 #endif

@@ -48,8 +48,15 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 set (CMAKE_PREFIX_PATH "" CACHE STRING "External dependencies path")
 set (BUILD_SHARED_LIBS "OFF" CACHE BOOL "Build a shared library")
+set (ENABLE_CEREAL "OFF" CACHE BOOL "Enable cereal serialization")
+
+include_directories (${CMAKE_BINARY_DIR}/include)
 
 # packages we depend on
+if (ENABLE_CEREAL)
+	find_package (cereal CONFIG REQUIRED)
+endif (ENABLE_CEREAL)
+
 include (xpkg-import)
 find_package (mercury CONFIG REQUIRED)
 xpkg_import_module (margo REQUIRED margo)
@@ -62,4 +69,4 @@ if (ENABLE_EXAMPLES)
 	add_subdirectory (examples)
 endif (ENABLE_EXAMPLES)
 
-
+configure_file (include/thallium/config.hpp.in ${CMAKE_BINARY_DIR}/include/thallium/config.hpp)

@@ -9,9 +9,6 @@
 #include <thallium/margo_exception.hpp>
 #include <thallium/buffer.hpp>
 #include <thallium/packed_response.hpp>
-#include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/stl/vector.hpp>
-#include <thallium/serialization/buffer_output_archive.hpp>
 
 namespace thallium {
 

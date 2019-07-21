@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_MULTISET_SERIALIZATION_HPP
 #define __THALLIUM_MULTISET_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/set.hpp>
+#else
+
 #include <utility>
 #include <set>
 
@@ -34,4 +40,5 @@ inline void load(A& ar, std::multiset<T,Compare,Alloc>& s) {
 
 } // namespace 
 
+#endif
 #endif

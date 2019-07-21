@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_PAIR_SERIALIZE_HPP
 #define __THALLIUM_PAIR_SERIALIZE_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/utility.hpp>
+#else
+
 #include <utility>
 
 namespace thallium {
@@ -18,4 +24,5 @@ inline void serialize(A& a, std::pair<T1,T2>& p) {
 
 }
 
+#endif
 #endif

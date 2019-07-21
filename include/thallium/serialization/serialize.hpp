@@ -6,6 +6,10 @@
 #ifndef SERIALIZE_H
 #define SERIALIZE_H
 
+#include <thallium/config.hpp>
+
+#ifndef THALLIUM_USE_CEREAL
+
 #include <utility>
 #include <type_traits>
 
@@ -204,4 +208,5 @@ inline void serialize_many(A& ar, T&& t) {
 
 }
 
+#endif
 #endif

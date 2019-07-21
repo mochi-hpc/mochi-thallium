@@ -11,14 +11,15 @@
 #include <utility>
 #include <chrono>
 #include <margo.h>
+#include <thallium/config.hpp>
 #include <thallium/buffer.hpp>
 #include <thallium/timeout.hpp>
 #include <thallium/packed_response.hpp>
 #include <thallium/async_response.hpp>
-#include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/stl/vector.hpp>
-#include <thallium/serialization/buffer_output_archive.hpp>
 #include <thallium/margo_exception.hpp>
+#include <thallium/serialization/serialize.hpp>
+#include <thallium/serialization/buffer_output_archive.hpp>
+#include <thallium/serialization/stl/vector.hpp>
 
 namespace thallium {
 
@@ -199,7 +200,7 @@ public:
     packed_response operator()(T&& ... args) const {
         buffer b;
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(args)...);
+        arch(std::forward<T>(args)...);
         return forward(b);
     }
 
@@ -221,7 +222,7 @@ public:
     packed_response timed(const std::chrono::duration<R,P>& t, T&& ... args) const {
         buffer b;
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(args)...);
+        arch(std::forward<T>(args)...);
         std::chrono::duration<double, std::milli> fp_ms = t;
         double timeout_ms = fp_ms.count();
         return forward(b, timeout_ms);
@@ -267,7 +268,7 @@ public:
     async_response async(T&& ... t) {
         buffer b;
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(t)...);
+        arch(std::forward<T>(t)...);
         return iforward(b);
     }
 
@@ -288,7 +289,7 @@ public:
     async_response timed_async(const std::chrono::duration<R,P>& t, T&& ... args) {
         buffer b;
         buffer_output_archive arch(b, *m_engine);
-        serialize_many(arch, std::forward<T>(args)...);
+        arch(std::forward<T>(t)...);
         std::chrono::duration<double, std::milli> fp_ms = t;
         double timeout_ms = fp_ms.count();
         return iforward(b, timeout_ms);

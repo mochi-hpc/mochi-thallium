@@ -1,5 +1,16 @@
+/*
+ * (C) 2017 The University of Chicago
+ * 
+ * See COPYRIGHT in top-level directory.
+ */
 #ifndef __THALLIUM_MAP_SERIALIZATION_HPP
 #define __THALLIUM_MAP_SERIALIZATION_HPP
+
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/map.hpp>
+#else
 
 #include <map>
 
@@ -29,4 +40,5 @@ inline void load(A& ar, std::map<K,V,Compare,Alloc>& m) {
 
 }
 
+#endif
 #endif

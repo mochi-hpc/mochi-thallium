@@ -6,6 +6,20 @@
 #ifndef __THALLIUM_BUFFER_OUTPUT_ARCHIVE_HPP
 #define __THALLIUM_BUFFER_OUTPUT_ARCHIVE_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+
+#include <thallium/serialization/cereal/archives.hpp>
+
+namespace thallium {
+
+        using buffer_output_archive = cereal_output_archive;
+
+}
+
+#else
+
 #include <type_traits>
 #include <thallium/serialization/serialize.hpp>
 #include <thallium/buffer.hpp>
@@ -130,4 +144,5 @@ public:
 
 }
 
+#endif
 #endif

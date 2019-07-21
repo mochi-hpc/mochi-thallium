@@ -114,7 +114,7 @@ public:
         if(m_handle != HG_HANDLE_NULL) {
             buffer b;
             buffer_output_archive arch(b, *m_engine);
-            serialize_many(arch, std::forward<T>(t)...);
+            arch(std::forward<T>(t)...);
             hg_return_t ret = margo_respond(m_handle, &b);
             MARGO_ASSERT(ret, margo_respond);
         }
