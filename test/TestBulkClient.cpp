@@ -32,6 +32,7 @@ int client() {
 
     remote_send.on(server_endpoint)(b);
 
+    sleep(1);
     remote_stop.on(server_endpoint)();
     
     return 0;
