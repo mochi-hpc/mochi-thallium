@@ -1,0 +1,8 @@
+# master
+
+* Added copy() function in serialization archives. This function
+  acts like a read() for input archive, and like a write() for
+  output archives. This allows writing a single serialize() function
+  instead of load()/store() functions in many situations.
+* Added operator() to input and output archives to enable a syntax
+  similar to that of the cereal library.

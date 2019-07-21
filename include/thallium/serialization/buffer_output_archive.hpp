@@ -68,9 +68,27 @@ public:
      * a load member function has been provided.
      */
     template<typename T>
-    buffer_output_archive& operator&(T&& obj) {
+    inline buffer_output_archive& operator&(T&& obj) {
         write_impl(std::forward<T>(obj), std::is_arithmetic<typename std::decay<T>::type>());
         return *this;
+    }
+
+    /**
+     * @brief Parenthesis operator with one argument, equivalent to & operator.
+     */
+    template<typename T>
+    inline buffer_output_archive& operator()(T&& obj) {
+        return (*this) & std::forward<T>(obj);
+    }
+
+    /**
+     * @brief Parenthesis operator with multiple arguments.
+     * ar(x,y,z) is equivalent to ar & x & y & z.
+     */
+    template<typename T, typename ... Targs>
+    inline buffer_output_archive& operator()(T&& obj, Targs&&... others) {
+        (*this) & std::forward<T>(obj);
+        return (*this)(std::forward<Targs>(others)...);
     }
 
     /**

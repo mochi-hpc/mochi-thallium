@@ -60,15 +60,33 @@ public:
     /**
      * Operator to get C++ objects of type T from the archive.
      * The object should either be a basic type, or an STL container
-     * (in which case the appropriate hgcxx/hg_stl/stl_* header should
-     * be included for this function to be properly instanciated), or
-     * any object for which either a serialize member function or
+     * (in which case the appropriate thallium/serialization/stl/ header
+     * should be included for this function to be properly instanciated),
+     * or any object for which either a serialize member function or
      * a load member function has been provided.
      */
     template<typename T>
-    buffer_input_archive& operator&(T&& obj) {
+    inline buffer_input_archive& operator&(T&& obj) {
         read_impl(std::forward<T>(obj), std::is_arithmetic<typename std::decay<T>::type>());
         return *this;
+    }
+
+    /**
+     * @brief Parenthesis operator with one argument, equivalent to & operator.
+     */
+    template<typename T>
+    inline buffer_input_archive& operator()(T&& obj) {
+        return (*this) & std::forward<T>(obj);
+    }
+
+    /**
+     * @brief Parenthesis operator with multiple arguments.
+     * ar(x,y,z) is equivalent to ar & x & y & z.
+     */
+    template<typename T, typename ... Targs>
+    inline buffer_input_archive& operator()(T&& obj, Targs&&... others) {
+        (*this) & std::forward<T>(obj);
+        return (*this)(std::forward<Targs>(others)...);
     }
 
     /**
