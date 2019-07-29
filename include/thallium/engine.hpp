@@ -263,10 +263,10 @@ public:
                     finalize();
             }
         }
-        if(e->m_hg_context)
-            HG_Context_destroy(e->m_hg_context);
-        if(e->m_hg_class)
-            HG_Finalize(e->m_hg_class);
+        if(m_hg_context)
+            HG_Context_destroy(m_hg_context);
+        if(m_hg_class)
+            HG_Finalize(m_hg_class);
     }
 
     /**
