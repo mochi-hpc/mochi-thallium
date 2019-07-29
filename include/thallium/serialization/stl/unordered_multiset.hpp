@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_UNORDERED_MULTISET_SERIALIZATION_HPP
 #define __THALLIUM_UNORDERED_MULTISET_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef USE_CEREAL
+    #include <cereal/types/unordered_multiset.hpp>
+#else
+
 #include <utility>
 #include <unordered_set>
 
@@ -35,4 +41,5 @@ inline void load(A& ar, std::unordered_multiset<V,Hash,Pred,Alloc>& s) {
 
 }
 
+#endif
 #endif

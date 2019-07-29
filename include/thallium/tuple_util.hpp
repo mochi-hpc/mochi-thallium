@@ -16,8 +16,8 @@ template<size_t N>
 struct apply_f_to_t_impl {
 
     template<typename R, typename... ArgsF, typename... ArgsT, typename... Args>
-    static R apply(const std::function<R(ArgsF...)>& f, std::tuple<ArgsT...> const& t, Args... args) {
-        return apply_f_to_t_impl<N-1>::apply(f, t, std::get<N-1>(t), args...);
+    static R apply(const std::function<R(ArgsF...)>& f, std::tuple<ArgsT...>& t, Args&&... args) {
+        return apply_f_to_t_impl<N-1>::apply(f, t, std::get<N-1>(t), std::forward<Args>(args)...);
     }
 };
 
@@ -25,8 +25,8 @@ template<>
 struct apply_f_to_t_impl<0> {
 
     template<typename R, typename... ArgsF, typename... ArgsT, typename... Args>
-    static R apply(const std::function<R(ArgsF...)>& f, std::tuple<ArgsT...> const& t, Args... args) {
-        return f(args...);
+    static R apply(const std::function<R(ArgsF...)>& f, std::tuple<ArgsT...>& t, Args&&... args) {
+        return f(std::forward<Args>(args)...);
     }
 };
 
@@ -40,7 +40,7 @@ struct apply_f_to_t_impl<0> {
  * \return the value returned by f.
  */
 template<typename R, typename... ArgsF, typename... ArgsT>
-R apply_function_to_tuple(const std::function<R(ArgsF...)>& f, std::tuple<ArgsT...> const& t) {
+R apply_function_to_tuple(const std::function<R(ArgsF...)>& f, std::tuple<ArgsT...>& t) {
     return detail::apply_f_to_t_impl<sizeof...(ArgsT)>::apply(f,t);
 }
 
@@ -52,7 +52,7 @@ R apply_function_to_tuple(const std::function<R(ArgsF...)>& f, std::tuple<ArgsT.
  * \return the value returned by f.
  */
 template<typename R, typename... ArgsF, typename... ArgsT>
-R apply_function_to_tuple(R (*f)(ArgsF...), std::tuple<ArgsT...> const& t) {
+R apply_function_to_tuple(R (*f)(ArgsF...), std::tuple<ArgsT...>& t) {
     std::function<R(ArgsF...)> fun(f);
     return apply_function_to_tuple(fun,t);
 }

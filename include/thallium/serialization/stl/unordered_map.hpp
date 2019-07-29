@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_UNORDERED_MAP_SERIALIZATION_HPP
 #define __THALLIUM_UNORDERED_MAP_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/unordered_map.hpp>
+#else
+
 #include <unordered_map>
 
 namespace thallium {
@@ -35,4 +41,5 @@ inline void load(A& ar, std::unordered_map<K,V,Hash,Pred,Alloc>& m) {
 
 }
 
+#endif
 #endif

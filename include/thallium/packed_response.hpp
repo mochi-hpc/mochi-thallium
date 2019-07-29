@@ -53,7 +53,7 @@ public:
     T as() const {
         T t;
         buffer_input_archive iarch(m_buffer, *m_engine);
-        iarch & t;
+        iarch(t);
         return t;
     }
 
@@ -77,8 +77,8 @@ public:
         std::tuple<typename std::decay<T1>::type, 
             typename std::decay<T2>::type, 
             typename std::decay_t<Tn>::type...> t;
-        buffer_input_archive iarch(m_buffer);
-        iarch & t;
+        buffer_input_archive iarch(m_buffer, *m_engine);
+        arch(t);
         return t;
     }
 

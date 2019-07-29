@@ -6,6 +6,12 @@
 #ifndef __THALLIUM_FORWARD_LIST_SERIALIZATION_HPP
 #define __THALLIUM_FORWARD_LIST_SERIALIZATION_HPP
 
+#include <thallium/config.hpp>
+
+#ifdef THALLIUM_USE_CEREAL
+    #include <cereal/types/forward_list.hpp>
+#else
+
 #include <forward_list>
 
 namespace thallium {
@@ -32,4 +38,5 @@ inline void load(A& ar, std::forward_list<T,Alloc>& l) {
 
 }
 
+#endif
 #endif
