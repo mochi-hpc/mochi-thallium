@@ -108,6 +108,10 @@ private:
         ret = margo_free_input(handle, &input);
         MARGO_ASSERT(ret, margo_free_input);
         margo_destroy(handle); // because of margo_ref_incr in rpc_callback
+        __margo_internal_decr_pending(mid);
+        if(__margo_internal_finalize_requested(mid)) {
+            margo_finalize(mid);
+        }
     }
 
     /**
@@ -129,6 +133,7 @@ private:
             return HG_OTHER_ERROR;
         }
         pool = margo_hg_handle_get_handler_pool(handle);
+        __margo_internal_incr_pending(mid);
         margo_ref_incr(handle);
         ret = ABT_thread_create(pool, (void (*)(void *)) rpc_handler_ult<F,disable_response>, 
                 handle, ABT_THREAD_ATTR_NULL, NULL);
@@ -254,9 +259,13 @@ public:
                     margo_wait_for_finalize(m_mid);
             } else {
                 if(!m_finalize_called)
-                    margo_finalize(m_mid);
+                    finalize();
             }
         }
+        if(e->m_hg_context)
+            HG_Context_destroy(e->m_hg_context);
+        if(e->m_hg_class)
+            HG_Finalize(e->m_hg_class);
     }
 
     /**
@@ -275,10 +284,6 @@ public:
      */
     void finalize() {
         margo_finalize(m_mid);
-        if(m_hg_context)
-            HG_Context_destroy(m_hg_context);
-        if(m_hg_class)
-            HG_Finalize(m_hg_class);
     }
 
     /**
