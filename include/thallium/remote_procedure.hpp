@@ -95,6 +95,11 @@ public:
      */
     remote_procedure& disable_response();
 
+    /**
+     * @brief Deregisters this RPC from the engine.
+     */
+    void deregister();
+
     [[deprecated("use disable_response() instead")]]
     inline remote_procedure& ignore_response() {
         return disable_response();

@@ -9,7 +9,8 @@
 #include <iostream>
 #include <string>
 #include <functional>
-#include <stack>
+#include <algorithm>
+#include <list>
 #include <unordered_map>
 #include <vector>
 #include <atomic>
@@ -61,7 +62,7 @@ private:
     std::atomic<bool>                     m_finalize_called;
     hg_context_t*                         m_hg_context = nullptr;
     hg_class_t*                           m_hg_class = nullptr;
-    std::stack<std::function<void(void)>> m_finalize_callbacks;
+    std::list<std::pair<intptr_t, std::function<void(void)>>> m_finalize_callbacks;
 
     /**
      * @brief Encapsulation of some data needed by RPC callbacks
@@ -149,9 +150,9 @@ private:
         engine* e = static_cast<engine*>(arg);
         e->m_finalize_called = true;
         while(!(e->m_finalize_callbacks.empty())) {
-            auto& cb = e->m_finalize_callbacks.top();
-            cb();
-            e->m_finalize_callbacks.pop();
+            auto& cb = e->m_finalize_callbacks.front();
+            cb.second();
+            e->m_finalize_callbacks.pop_front();
         }
     }
 
@@ -371,6 +372,16 @@ public:
      */
     bulk expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_mode flag);
 
+    template<typename F>
+    [[deprecated("Use push_finalize_callback")]] void on_finalize(F&& f) {
+        m_finalize_callbacks.emplace_back(0,std::forward<F>(f));
+    }
+
+    template<typename T, typename F>
+    [[deprecated("Use push_finalize_callback")]] void on_finalize(const T& owner, F&& f) {
+        m_finalize_callbacks.emplace_back(reinterpret_cast<intptr_t>(&owner), std::forward<F>(f));
+    }
+
     /**
      * @brief Pushes a finalization callback into the engine. This callback will be
      * called when margo_finalize is called (e.g. through engine::finalize()).
@@ -379,8 +390,59 @@ public:
      * @param f callback.
      */
     template<typename F>
-    void on_finalize(F&& f) {
-        m_finalize_callbacks.emplace(std::forward<F>(f));
+    void push_finalize_callback(F&& f) {
+        m_finalize_callbacks.emplace_back(0,std::forward<F>(f));
+    }
+
+    /**
+     * @brief Same as push_finalize_callback(F&& f) but takes an object whose address will
+     * be used to identify the callback (e.g. a provider).
+     *
+     * @tparam T Type of object used to identify the callback.
+     * @tparam F Callback type.
+     * @param owner Pointer to the object owning the callback.
+     * @param f Callback.
+     */
+    template<typename T, typename F>
+    void push_finalize_callback(const T* owner, F&& f) {
+        m_finalize_callbacks.emplace_back(reinterpret_cast<intptr_t>(owner), std::forward<F>(f));
+    }
+
+    /**
+     * @brief Pops the most recently pushed finalization callback and returns it.
+     * If no finalization callback are present, this function returns a null std::function.
+     *
+     * @return finalization callback.
+     */
+    std::function<void(void)> pop_finalize_callback() {
+        auto it = std::find_if(m_finalize_callbacks.rbegin(), m_finalize_callbacks.rend(),
+                [](const auto& p) { return p.first == 0; });
+        if(it != m_finalize_callbacks.rend()) {
+            auto cb = std::move(it->second);
+            m_finalize_callbacks.erase(std::next(it).base());
+            return cb;
+        }
+        return std::function<void(void)>();
+    }
+
+    /**
+     * @brief Pops the most recently pushed finalization callback pushed for a given owner.
+     *
+     * @tparam T Type of owner.
+     * @param owner Pointer to the owner.
+     *
+     * @return finalization callback.
+     */
+    template<typename T>
+    std::function<void(void)> pop_finalize_callback(const T* owner) {
+        auto it = std::find_if(m_finalize_callbacks.rbegin(), m_finalize_callbacks.rend(),
+                [owner](const auto& p) { return p.first == reinterpret_cast<intptr_t>(owner); });
+        if(it != m_finalize_callbacks.rend()) {
+            auto cb = std::move(it->second);
+            m_finalize_callbacks.erase(std::next(it).base());
+            return cb;
+        }
+        return std::function<void(void)>();
     }
 
     /**
