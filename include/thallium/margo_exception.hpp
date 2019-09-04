@@ -12,17 +12,14 @@
 #include <string>
 #include <sstream>
 #include <margo.h>
+#include <thallium/exception.hpp>
 
 namespace thallium {
 
 /**
  * @brief Exception class used when margo functions fail.
  */
-class margo_exception : public std::exception {
-
-private:
-
-    std::ostringstream m_content;
+class margo_exception : public exception {
 
 public:
 
@@ -35,19 +32,9 @@ public:
      * @param message Additional message.
      */
     margo_exception(const std::string& function, const std::string file, unsigned line,
-                    const std::string& message = std::string()) {
-        m_content << "[" << file << ":" << line << "][" << function << "] "
-                  << message;
-    }
+                    const std::string& message = std::string()) 
+    : exception("[", file, ":", line, "][", function, "] ", message) {}
 
-    /**
-     * @brief Return the error message.
-     *
-     * @return error message associated with the exception.
-     */
-    virtual const char* what() const throw() {
-        return m_content.str().c_str();
-    }
 };
 
 std::string translate_margo_error_code(hg_return_t ret);
