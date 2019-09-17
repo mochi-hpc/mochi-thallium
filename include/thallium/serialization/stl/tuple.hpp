@@ -32,7 +32,10 @@ template<>
 struct tuple_serializer<0> {
 
     template<class A, class... Types>
-    static inline void apply(A& ar, std::tuple<Types...>& t) {}
+    static inline void apply(A& ar, std::tuple<Types...>& t) {
+        (void)ar;
+        (void)t;
+    }
 };
 
 }

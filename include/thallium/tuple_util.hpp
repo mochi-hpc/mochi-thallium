@@ -26,6 +26,7 @@ struct apply_f_to_t_impl<0> {
 
     template<typename R, typename... ArgsF, typename... ArgsT, typename... Args>
     static R apply(const std::function<R(ArgsF...)>& f, std::tuple<ArgsT...>& t, Args&&... args) {
+        (void)t;
         return f(std::forward<Args>(args)...);
     }
 };
