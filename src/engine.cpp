@@ -53,6 +53,12 @@ bulk engine::expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_m
     return bulk(*this, handle, true);
 }
 
+bulk engine::wrap(hg_bulk_t blk, bool is_local) {
+    hg_return_t hret = margo_bulk_ref_incr(blk);
+    MARGO_ASSERT(hret, margo_bulk_ref_incr);
+    return bulk(*this, blk, is_local);
+}
+
 void engine::shutdown_remote_engine(const endpoint& ep) const {
     int ret = margo_shutdown_remote_instance(m_mid, ep.m_addr);
     hg_return_t r = ret == 0 ? HG_SUCCESS : HG_OTHER_ERROR;

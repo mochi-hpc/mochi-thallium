@@ -372,6 +372,19 @@ public:
      */
     bulk expose(const std::vector<std::pair<void*,size_t>>& segments, bulk_mode flag);
 
+    /**
+     * @brief Creates a bulk object from an hg_bulk_t handle. The user
+     * is still responsible for calling margo_bulk_free or HG_Bulk_free
+     * on the original handle (this function will increment the hg_bulk_t's
+     * internal reference counter).
+     *
+     * @param blk Bulk handle.
+     * @param is_local Whether the bulk handle refers to memory that is local.
+     *
+     * @return a bulk object representing the memory exposed for RDMA.
+     */
+    bulk wrap(hg_bulk_t blk, bool is_local);
+
     template<typename F>
     [[deprecated("Use push_finalize_callback")]] void on_finalize(F&& f) {
         m_finalize_callbacks.emplace_back(0,std::forward<F>(f));
