@@ -217,7 +217,7 @@ class eventual<void> {
      * the right operand.
      */
     eventual& operator=(eventual&& other) { 
-        if(this == other.m_eventual) return *this;
+        if(*this == other) return *this;
         if(m_eventual != ABT_EVENTUAL_NULL) {
             TL_EVENTUAL_ASSERT(ABT_eventual_free(&m_eventual));
         }
