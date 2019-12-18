@@ -62,6 +62,7 @@ private:
     std::atomic<bool>                     m_finalize_called;
     hg_context_t*                         m_hg_context = nullptr;
     hg_class_t*                           m_hg_class = nullptr;
+    std::list<std::pair<intptr_t, std::function<void(void)>>> m_prefinalize_callbacks;
     std::list<std::pair<intptr_t, std::function<void(void)>>> m_finalize_callbacks;
 
     /**
@@ -156,6 +157,15 @@ private:
         }
     }
 
+    static void on_prefinalize_cb(void* arg) {
+        engine* e = static_cast<engine*>(arg);
+        while(!(e->m_prefinalize_callbacks.empty())) {
+            auto& cb = e->m_prefinalize_callbacks.front();
+            cb.second();
+            e->m_prefinalize_callbacks.pop_front();
+        }
+    }
+
 public:
 
     /**
@@ -178,6 +188,8 @@ public:
                 rpc_thread_count);
         // XXX throw an exception if m_mid not initialized
         m_owns_mid = true;
+        margo_push_prefinalize_callback(m_mid,
+                &engine::on_prefinalize_cb, static_cast<void*>(this));
         margo_push_finalize_callback(m_mid,
                 &engine::on_finalize_cb, static_cast<void*>(this));
     }
@@ -198,6 +210,8 @@ public:
         m_mid = margo_init_pool(progress_pool.native_handle(), 
                 default_handler_pool.native_handle(), m_hg_context);
         // XXX throw an exception if m_mid not initialized
+        margo_push_prefinalize_callback(m_mid,
+                &engine::on_prefinalize_cb, static_cast<void*>(this));
         margo_push_finalize_callback(m_mid,
                 &engine::on_finalize_cb, static_cast<void*>(this));
     }
@@ -213,6 +227,8 @@ public:
         m_mid = mid;
         m_is_server = (mode == THALLIUM_SERVER_MODE);
         m_owns_mid = false;
+        margo_push_prefinalize_callback(m_mid,
+                &engine::on_prefinalize_cb, static_cast<void*>(this));
         margo_push_finalize_callback(m_mid,
                 &engine::on_finalize_cb, static_cast<void*>(this));
     }
@@ -226,6 +242,8 @@ public:
         m_mid = mid;
         m_owns_mid = false;
         m_is_server = margo_is_listening(mid);
+        margo_push_prefinalize_callback(m_mid,
+                &engine::on_prefinalize_cb, static_cast<void*>(this));
         margo_push_finalize_callback(m_mid,
                 &engine::on_finalize_cb, static_cast<void*>(this));
     }
@@ -384,6 +402,70 @@ public:
      * @return a bulk object representing the memory exposed for RDMA.
      */
     bulk wrap(hg_bulk_t blk, bool is_local);
+
+    /**
+     * @brief Pushes a pre-finalization callback into the engine. This callback will be
+     * called when margo_finalize is called (e.g. through engine::finalize()),
+     * before the Mercury progress loop is terminated.
+     *
+     * @tparam F type of callback. Must have a operator() defined.
+     * @param f callback.
+     */
+    template<typename F>
+    void push_prefinalize_callback(F&& f) {
+        m_prefinalize_callbacks.emplace_back(0,std::forward<F>(f));
+    }
+
+    /**
+     * @brief Same as push_prefinalize_callback(F&& f) but takes an object whose address will
+     * be used to identify the callback (e.g. a provider).
+     *
+     * @tparam T Type of object used to identify the callback.
+     * @tparam F Callback type.
+     * @param owner Pointer to the object owning the callback.
+     * @param f Callback.
+     */
+    template<typename T, typename F>
+    void push_prefinalize_callback(const T* owner, F&& f) {
+        m_prefinalize_callbacks.emplace_back(reinterpret_cast<intptr_t>(owner), std::forward<F>(f));
+    }
+
+    /**
+     * @brief Pops the most recently pushed pre-finalization callback and returns it.
+     * If no finalization callback are present, this function returns a null std::function.
+     *
+     * @return finalization callback.
+     */
+    std::function<void(void)> pop_prefinalize_callback() {
+        auto it = std::find_if(m_prefinalize_callbacks.rbegin(), m_prefinalize_callbacks.rend(),
+                [](const auto& p) { return p.first == 0; });
+        if(it != m_prefinalize_callbacks.rend()) {
+            auto cb = std::move(it->second);
+            m_prefinalize_callbacks.erase(std::next(it).base());
+            return cb;
+        }
+        return std::function<void(void)>();
+    }
+
+    /**
+     * @brief Pops the most recently pushed pre-finalization callback pushed for a given owner.
+     *
+     * @tparam T Type of owner.
+     * @param owner Pointer to the owner.
+     *
+     * @return finalization callback.
+     */
+    template<typename T>
+    std::function<void(void)> pop_prefinalize_callback(const T* owner) {
+        auto it = std::find_if(m_prefinalize_callbacks.rbegin(), m_prefinalize_callbacks.rend(),
+                [owner](const auto& p) { return p.first == reinterpret_cast<intptr_t>(owner); });
+        if(it != m_prefinalize_callbacks.rend()) {
+            auto cb = std::move(it->second);
+            m_prefinalize_callbacks.erase(std::next(it).base());
+            return cb;
+        }
+        return std::function<void(void)>();
+    }
 
     template<typename F>
     [[deprecated("Use push_finalize_callback")]] void on_finalize(F&& f) {
