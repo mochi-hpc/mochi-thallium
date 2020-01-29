@@ -151,18 +151,18 @@ private:
         engine* e = static_cast<engine*>(arg);
         e->m_finalize_called = true;
         while(!(e->m_finalize_callbacks.empty())) {
-            auto& cb = e->m_finalize_callbacks.front();
-            cb.second();
+            auto cb = e->m_finalize_callbacks.front();
             e->m_finalize_callbacks.pop_front();
+            cb.second();
         }
     }
 
     static void on_prefinalize_cb(void* arg) {
         engine* e = static_cast<engine*>(arg);
         while(!(e->m_prefinalize_callbacks.empty())) {
-            auto& cb = e->m_prefinalize_callbacks.front();
-            cb.second();
+            auto cb = e->m_prefinalize_callbacks.front();
             e->m_prefinalize_callbacks.pop_front();
+            cb.second();
         }
     }
 
