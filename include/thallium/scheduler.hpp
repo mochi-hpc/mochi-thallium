@@ -77,13 +77,13 @@ class scheduler {
         static int init(ABT_sched s, ABT_sched_config) {
             auto ss = std::allocator_traits<Salloc>::allocate(scheduler_allocator, 1);
             std::allocator_traits<Salloc>::construct(scheduler_allocator,ss,s);
-            return ABT_sched_set_data(s, static_cast<void*>(ss));
+            return ABT_sched_set_data(s, reinterpret_cast<void*>(ss));
         }
 
         static void run(ABT_sched s) {
             void* data;
             ABT_sched_get_data(s, &data);
-            S* impl = static_cast<S*>(data);
+            S* impl = reinterpret_cast<S*>(data);
             impl->run();
         }
 
@@ -92,7 +92,7 @@ class scheduler {
             int ret = ABT_sched_get_data(s, &data);
             if(ret != ABT_SUCCESS)
                 return ret;
-            S* impl = static_cast<S*>(data);
+            S* impl = reinterpret_cast<S*>(data);
             std::allocator_traits<Salloc>::destroy(scheduler_allocator, impl);
             std::allocator_traits<Salloc>::deallocate(scheduler_allocator,impl,1);
             return ret;
@@ -101,7 +101,7 @@ class scheduler {
         static ABT_pool get_migr_pool(ABT_sched s) {
             void* data;
             ABT_sched_get_data(s, &data);
-            S* impl = static_cast<S*>(data);
+            S* impl = reinterpret_cast<S*>(data);
             return impl->get_migr_pool().native_handle();
         }
     };
