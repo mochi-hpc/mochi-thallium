@@ -93,11 +93,12 @@ private:
      */
     template<typename F, bool disable_response>
     static void rpc_handler_ult(hg_handle_t handle) {
+        margo_instance_id mid = margo_hg_handle_get_instance(handle);
+        THALLIUM_ASSERT_CONDITION(mid != 0, "margo_hg_handle_get_instance returned null");
+        __margo_internal_pre_wrapper_hooks(mid, handle);
         using G = typename std::remove_reference<F>::type;
         const struct hg_info* info = margo_get_info(handle);
         THALLIUM_ASSERT_CONDITION(info != nullptr, "margo_get_info returned null");
-        margo_instance_id mid = margo_hg_handle_get_instance(handle);
-        THALLIUM_ASSERT_CONDITION(mid != 0, "margo_hg_handle_get_instance returned null");
         void* data = margo_registered_data(mid, info->id);
         THALLIUM_ASSERT_CONDITION(data != nullptr, "margo_registered_data returned null");
         auto cb_data  = static_cast<rpc_callback_data*>(data);
@@ -111,10 +112,7 @@ private:
         ret = margo_free_input(handle, &input);
         MARGO_ASSERT(ret, margo_free_input);
         margo_destroy(handle); // because of margo_ref_incr in rpc_callback
-        __margo_internal_decr_pending(mid);
-        if(__margo_internal_finalize_requested(mid)) {
-            margo_finalize(mid);
-        }
+        __margo_internal_post_wrapper_hooks(mid);
     }
 
     /**
