@@ -10,7 +10,7 @@ class my_sum_provider : public tl::provider<my_sum_provider> {
 
     void prod(const tl::request& req, int x, int y) {
         std::cout << "Computing " << x << "*" << y << std::endl;
-        req.respond(x+y);
+        req.respond(x*y);
     }
 
     int sum(int x, int y) const {
