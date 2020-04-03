@@ -49,8 +49,6 @@ class xstream_exception : public exception {
  * the different states an ES can be in.
  */
 enum class xstream_state : std::int32_t {
-    created    = ABT_XSTREAM_STATE_CREATED,
-    ready      = ABT_XSTREAM_STATE_READY,
     running    = ABT_XSTREAM_STATE_RUNNING,
     terminated = ABT_XSTREAM_STATE_TERMINATED
 };
@@ -213,16 +211,6 @@ class xstream {
      * @brief Destructor.
      */
     ~xstream() = default;
-
-    /**
-     * @brief Starts the xstream if it has not been started.
-     * That is, this routine is effective only when the state
-     * of the ES is CREATED or READY, and once this routine returns,
-     * the ES's state becomes RUNNING.
-     */
-    void start() {
-        TL_ES_ASSERT(ABT_xstream_start(m_xstream));
-    }
 
     /**
      * @brief Wait for xstream to terminate.
