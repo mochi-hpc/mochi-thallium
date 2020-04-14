@@ -232,6 +232,13 @@ class xstream {
     }
 
     /**
+     * @brief Revives a joined ES.
+     */
+    void revive() {
+        TL_ES_ASSERT(ABT_xstream_revive(m_xstream));
+    }
+
+    /**
      * @brief Get the rank of the ES.
      *
      * @return the rank of the ES.
