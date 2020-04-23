@@ -32,8 +32,8 @@ remote_procedure engine::define(const std::string& name) {
     margo_registered_name(m_mid, name.c_str(), &id, &flag);
     if(flag == HG_FALSE) {
         id = margo_register_name(m_mid, name.c_str(),
-                    process_buffer,
-                    process_buffer,
+                    meta_serialization,
+                    meta_serialization,
                     nullptr);
     }
     return remote_procedure(*this, id);
@@ -74,15 +74,13 @@ remote_procedure engine::define(const std::string& name,
         uint16_t provider_id, const pool& p) {
 
     hg_id_t id = margo_provider_register_name(m_mid, name.c_str(),
-            process_buffer,
-            process_buffer,
+            meta_serialization,
+            meta_serialization,
             rpc_callback<rpc_t, false>,
             provider_id,
             p.native_handle());
 
-    m_rpcs[id] = [fun](const request& r, const buffer& b) {
-        fun(r);
-    };
+    m_rpcs[id] = fun;
 
     rpc_callback_data* cb_data = new rpc_callback_data;
     cb_data->m_engine   = this;

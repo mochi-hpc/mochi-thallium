@@ -19,7 +19,7 @@
 #include <thallium/pool.hpp>
 #include <thallium/tuple_util.hpp>
 #include <thallium/function_cast.hpp>
-#include <thallium/buffer.hpp>
+#include <thallium/proc_object.hpp>
 #include <thallium/request.hpp>
 #include <thallium/bulk_mode.hpp>
 
@@ -53,7 +53,7 @@ class engine {
 
 private:
 
-    using rpc_t = std::function<void(const request&, const buffer&)>;
+    using rpc_t = std::function<void(const request&)>;
 
     margo_instance_id                     m_mid;
     std::unordered_map<hg_id_t, rpc_t>    m_rpcs;
@@ -103,14 +103,8 @@ private:
         THALLIUM_ASSERT_CONDITION(data != nullptr, "margo_registered_data returned null");
         auto cb_data  = static_cast<rpc_callback_data*>(data);
         auto f = function_cast<G>(cb_data->m_function);
-        request req(*(cb_data->m_engine), handle, disable_response);
-        buffer input;
-        hg_return_t ret;
-        ret = margo_get_input(handle, &input);
-        MARGO_ASSERT(ret, margo_get_input);
-        (*f)(req, input);
-        ret = margo_free_input(handle, &input);
-        MARGO_ASSERT(ret, margo_free_input);
+        request req(cb_data->m_engine, handle, disable_response);
+        (*f)(req);
         margo_destroy(handle); // because of margo_ref_incr in rpc_callback
         __margo_internal_post_wrapper_hooks(mid);
     }
@@ -555,33 +549,38 @@ public:
 } // namespace thallium
 
 #include <thallium/remote_procedure.hpp>
-#include <thallium/proc_buffer.hpp>
-#include <thallium/serialization/buffer_input_archive.hpp>
-#include <thallium/serialization/buffer_output_archive.hpp>
+#include <thallium/proc_object.hpp>
+#include <thallium/serialization/proc_input_archive.hpp>
+#include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/stl/tuple.hpp>
 
 namespace thallium {
 
-template<typename A1, typename ... Args>
+template<typename T1, typename ... Tn>
 remote_procedure engine::define(const std::string& name, 
-        const std::function<void(const request&, A1, Args...)>& fun,
+        const std::function<void(const request&, T1, Tn...)>& fun,
         uint16_t provider_id, const pool& p) {
-
     hg_id_t id = margo_provider_register_name(m_mid, name.c_str(),
-                process_buffer,
-                process_buffer,
+                meta_serialization,
+                meta_serialization,
                 rpc_callback<rpc_t, false>,
                 provider_id,
                 p.native_handle());
 
-    m_rpcs[id] = [fun,this](const request& r, const buffer& b) {
-        std::function<void(A1, Args...)> call_function = [&fun, &r](A1&& a1, Args&&... args) {
-            fun(r, std::forward<A1>(a1), std::forward<Args>(args)...);
+    m_rpcs[id] = [fun,this](const request& r) {
+        std::function<void(T1, Tn...)> call_function = [&fun, &r](const T1& a1, const Tn&... args) {
+            fun(r, a1, args...);
         };
-        std::tuple<typename std::decay<A1>::type, typename std::decay<Args>::type...> iargs;
-        buffer_input_archive iarch(b, *this);
-        iarch(iargs);
+        std::tuple<typename std::decay<T1>::type, typename std::decay<Tn>::type...> iargs;
+        meta_proc_fn mproc = [this, &iargs](hg_proc_t proc) {
+            return proc_object(proc, iargs, this);
+        };
+        hg_return_t ret = margo_get_input(r.m_handle, &mproc);
+        if(ret != HG_SUCCESS) return ret;
+        ret = margo_free_input(r.m_handle, &mproc);
+        if(ret != HG_SUCCESS) return ret;
         apply_function_to_tuple(call_function, iargs);
+        return HG_SUCCESS;
     };
 
     rpc_callback_data* cb_data = new rpc_callback_data;

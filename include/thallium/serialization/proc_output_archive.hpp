@@ -14,33 +14,31 @@
 
 namespace thallium {
 
-        using buffer_output_archive = cereal_output_archive;
+    using proc_output_archive = cereal_output_archive;
 
 }
 
 #else
 
+#include <mercury_proc.h>
 #include <type_traits>
 #include <thallium/serialization/serialize.hpp>
-#include <thallium/buffer.hpp>
 
 namespace thallium {
 
 class engine;
 
+using namespace std::string_literals;
+
 /**
- * buffer_output_archive wraps and hg::buffer object and
- * offers the functionalities to serialize C++ objects into
- * the buffer. The buffer is resized down to 0 when creating
- * the archive and will be extended back to an appropriate size
- * as C++ objects are serialized into it.
+ * proc_output_archive wraps an hg_proc_t object and
+ * offers the functionalities to serialize C++ objects into it.
  */
-class buffer_output_archive : public output_archive {
+class proc_output_archive : public output_archive {
 
 private:
 
-    buffer&     m_buffer;
-    std::size_t m_pos;
+    hg_proc_t   m_proc;
     engine*     m_engine;
 
     template<typename T, bool b>
@@ -58,31 +56,25 @@ public:
     /**
      * Constructor.
      * 
-     * \param b : reference to a buffer into which to write.
-     * \warning The buffer is held by reference so the life span
-     * of the buffer_output_archive instance should be shorter than
-     * that of the buffer itself.
+     * \param p : reference to an hg_proc_t object.
+     * \param e : thallium engine.
      */
-    buffer_output_archive(buffer& b, engine& e)
-    : m_buffer(b), m_pos(0), m_engine(&e) {
-        m_buffer.resize(0);
-    }
+    proc_output_archive(hg_proc_t p, engine& e)
+    : m_proc(p), m_engine(&e) {}
 
-    buffer_output_archive(buffer& b)
-    : m_buffer(b), m_pos(0), m_engine(nullptr) {
-        m_buffer.resize(0);
-    }
+    proc_output_archive(hg_proc_t p)
+    : m_proc(p), m_engine(nullptr) {}
 
     /**
      * Operator to add a C++ object of type T into the archive.
      * The object should either be a basic type, or an STL container
-     * (in which case the appropriate hgcxx/hg_stl/stl_* header should
+     * (in which case the appropriate header should
      * be included for this function to be properly instanciated), or
      * any object for which either a serialize member function or
      * a load member function has been provided.
      */
     template<typename T>
-    inline buffer_output_archive& operator&(T&& obj) {
+    inline proc_output_archive& operator&(T&& obj) {
         write_impl(std::forward<T>(obj), std::is_arithmetic<typename std::decay<T>::type>());
         return *this;
     }
@@ -91,7 +83,7 @@ public:
      * @brief Parenthesis operator with one argument, equivalent to & operator.
      */
     template<typename T>
-    inline buffer_output_archive& operator()(T&& obj) {
+    inline proc_output_archive& operator()(T&& obj) {
         return (*this) & std::forward<T>(obj);
     }
 
@@ -100,7 +92,7 @@ public:
      * ar(x,y,z) is equivalent to ar & x & y & z.
      */
     template<typename T, typename ... Targs>
-    inline buffer_output_archive& operator()(T&& obj, Targs&&... others) {
+    inline proc_output_archive& operator()(T&& obj, Targs&&... others) {
         (*this) & std::forward<T>(obj);
         return (*this)(std::forward<Targs>(others)...);
     }
@@ -110,7 +102,7 @@ public:
      * \see operator&
      */
     template<typename T>
-    buffer_output_archive& operator<<(T&& obj) {
+    proc_output_archive& operator<<(T&& obj) {
         return (*this) & std::forward<T>(obj);
     }
 
@@ -121,16 +113,11 @@ public:
      * memcopied instead of calling a more elaborate serialize function.
      */
     template<typename T>
-    inline void write(T* const t, size_t count=1) {
-        size_t s = count*sizeof(T);
-        if(m_pos+s > m_buffer.size()) {
-            if(m_pos+s > m_buffer.capacity()) {
-                m_buffer.reserve(m_buffer.capacity()*2);
-            }
-            m_buffer.resize(m_pos+s);
+    inline void write(const T* const t, size_t count=1) {
+        hg_return_t ret = hg_proc_memcpy(m_proc, const_cast<void*>(static_cast<const void*>(t)), count*sizeof(*t));
+        if(ret != HG_SUCCESS) {
+            throw std::runtime_error("Error during serialization, hg_proc_memcpy returned"s + std::to_string(ret));
         }
-        memcpy((void*)(m_buffer.data() + m_pos),(void*)t,s);
-        m_pos += s;
     }
 
     /**

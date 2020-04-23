@@ -9,7 +9,8 @@
 #include <margo.h>
 #include <thallium/margo_exception.hpp>
 #include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/buffer_output_archive.hpp>
+#include <thallium/serialization/proc_output_archive.hpp>
+#include <thallium/proc_object.hpp>
 
 namespace thallium {
 
@@ -41,8 +42,8 @@ private:
      * @param h handle of the RPC that was received.
      * @param disable_resp whether responses are disabled.
      */
-    request(engine& e, hg_handle_t h, bool disable_resp)
-    : m_engine(&e), m_handle(h), m_disable_response(disable_resp) {}
+    request(engine* e, hg_handle_t h, bool disable_resp)
+    : m_engine(e), m_handle(h), m_disable_response(disable_resp) {}
 
 public:
 
@@ -108,15 +109,33 @@ public:
      * @tparam T Types of parameters to serialize.
      * @param t Parameters to serialize.
      */
-    template<typename ... T>
-    void respond(T&&... t) const {
-        if(m_disable_response) return; // XXX throwing an exception?
+    template<typename T1, typename ... T>
+    void respond(T1&& t1, T&&... t) const {
+        if(m_disable_response) {
+            throw exception("Calling respond from an RPC that has disabled responses");
+        }
         if(m_handle != HG_HANDLE_NULL) {
-            buffer b;
-            buffer_output_archive arch(b, *m_engine);
-            arch(std::forward<T>(t)...);
-            hg_return_t ret = margo_respond(m_handle, &b);
+            auto args = std::make_tuple<const T1&, const T&...>(t1, t...);
+            meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
+                return proc_object(proc, args, m_engine);
+            };
+            hg_return_t ret = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);
+        } else {
+            throw exception("In request::respond : null internal hg_handle_t");
+        }
+    }
+
+    void respond() const {
+        if(m_disable_response) {
+            throw exception("Calling respond from an RPC that has disabled responses");
+        }
+        if(m_handle != HG_HANDLE_NULL) {
+            meta_proc_fn mproc = proc_void_object;
+            hg_return_t ret = margo_respond(m_handle, &mproc);
+            MARGO_ASSERT(ret, margo_respond);
+        } else {
+            throw exception("In request::respond : null internal hg_handle_t");
         }
     }
 
