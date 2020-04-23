@@ -12,13 +12,12 @@
 #include <chrono>
 #include <margo.h>
 #include <thallium/config.hpp>
-#include <thallium/buffer.hpp>
 #include <thallium/timeout.hpp>
 #include <thallium/packed_response.hpp>
 #include <thallium/async_response.hpp>
 #include <thallium/margo_exception.hpp>
 #include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/buffer_output_archive.hpp>
+#include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/stl/vector.hpp>
 
 namespace thallium {
@@ -65,30 +64,53 @@ private:
      *
      * @return a packed_response object from which the returned value can be deserialized.
      */
-     packed_response forward(const buffer& buf, double timeout_ms=-1.0) const {
+    template<typename ... T>
+    packed_response forward(const std::tuple<T...>& args, double timeout_ms=-1.0) {
         hg_return_t ret;
+        meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
+            return proc_object(proc, const_cast<std::tuple<T...>&>(args), m_engine);
+        };
         if(timeout_ms > 0.0) {
             ret = margo_provider_forward_timed(
                     m_provider_id,
                     m_handle,
-                    const_cast<void*>(static_cast<const void*>(&buf)),
+                    const_cast<void*>(static_cast<const void*>(&mproc)),
                     timeout_ms);
             if(ret == HG_TIMEOUT)
                 throw timeout();
+            MARGO_ASSERT(ret, margo_provider_iforward);
         } else {
             ret = margo_provider_forward(
                     m_provider_id,
                     m_handle,
-                    const_cast<void*>(static_cast<const void*>(&buf)));
+                    const_cast<void*>(static_cast<const void*>(&mproc)));
+            MARGO_ASSERT(ret, margo_provider_forward);
         }
-        MARGO_ASSERT(ret, margo_forward);
-        buffer output;
-        if(m_ignore_response) return packed_response(std::move(output), *m_engine);
-        ret = margo_get_output(m_handle, &output);
-        MARGO_ASSERT(ret, margo_get_output);
-        ret = margo_free_output(m_handle, &output); // won't do anything on a buffer type
-        MARGO_ASSERT(ret, margo_free_output);
-        return packed_response(std::move(output), *m_engine);
+        if(m_ignore_response) return packed_response();
+        return packed_response(m_handle, m_engine);
+    }
+
+    packed_response forward(double timeout_ms=-1.0) const {
+        hg_return_t ret;
+        meta_proc_fn mproc = proc_void_object;
+        if(timeout_ms > 0.0) {
+            ret = margo_provider_forward_timed(
+                    m_provider_id,
+                    m_handle,
+                    const_cast<void*>(static_cast<const void*>(&mproc)),
+                    timeout_ms);
+            if(ret == HG_TIMEOUT)
+                throw timeout();
+            MARGO_ASSERT(ret, margo_provider_forward_timed);
+        } else {
+            ret = margo_provider_forward(
+                    m_provider_id,
+                    m_handle,
+                    const_cast<void*>(static_cast<const void*>(&mproc)));
+            MARGO_ASSERT(ret, margo_provider_forward);
+        }
+        if(m_ignore_response) return packed_response();
+        return packed_response(m_handle, m_engine);
      }
 
     /**
@@ -103,25 +125,53 @@ private:
      * Note: If the request times out, the timeout exception will occure when calling wait()
      * on the async_response.
      */
-    async_response iforward(const buffer& buf, double timeout_ms=-1.0) const {
+    template<typename ... T>
+    async_response iforward(const std::tuple<T...>& args, double timeout_ms=-1.0) {
         hg_return_t ret;
         margo_request req;
+        meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
+            return proc_object(proc, const_cast<std::tuple<T...>&>(args), m_engine);
+        };
         if(timeout_ms > 0.0) {
             ret = margo_provider_iforward_timed(
                     m_provider_id,
                     m_handle,
-                    const_cast<void*>(static_cast<const void*>(&buf)),
+                    const_cast<void*>(static_cast<const void*>(&mproc)),
                     timeout_ms,
                     &req);
+            MARGO_ASSERT(ret, margo_provider_iforward_timed);
         } else {
             ret = margo_provider_iforward(
                     m_provider_id,
                     m_handle,
-                    const_cast<void*>(static_cast<const void*>(&buf)),
+                    const_cast<void*>(static_cast<const void*>(&mproc)),
                     &req);
+            MARGO_ASSERT(ret, margo_provider_iforward);
         }
-        MARGO_ASSERT(ret, margo_iforward);
-        return async_response(req, *m_engine, m_handle, m_ignore_response);
+        return async_response(req, m_engine, m_handle, m_ignore_response);
+    }
+
+    async_response iforward(double timeout_ms=-1.0) const {
+        hg_return_t ret;
+        margo_request req;
+        meta_proc_fn mproc = proc_void_object;
+        if(timeout_ms > 0.0) {
+            ret = margo_provider_iforward_timed(
+                    m_provider_id,
+                    m_handle,
+                    const_cast<void*>(static_cast<const void*>(&mproc)),
+                    timeout_ms,
+                    &req);
+            MARGO_ASSERT(ret, margo_provider_iforward_timed);
+        } else {
+            ret = margo_provider_iforward(
+                    m_provider_id,
+                    m_handle,
+                    const_cast<void*>(static_cast<const void*>(&mproc)),
+                    &req);
+            MARGO_ASSERT(ret, margo_provider_iforward);
+        }
+        return async_response(req, m_engine, m_handle, m_ignore_response);
     }
 
 public:
@@ -197,11 +247,8 @@ public:
      * @return a packed_response object containing the returned value.
      */
     template<typename ... T>
-    packed_response operator()(T&& ... args) const {
-        buffer b;
-        buffer_output_archive arch(b, *m_engine);
-        arch(std::forward<T>(args)...);
-        return forward(b);
+    packed_response operator()(const T& ... args) {
+        return forward(std::make_tuple<const T&...>(args...));
     }
 
     /**
@@ -219,13 +266,10 @@ public:
      * @return a packed_response object containing the returned value.
      */
     template<typename R, typename P, typename ... T>
-    packed_response timed(const std::chrono::duration<R,P>& t, T&& ... args) const {
-        buffer b;
-        buffer_output_archive arch(b, *m_engine);
-        arch(std::forward<T>(args)...);
+    packed_response timed(const std::chrono::duration<R,P>& t, const T& ... args) {
         std::chrono::duration<double, std::milli> fp_ms = t;
         double timeout_ms = fp_ms.count();
-        return forward(b, timeout_ms);
+        return forward(std::make_tuple<const T&...>(args...), timeout_ms);
     }
 
     /**
@@ -234,8 +278,7 @@ public:
      * @return a packed_response object containing the returned value.
      */
     packed_response operator()() const {
-        buffer b;
-        return forward(b);
+        return forward();
     }
 
     /**
@@ -248,11 +291,10 @@ public:
      * @return a packed_response object containing the returned value.
      */
     template<typename R, typename P>
-    packed_response timed(const std::chrono::duration<R,P>& t) const {
-        buffer b;
+    packed_response timed(const std::chrono::duration<R,P>& t) {
         std::chrono::duration<double, std::milli> fp_ms = t;
         double timeout_ms = fp_ms.count();
-        return forward(b, timeout_ms);
+        return forward(timeout_ms);
     }
 
     /**
@@ -265,11 +307,8 @@ public:
      * @return an async_response object that the caller can wait on.
      */
     template<typename ... T>
-    async_response async(T&& ... t) {
-        buffer b;
-        buffer_output_archive arch(b, *m_engine);
-        arch(std::forward<T>(t)...);
-        return iforward(b);
+    async_response async(const T& ... args) {
+        return iforward(std::make_tuple<const T&...>(args...));
     }
 
     /**
@@ -286,13 +325,10 @@ public:
      * @return an async_response object that the caller can wait on.
      */
     template<typename R, typename P, typename ... T>
-    async_response timed_async(const std::chrono::duration<R,P>& t, T&& ... args) {
-        buffer b;
-        buffer_output_archive arch(b, *m_engine);
-        arch(std::forward<T>(t)...);
+    async_response timed_async(const std::chrono::duration<R,P>& t, const T& ... args) {
         std::chrono::duration<double, std::milli> fp_ms = t;
         double timeout_ms = fp_ms.count();
-        return iforward(b, timeout_ms);
+        return iforward(std::make_tuple<const T&...>(args...), timeout_ms);
     }
 
     /**
@@ -301,8 +337,7 @@ public:
      * @return an async_response object that the caller can wait on.
      */
     async_response async() {
-        buffer b;
-        return iforward(b);
+        return iforward();
     }
 
     /**
@@ -316,10 +351,9 @@ public:
      */
     template<typename R, typename P>
     async_response timed_async(const std::chrono::duration<R,P>& t) {
-        buffer b;
         std::chrono::duration<double, std::milli> fp_ms = t;
         double timeout_ms = fp_ms.count();
-        return iforward(b, timeout_ms);
+        return iforward(timeout_ms);
     }
 };
 

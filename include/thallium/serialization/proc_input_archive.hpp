@@ -14,36 +14,37 @@
 
 namespace thallium {
 
-    using buffer_input_archive = cereal_input_archive;
+    using proc_input_archive = cereal_input_archive;
 
 }
 
 
 #else
 
+#include <mercury_proc.h>
 #include <type_traits>
 #include <stdexcept>
 #include <cstring>
 #include <thallium/serialization/serialize.hpp>
-#include <thallium/buffer.hpp>
 
 namespace thallium {
+
+using namespace std::string_literals;
 
 class engine;
 
 /**
- * buffer_input_archive wraps a buffer object and
+ * proc_input_archive wraps a hg_proc_t object and
  * offers the functionalities to deserialize its content
  * into C++ objects. It inherits from the input_archive
  * trait so that serialization methods know they have to
  * take data out of the buffer and into C++ objects.
  */
-class buffer_input_archive : public input_archive {
+class proc_input_archive : public input_archive {
 
 private:
 
-    const buffer& m_buffer;
-    std::size_t   m_pos;
+    hg_proc_t     m_proc;
     engine*       m_engine;
 
     template<typename T, bool b>
@@ -61,16 +62,14 @@ public:
     /**
      * Constructor.
      *
-     * \param b : reference to a buffer from which to read.
-     * \warning The buffer is held by reference so the life span of
-     * the buffer_input_archive instance should be shorter than that
-     * of the buffer.
+     * \param p : hg_proc_t from which to read.
+     * \param engine : thallium engine.
      */
-    buffer_input_archive(const buffer& b, engine& e)
-    : m_buffer(b), m_pos(0), m_engine(&e) {}
+    proc_input_archive(hg_proc_t p, engine& e)
+    : m_proc(p), m_engine(&e) {}
 
-    buffer_input_archive(const buffer& b)
-    : m_buffer(b), m_pos(0), m_engine(nullptr) {}
+    proc_input_archive(hg_proc_t p)
+    : m_proc(p), m_engine(nullptr) {}
 
     /**
      * Operator to get C++ objects of type T from the archive.
@@ -81,7 +80,7 @@ public:
      * a load member function has been provided.
      */
     template<typename T>
-    inline buffer_input_archive& operator&(T&& obj) {
+    inline proc_input_archive& operator&(T&& obj) {
         read_impl(std::forward<T>(obj), std::is_arithmetic<typename std::decay<T>::type>());
         return *this;
     }
@@ -90,7 +89,7 @@ public:
      * @brief Parenthesis operator with one argument, equivalent to & operator.
      */
     template<typename T>
-    inline buffer_input_archive& operator()(T&& obj) {
+    inline proc_input_archive& operator()(T&& obj) {
         return (*this) & std::forward<T>(obj);
     }
 
@@ -99,7 +98,7 @@ public:
      * ar(x,y,z) is equivalent to ar & x & y & z.
      */
     template<typename T, typename ... Targs>
-    inline buffer_input_archive& operator()(T&& obj, Targs&&... others) {
+    inline proc_input_archive& operator()(T&& obj, Targs&&... others) {
         (*this) & std::forward<T>(obj);
         return (*this)(std::forward<Targs>(others)...);
     }
@@ -109,7 +108,7 @@ public:
      * \see operator&
      */
     template<typename T>
-    buffer_input_archive& operator>>(T&& obj) {
+    proc_input_archive& operator>>(T&& obj) {
         return (*this) & std::forward<T>(obj);
     }
 
@@ -121,11 +120,10 @@ public:
      */
     template<typename T>
     inline void read(T* t, std::size_t count=1) {
-        if(m_pos + count*sizeof(T) > m_buffer.size()) {
-            throw std::runtime_error("Reading beyond buffer size");
+        hg_return_t ret = hg_proc_memcpy(m_proc, static_cast<void*>(t), count*sizeof(*t));
+        if(ret != HG_SUCCESS) {
+            throw std::runtime_error("Error during serialization, hg_proc_memcpy returned"s + std::to_string(ret));
         }
-        std::memcpy((void*)t,(const void*)(m_buffer.data() + m_pos),count*sizeof(T));
-        m_pos += count*sizeof(T);
     }
 
     /**

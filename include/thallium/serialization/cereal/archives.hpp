@@ -6,11 +6,14 @@
 #ifndef THALLIUM_CEREAL_ARCHIVES_BINARY_HPP
 #define THALLIUM_CEREAL_ARCHIVES_BINARY_HPP
 
+#include <string>
 #include <cstring>
-#include <thallium/buffer.hpp>
+#include <mercury_proc.h>
 #include <cereal/cereal.hpp>
 
 namespace thallium {
+
+    using namespace std::string_literals;
 
     class engine;
 
@@ -19,35 +22,25 @@ namespace thallium {
     
     public:
 
-        cereal_output_archive(buffer& b, engine& e)
+        cereal_output_archive(hg_proc_t p, engine& e)
         : cereal::OutputArchive<cereal_output_archive, cereal::AllowEmptyClassElision>(this)
-        , m_buffer(b)
-        , m_pos(0)
+        , m_proc(p)
         , m_engine(&e)
-        { 
-            m_buffer.resize(0);
-        }
+        {}
 
-        cereal_output_archive(buffer& b)
+        cereal_output_archive(hg_proc_t p)
         : cereal::OutputArchive<cereal_output_archive, cereal::AllowEmptyClassElision>(this)
-        , m_buffer(b)
-        , m_pos(0)
+        , m_proc(p)
         , m_engine(nullptr)
-        { 
-            m_buffer.resize(0);
-        }
+        {}
 
         ~cereal_output_archive() = default;
 
         inline void write(const void* data, size_t size) {
-            if(m_pos+size > m_buffer.size()) {
-                if(m_pos+size > m_buffer.capacity()) {
-                    m_buffer.reserve(m_buffer.capacity()*2);
-                }
-                m_buffer.resize(m_pos+size);
+            hg_return_t ret = hg_proc_memcpy(m_proc, const_cast<void*>(data), size);
+            if(ret != HG_SUCCESS) {
+                throw std::runtime_error("Error during serialization, hg_proc_memcpy returned"s + std::to_string(ret));
             }
-            memcpy((void*)(m_buffer.data() + m_pos),(void*)data, size);
-            m_pos += size;
         }
 
         engine& get_engine() const {
@@ -56,9 +49,8 @@ namespace thallium {
 
     private:
 
-        buffer&     m_buffer;
-        std::size_t m_pos;
-        engine*     m_engine;
+        hg_proc_t m_proc;
+        engine*   m_engine;
 
     };
 
@@ -67,28 +59,25 @@ namespace thallium {
     
     public:
 
-        cereal_input_archive(const buffer& b, engine& e)
+        cereal_input_archive(hg_proc_t p, engine& e)
         : cereal::InputArchive<cereal_input_archive, cereal::AllowEmptyClassElision>(this)
-        , m_buffer(b)
-        , m_pos(0)
+        , m_proc(p)
         , m_engine(&e)
         {}
 
-        cereal_input_archive(buffer& b)
+        cereal_input_archive(hg_proc_t p)
         : cereal::InputArchive<cereal_input_archive, cereal::AllowEmptyClassElision>(this)
-        , m_buffer(b)
-        , m_pos(0)
+        , m_proc(p)
         , m_engine(nullptr)
         {}
 
         ~cereal_input_archive() = default;
 
         inline void read(void* data, std::size_t size) {
-            if(m_pos + size > m_buffer.size()) {
-                throw std::runtime_error("Reading beyond buffer size");
+            hg_return_t ret = hg_proc_memcpy(m_proc, static_cast<void*>(data), size);
+            if(ret != HG_SUCCESS) {
+                throw std::runtime_error("Error during serialization, hg_proc_memcpy returned"s + std::to_string(ret));
             }
-            std::memcpy((void*)data,(const void*)(m_buffer.data() + m_pos), size);
-            m_pos += size;
         }
 
         engine& get_engine() const {
@@ -97,9 +86,8 @@ namespace thallium {
 
     private:
 
-        const buffer& m_buffer;
-        std::size_t   m_pos;
-        engine*       m_engine;
+        hg_proc_t m_proc;
+        engine*   m_engine;
     };
 
     template<class T> inline

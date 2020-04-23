@@ -25,7 +25,7 @@ inline void load(A& ar, std::string& s) {
     s.clear();
     ar.read(&size);
     s.resize(size);
-    ar.read((char*)(&s[0]),size);
+    ar.read(const_cast<char*>(&s[0]),size);
 }
 
 }

@@ -6,8 +6,8 @@
 #ifndef __THALLIUM_ASYNC_RESPONSE_HPP
 #define __THALLIUM_ASYNC_RESPONSE_HPP
 
+#include <thallium/proc_object.hpp>
 #include <thallium/margo_exception.hpp>
-#include <thallium/buffer.hpp>
 #include <thallium/packed_response.hpp>
 #include <vector>
 #include <utility>
@@ -41,8 +41,8 @@ private:
      * @param c callable_remote_procedure that created the async_response.
      * @param ignore_resp whether response should be ignored.
      */
-    async_response(margo_request req, engine& e, hg_handle_t handle, bool ignore_resp)
-    : m_request(req), m_engine(&e), m_handle(handle), m_ignore_response(ignore_resp) {
+    async_response(margo_request req, engine* e, hg_handle_t handle, bool ignore_resp)
+    : m_request(req), m_engine(e), m_handle(handle), m_ignore_response(ignore_resp) {
         margo_ref_incr(handle);
     }
 
@@ -150,15 +150,10 @@ public:
             throw timeout();
         }
         MARGO_ASSERT(ret, margo_wait_any);
-        buffer output;
         if(completed->m_ignore_response) {
-            return packed_response(std::move(output), *(completed->m_engine));
+            return packed_response();
         }
-        ret = margo_get_output(completed->m_handle, &output);
-        MARGO_ASSERT(ret, margo_get_output);
-        ret = margo_free_output(completed->m_handle, &output); // won't do anything on a buffer type
-        MARGO_ASSERT(ret, margo_free_output);
-        return packed_response(std::move(output), *(completed->m_engine));
+        return packed_response(completed->m_handle, completed->m_engine);
     }
 };
 

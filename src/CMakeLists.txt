@@ -12,7 +12,6 @@ set(thallium-src abt_errors.cpp
                  engine.cpp 
 		 margo_exception.cpp
 		 pool.cpp
-		 proc_buffer.cpp
                  remote_procedure.cpp 
 		 request.cpp
 		 remote_bulk.cpp

@@ -4,11 +4,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <thallium.hpp>
-#ifdef USE_CEREAL
-    #include <cereal/types/string.hpp>
-#else
-    #include <thallium/serialization/stl/string.hpp>
-#endif
+#include <thallium/serialization/stl/string.hpp>
 
 namespace tl = thallium;
 
