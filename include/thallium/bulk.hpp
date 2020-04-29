@@ -12,7 +12,6 @@
 #include <margo.h>
 #include <thallium/endpoint.hpp>
 #include <thallium/margo_exception.hpp>
-#include <thallium/serialization/stl/vector.hpp>
 
 namespace thallium {
 
@@ -35,7 +34,6 @@ private:
     engine*   m_engine = nullptr;
     hg_bulk_t m_bulk = HG_BULK_NULL;
     bool      m_is_local = true;
-    bool      m_eager_mode;
 
     /**
      * @brief Constructor. Made private as bulk objects
@@ -48,7 +46,7 @@ private:
      * local to this process.
      */
     bulk(engine& e, hg_bulk_t b, bool local)
-    : m_engine(&e), m_bulk(b), m_is_local(local), m_eager_mode(false) {}
+    : m_engine(&e), m_bulk(b), m_is_local(local) {}
 
     /**
      * @brief The bulk_segment class represents a portion
@@ -169,14 +167,14 @@ public:
      * object as class member and associate it later with an actual bulk.
      */
     bulk()
-    : m_engine(nullptr), m_bulk(HG_BULK_NULL), m_is_local(false), m_eager_mode(false) {}
+    : m_engine(nullptr), m_bulk(HG_BULK_NULL), m_is_local(false) {}
 
     /**
      * @brief Copy constructor.
      */
     bulk(const bulk& other)
     : m_engine(other.m_engine), m_bulk(other.m_bulk), 
-      m_is_local(other.m_is_local), m_eager_mode(other.m_eager_mode) {
+      m_is_local(other.m_is_local) {
         if(other.m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_ref_incr(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_ref_incr);
@@ -188,8 +186,7 @@ public:
      */
     bulk(bulk&& other)
     : m_engine(other.m_engine), m_bulk(other.m_bulk),
-      m_is_local(other.m_is_local), 
-      m_eager_mode(other.m_eager_mode) {
+      m_is_local(other.m_is_local) {
           other.m_bulk     = HG_BULK_NULL;
     }
 
@@ -205,7 +202,6 @@ public:
         m_bulk     = other.m_bulk;
         m_engine   = other.m_engine;
         m_is_local = other.m_is_local;
-        m_eager_mode = other.m_eager_mode;
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_ref_incr(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_ref_incr);
@@ -225,7 +221,6 @@ public:
         m_engine     = other.m_engine;
         m_bulk       = other.m_bulk;
         m_is_local   = other.m_is_local;
-        m_eager_mode = other.m_eager_mode;
         other.m_bulk = HG_BULK_NULL;
         return *this;
     }
@@ -269,7 +264,7 @@ public:
      * @param eager Whether to use eager mode or not.
      */
     [[deprecated]] void set_eager_mode(bool eager) {
-        m_eager_mode = eager;
+        (void)eager;
     }
 
     /**
