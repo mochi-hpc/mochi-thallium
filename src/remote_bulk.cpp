@@ -5,6 +5,7 @@
  */
 #include <thallium/bulk.hpp>
 #include <thallium/remote_bulk.hpp>
+#include <thallium/engine.hpp>
 
 namespace thallium {
 

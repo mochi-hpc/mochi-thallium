@@ -142,6 +142,14 @@ public:
     engine& get_engine() const {
         return *m_engine;
     }
+
+    /**
+     * @brief Returns the hg_proc_t object handling the current
+     * serialization.
+     */
+    hg_proc_t get_proc() const {
+        return m_proc;
+    }
 };
 
 }

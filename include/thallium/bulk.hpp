@@ -19,6 +19,7 @@ namespace thallium {
 class engine;
 class remote_bulk;
 
+
 /**
  * @brief bulk objects represent abstractions of memory
  * segments exposed by a process for RDMA operations. A bulk
@@ -31,9 +32,9 @@ class bulk {
 
 private:
 
-    engine*   m_engine;
-    hg_bulk_t m_bulk;
-    bool      m_is_local;
+    engine*   m_engine = nullptr;
+    hg_bulk_t m_bulk = HG_BULK_NULL;
+    bool      m_is_local = true;
     bool      m_eager_mode;
 
     /**
@@ -267,7 +268,7 @@ public:
      *
      * @param eager Whether to use eager mode or not.
      */
-    void set_eager_mode(bool eager) {
+    [[deprecated]] void set_eager_mode(bool eager) {
         m_eager_mode = eager;
     }
 
@@ -333,57 +334,24 @@ public:
     hg_bulk_t get_bulk(bool copy=false) const;
 
     /**
-     * @brief Function that serializes a bulk object into an archive.
+     * @brief Function that serializes a bulk object into/from an archive.
      *
      * @tparam A Archive type.
-     * @param ar Output archive.
+     * @param ar archive.
      */
     template<typename A>
-    void save(A& ar) const {
-        if(m_bulk == HG_BULK_NULL) {
-            std::vector<char> buf;
-            ar & buf;
-        } else {
-            auto use_eager = m_eager_mode ? HG_TRUE : HG_FALSE;
-            hg_size_t s = margo_bulk_get_serialize_size(m_bulk, use_eager);
-            std::vector<char> buf(s);
-            hg_return_t ret = margo_bulk_serialize(&buf[0], s, use_eager, m_bulk);
-            MARGO_ASSERT(ret, margo_bulk_serialize);
-            ar & buf;
+    void serialize(A& ar) {
+        using namespace std::string_literals;
+        int ret = hg_proc_hg_bulk_t(ar.get_proc(), &m_bulk);
+        if(ret != HG_SUCCESS) {
+            throw std::runtime_error("Error during serialization, hg_proc_hg_bulk_t returned"s + std::to_string(ret));
+        }
+        if(m_engine == nullptr) {
+            m_engine = &ar.get_engine();
         }
     }
 
-    /**
-     * @brief Deserializes a bulk object from an output archive.
-     *
-     * @tparam A Archive type.
-     * @param ar Input archive.
-     */
-    template<typename A>
-    void load(A& ar);
-
 };
-
-}
-
-#include <thallium/engine.hpp>
-
-namespace thallium {
-
-template<typename A>
-void bulk::load(A& ar) {
-    if(!is_null()) {
-        *this = bulk(); // reset
-    }
-    std::vector<char> buf;
-    ar & buf;
-    if(buf.size() > 0) {
-        m_engine = &(ar.get_engine());
-        hg_return_t ret = margo_bulk_deserialize(m_engine->m_mid, &m_bulk, &buf[0], buf.size());
-        MARGO_ASSERT(ret, margo_bulk_deserialize);
-        m_is_local = false;
-    }
-}
 
 }
 

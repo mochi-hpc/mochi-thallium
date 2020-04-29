@@ -46,15 +46,13 @@ if (NOT CMAKE_BUILD_TYPE)
     set_property (CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS 
                   "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif ()
-set (CMAKE_PREFIX_PATH "" CACHE STRING "External dependencies path")
-set (BUILD_SHARED_LIBS "OFF" CACHE BOOL "Build a shared library")
-set (ENABLE_CEREAL "OFF" CACHE BOOL "Enable cereal serialization")
+option (ENABLE_CEREAL "Enable cereal serialization" OFF)
 
 include_directories (${CMAKE_BINARY_DIR}/include)
 
 # packages we depend on
 if (ENABLE_CEREAL)
-	find_package (cereal CONFIG REQUIRED)
+    find_package (cereal CONFIG REQUIRED)
 endif (ENABLE_CEREAL)
 
 include (xpkg-import)

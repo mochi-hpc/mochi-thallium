@@ -47,6 +47,10 @@ namespace thallium {
             return *m_engine;
         }
 
+        hg_proc_t get_proc() const {
+            return m_proc;
+        }
+
     private:
 
         hg_proc_t m_proc;
@@ -82,6 +86,10 @@ namespace thallium {
 
         engine& get_engine() const {
             return *m_engine;
+        }
+
+        hg_proc_t get_proc() const {
+            return m_proc;
         }
 
     private:
