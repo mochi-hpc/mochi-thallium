@@ -25,6 +25,7 @@ namespace thallium {
 #include <type_traits>
 #include <stdexcept>
 #include <cstring>
+#include <string>
 #include <thallium/serialization/serialize.hpp>
 
 namespace thallium {

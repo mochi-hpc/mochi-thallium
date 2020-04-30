@@ -20,6 +20,7 @@ namespace thallium {
 
 #else
 
+#include <string>
 #include <mercury_proc.h>
 #include <type_traits>
 #include <thallium/serialization/serialize.hpp>
