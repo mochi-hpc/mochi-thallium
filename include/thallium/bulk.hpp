@@ -1,23 +1,22 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_BULK_HPP
 #define __THALLIUM_BULK_HPP
 
 #include <cstdint>
-#include <string>
-#include <vector>
 #include <margo.h>
+#include <string>
 #include <thallium/endpoint.hpp>
 #include <thallium/margo_exception.hpp>
+#include <vector>
 
 namespace thallium {
 
 class engine;
 class remote_bulk;
-
 
 /**
  * @brief bulk objects represent abstractions of memory
@@ -25,14 +24,12 @@ class remote_bulk;
  * object can be serialized to be sent over RPC to another process.
  */
 class bulk {
-
     friend class engine;
     friend class remote_bulk;
 
-private:
-
-    engine*   m_engine = nullptr;
-    hg_bulk_t m_bulk = HG_BULK_NULL;
+  private:
+    engine*   m_engine   = nullptr;
+    hg_bulk_t m_bulk     = HG_BULK_NULL;
     bool      m_is_local = true;
 
     /**
@@ -46,40 +43,46 @@ private:
      * local to this process.
      */
     bulk(engine& e, hg_bulk_t b, bool local)
-    : m_engine(&e), m_bulk(b), m_is_local(local) {}
+    : m_engine(&e)
+    , m_bulk(b)
+    , m_is_local(local) {}
 
     /**
      * @brief The bulk_segment class represents a portion
      * (represented by offset and size) of a bulk object.
      */
     class bulk_segment {
-
         friend class remote_bulk;
-        
+
         std::size_t m_offset;
         std::size_t m_size;
         const bulk& m_bulk;
 
-        public:
-
+      public:
         /**
          * @brief Constructor. By default the size of the segment will be
          * that of the underlying bulk object, and the offset is 0.
          *
-         * @param b Reference to the bulk object from which the segment is taken.
+         * @param b Reference to the bulk object from which the segment is
+         * taken.
          */
         bulk_segment(const bulk& b)
-        : m_offset(0), m_size(b.size()), m_bulk(b) {}
+        : m_offset(0)
+        , m_size(b.size())
+        , m_bulk(b) {}
 
         /**
          * @brief Constructor.
          *
-         * @param b Reference to the bulk object from which the segment is taken.
+         * @param b Reference to the bulk object from which the segment is
+         * taken.
          * @param offset Offset at which the segment starts.
          * @param size Size of the segment.
          */
         bulk_segment(const bulk& b, std::size_t offset, std::size_t size)
-        : m_offset(offset), m_size(size), m_bulk(b) {}
+        : m_offset(offset)
+        , m_size(size)
+        , m_bulk(b) {}
 
         /**
          * @brief Copy constructor is deleted.
@@ -89,7 +92,7 @@ private:
         /**
          * @brief Move constructor is default.
          */
-        bulk_segment(bulk_segment&&)      = default;
+        bulk_segment(bulk_segment&&) = default;
 
         /**
          * @brief Copy assignment operator is default.
@@ -104,7 +107,7 @@ private:
         /**
          * @brief Destructor is default.
          */
-        ~bulk_segment()                   = default;
+        ~bulk_segment() = default;
 
         /**
          * @brief Associates the bulk segment with an endpoint to represent
@@ -139,42 +142,47 @@ private:
         std::size_t operator<<(const remote_bulk& b) const;
 
         /**
-         * @brief Selects a subsegment from this segment. If the size is too large,
-         * the maximum possible size is chosen.
+         * @brief Selects a subsegment from this segment. If the size is too
+         * large, the maximum possible size is chosen.
          *
-         * @param offset Offset of the subsegment relative to the current segment.
+         * @param offset Offset of the subsegment relative to the current
+         * segment.
          * @param size Size of the subsegment.
          *
          * @return a new bulk_segment object.
          */
         bulk_segment select(std::size_t offset, std::size_t size) const {
-            std::size_t effective_size = offset+size > m_size ? m_size - offset : size;
-            return bulk_segment(m_bulk, m_offset+offset, effective_size);
+            std::size_t effective_size =
+                offset + size > m_size ? m_size - offset : size;
+            return bulk_segment(m_bulk, m_offset + offset, effective_size);
         }
 
         /**
          * @see bulk_segment::select.
          */
-        inline bulk_segment operator()(std::size_t offset, std::size_t size) const {
+        inline bulk_segment operator()(std::size_t offset,
+                                       std::size_t size) const {
             return select(offset, size);
         }
     };
 
-public:
-
+  public:
     /**
      * @brief Default constructor, defined so that one can have a bulk
      * object as class member and associate it later with an actual bulk.
      */
     bulk()
-    : m_engine(nullptr), m_bulk(HG_BULK_NULL), m_is_local(false) {}
+    : m_engine(nullptr)
+    , m_bulk(HG_BULK_NULL)
+    , m_is_local(false) {}
 
     /**
      * @brief Copy constructor.
      */
     bulk(const bulk& other)
-    : m_engine(other.m_engine), m_bulk(other.m_bulk), 
-      m_is_local(other.m_is_local) {
+    : m_engine(other.m_engine)
+    , m_bulk(other.m_bulk)
+    , m_is_local(other.m_is_local) {
         if(other.m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_ref_incr(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_ref_incr);
@@ -185,16 +193,18 @@ public:
      * @brief Move constructor.
      */
     bulk(bulk&& other)
-    : m_engine(other.m_engine), m_bulk(other.m_bulk),
-      m_is_local(other.m_is_local) {
-          other.m_bulk     = HG_BULK_NULL;
+    : m_engine(other.m_engine)
+    , m_bulk(other.m_bulk)
+    , m_is_local(other.m_is_local) {
+        other.m_bulk = HG_BULK_NULL;
     }
 
     /**
      * @brief Copy-assignment operator.
      */
     bulk& operator=(const bulk& other) {
-        if(this == &other) return *this;
+        if(this == &other)
+            return *this;
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_free(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_free);
@@ -213,7 +223,8 @@ public:
      * @brief Move-assignment operator.
      */
     bulk& operator=(bulk&& other) {
-        if(this == &other) return *this;
+        if(this == &other)
+            return *this;
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_free(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_free);
@@ -252,9 +263,7 @@ public:
      *
      * @return true if the bulk handle is null, false otherwise.
      */
-    bool is_null() const {
-        return m_bulk == HG_BULK_NULL;
-    }
+    bool is_null() const { return m_bulk == HG_BULK_NULL; }
 
     /**
      * @brief Set the eager mode. When eager mode is true,
@@ -263,9 +272,7 @@ public:
      *
      * @param eager Whether to use eager mode or not.
      */
-    [[deprecated]] void set_eager_mode(bool eager) {
-        (void)eager;
-    }
+    [[deprecated]] void set_eager_mode(bool eager) { (void)eager; }
 
     /**
      * @brief Builds a remote_bulk object by associating it with an endpoint.
@@ -286,7 +293,6 @@ public:
      * @return a bulk_segment object.
      */
     bulk_segment select(std::size_t offset, std::size_t size) const;
-
 
     /**
      * @see bulk::select
@@ -326,7 +332,7 @@ public:
      *
      * @return The underlying hg_bulk_t handle.
      */
-    hg_bulk_t get_bulk(bool copy=false) const;
+    hg_bulk_t get_bulk(bool copy = false) const;
 
     /**
      * @brief Function that serializes a bulk object into/from an archive.
@@ -334,20 +340,20 @@ public:
      * @tparam A Archive type.
      * @param ar archive.
      */
-    template<typename A>
-    void serialize(A& ar) {
+    template <typename A> void serialize(A& ar) {
         using namespace std::string_literals;
         int ret = hg_proc_hg_bulk_t(ar.get_proc(), &m_bulk);
         if(ret != HG_SUCCESS) {
-            throw std::runtime_error("Error during serialization, hg_proc_hg_bulk_t returned"s + std::to_string(ret));
+            throw std::runtime_error(
+                "Error during serialization, hg_proc_hg_bulk_t returned"s +
+                std::to_string(ret));
         }
         if(m_engine == nullptr) {
             m_engine = &ar.get_engine();
         }
     }
-
 };
 
-}
+} // namespace thallium
 
 #endif

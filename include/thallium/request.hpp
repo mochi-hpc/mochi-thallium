@@ -1,6 +1,6 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_REQUEST_HPP
@@ -8,9 +8,9 @@
 
 #include <margo.h>
 #include <thallium/margo_exception.hpp>
-#include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/proc_object.hpp>
+#include <thallium/serialization/proc_output_archive.hpp>
+#include <thallium/serialization/serialize.hpp>
 
 namespace thallium {
 
@@ -25,11 +25,9 @@ class endpoint;
  * the RPC.
  */
 class request {
-
     friend class engine;
 
-private:
-
+  private:
     engine*     m_engine;
     hg_handle_t m_handle;
     bool        m_disable_response;
@@ -43,15 +41,18 @@ private:
      * @param disable_resp whether responses are disabled.
      */
     request(engine* e, hg_handle_t h, bool disable_resp)
-    : m_engine(e), m_handle(h), m_disable_response(disable_resp) {}
+    : m_engine(e)
+    , m_handle(h)
+    , m_disable_response(disable_resp) {}
 
-public:
-
+  public:
     /**
      * @brief Copy constructor.
      */
     request(const request& other)
-    : m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
+    : m_engine(other.m_engine)
+    , m_handle(other.m_handle)
+    , m_disable_response(other.m_disable_response) {
         hg_return_t ret = margo_ref_incr(m_handle);
         MARGO_ASSERT(ret, margo_ref_incr);
     }
@@ -60,7 +61,9 @@ public:
      * @brief Move constructor.
      */
     request(request&& other)
-    : m_engine(other.m_engine), m_handle(other.m_handle), m_disable_response(other.m_disable_response) {
+    : m_engine(other.m_engine)
+    , m_handle(other.m_handle)
+    , m_disable_response(other.m_disable_response) {
         other.m_handle = HG_HANDLE_NULL;
     }
 
@@ -68,14 +71,15 @@ public:
      * @brief Copy-assignment operator.
      */
     request& operator=(const request& other) {
-        if(m_handle == other.m_handle) return *this;
+        if(m_handle == other.m_handle)
+            return *this;
         hg_return_t ret;
         ret = margo_destroy(m_handle);
         MARGO_ASSERT(ret, margo_destroy);
         m_engine           = other.m_engine;
         m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
-        ret = margo_ref_incr(m_handle);
+        ret                = margo_ref_incr(m_handle);
         MARGO_ASSERT(ret, margo_ref_incr);
         return *this;
     }
@@ -84,12 +88,13 @@ public:
      * @brief Move-assignment operator.
      */
     request& operator=(request&& other) {
-        if(m_handle == other.m_handle) return *this;
+        if(m_handle == other.m_handle)
+            return *this;
         margo_destroy(m_handle);
         m_engine           = other.m_engine;
         m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
-        other.m_handle = HG_HANDLE_NULL;
+        other.m_handle     = HG_HANDLE_NULL;
         return *this;
     }
 
@@ -109,10 +114,11 @@ public:
      * @tparam T Types of parameters to serialize.
      * @param t Parameters to serialize.
      */
-    template<typename T1, typename ... T>
+    template <typename T1, typename... T>
     void respond(T1&& t1, T&&... t) const {
         if(m_disable_response) {
-            throw exception("Calling respond from an RPC that has disabled responses");
+            throw exception(
+                "Calling respond from an RPC that has disabled responses");
         }
         if(m_handle != HG_HANDLE_NULL) {
             auto args = std::make_tuple<const T1&, const T&...>(t1, t...);
@@ -128,11 +134,12 @@ public:
 
     void respond() const {
         if(m_disable_response) {
-            throw exception("Calling respond from an RPC that has disabled responses");
+            throw exception(
+                "Calling respond from an RPC that has disabled responses");
         }
         if(m_handle != HG_HANDLE_NULL) {
             meta_proc_fn mproc = proc_void_object;
-            hg_return_t ret = margo_respond(m_handle, &mproc);
+            hg_return_t  ret   = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);
         } else {
             throw exception("In request::respond : null internal hg_handle_t");
@@ -147,6 +154,6 @@ public:
     endpoint get_endpoint() const;
 };
 
-}
+} // namespace thallium
 
 #endif

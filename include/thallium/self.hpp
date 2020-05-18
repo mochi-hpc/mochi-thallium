@@ -17,32 +17,30 @@ namespace thallium {
  * Exception class thrown by the xstream_barrier class.
  */
 class self_exception : public exception {
-
-    public:
-
-    template<typename ... Args>
+  public:
+    template <typename... Args>
     self_exception(Args&&... args)
     : exception(std::forward<Args>(args)...) {}
 };
 
-#define TL_SELF_EXCEPTION(__fun,__ret) \
-    self_exception(#__fun," returned ", abt_error_get_name(__ret),\
-            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__);
+#define TL_SELF_EXCEPTION(__fun, __ret)                                        \
+    self_exception(#__fun, " returned ", abt_error_get_name(__ret), " (",      \
+                   abt_error_get_description(__ret), ") in ", __FILE__, ":",   \
+                   __LINE__);
 
-#define TL_SELF_ASSERT(__call) {\
-    int __ret = __call; \
-    if(__ret != ABT_SUCCESS) {\
-        throw TL_SELF_EXCEPTION(__call, __ret);\
-    }\
-}
+#define TL_SELF_ASSERT(__call)                                                 \
+    {                                                                          \
+        int __ret = __call;                                                    \
+        if(__ret != ABT_SUCCESS) {                                             \
+            throw TL_SELF_EXCEPTION(__call, __ret);                            \
+        }                                                                      \
+    }
 
 /**
  * @brief Wrapper for Argobots' ABT_xstream_barrier.
  */
 class self {
-    
-    public:
-
+  public:
     self()  = delete;
     ~self() = delete;
 
@@ -93,12 +91,10 @@ class self {
     /**
      * @brief Suspend the current ULT.
      */
-    static void suspend() {
-        TL_SELF_ASSERT(ABT_self_suspend());
-    }
+    static void suspend() { TL_SELF_ASSERT(ABT_self_suspend()); }
 };
 
-}
+} // namespace thallium
 
 #undef TL_SELF_EXCEPTION
 #undef TL_SELF_ASSERT

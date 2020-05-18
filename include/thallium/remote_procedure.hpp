@@ -1,6 +1,6 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_REMOTE_PROCEDURE_HPP
@@ -23,13 +23,12 @@ class callable_remote_procedure;
  * some parameters to send an RPC.
  */
 class remote_procedure {
-
     friend class engine;
 
-private:
-    engine*  m_engine;
-    hg_id_t  m_id;
-    bool     m_ignore_response;
+  private:
+    engine* m_engine;
+    hg_id_t m_id;
+    bool    m_ignore_response;
 
     /**
      * @brief Constructor. Made private because remote_procedure
@@ -38,19 +37,18 @@ private:
      * @param e Engine object that created the remote_procedure.
      * @param id Mercury RPC id.
      */
-    remote_procedure(engine& e, hg_id_t id); 
+    remote_procedure(engine& e, hg_id_t id);
 
-public:
-
+  public:
     /**
      * @brief Copy-constructor is default.
      */
-    remote_procedure(const remote_procedure& other)            = default;
+    remote_procedure(const remote_procedure& other) = default;
 
     /**
      * @brief Move-constructor is default.
      */
-    remote_procedure(remote_procedure&& other)                 = default;
+    remote_procedure(remote_procedure&& other) = default;
 
     /**
      * @brief Copy-assignment operator is default.
@@ -60,12 +58,12 @@ public:
     /**
      * @brief Move-assignment operator is default.
      */
-    remote_procedure& operator=(remote_procedure&& other)      = default;
+    remote_procedure& operator=(remote_procedure&& other) = default;
 
     /**
      * @brief Destructor is default.
      */
-    ~remote_procedure()                                        = default;
+    ~remote_procedure() = default;
 
     /**
      * @brief Creates a callable_remote_procedure by associating the
@@ -76,7 +74,6 @@ public:
      * @return a callable_remote_procedure.
      */
     callable_remote_procedure on(const endpoint& ep) const;
-    
 
     /**
      * @brief Creates a callable remote_procedure by associating the
@@ -100,13 +97,12 @@ public:
      */
     void deregister();
 
-    [[deprecated("use disable_response() instead")]]
-    inline remote_procedure& ignore_response() {
+    [[deprecated("use disable_response() instead")]] inline remote_procedure&
+    ignore_response() {
         return disable_response();
     }
-
 };
 
-}
+} // namespace thallium
 
 #endif

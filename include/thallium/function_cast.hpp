@@ -1,6 +1,6 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_FUNCTION_CAST_HPP
@@ -18,8 +18,7 @@ namespace thallium {
  *
  * @return Function pointer.
  */
-template<typename F>
-F* function_cast(void* f) {
+template <typename F> F* function_cast(void* f) {
     return reinterpret_cast<F*>(reinterpret_cast<std::intptr_t>(f));
 }
 
@@ -31,11 +30,10 @@ F* function_cast(void* f) {
  *
  * @return A void* pointer to the function.
  */
-template<typename F>
-void* void_cast(F&& fun) {
+template <typename F> void* void_cast(F&& fun) {
     return reinterpret_cast<void*>(reinterpret_cast<std::intptr_t>(fun));
 }
 
-}
+} // namespace thallium
 
 #endif

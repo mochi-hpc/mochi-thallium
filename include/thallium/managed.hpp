@@ -18,13 +18,10 @@ namespace thallium {
  *
  * @tparam T Type of resource holder.
  */
-template<class T>
-class managed {
-
+template <class T> class managed {
     friend T;
 
-    private:
-
+  private:
     T m_obj;
 
     /**
@@ -34,16 +31,15 @@ class managed {
      * @tparam Args Argument types
      * @param args Arguments
      */
-    template<typename ... Args>
+    template <typename... Args>
     managed(Args&&... args)
     : m_obj(std::forward<Args>(args)...) {}
 
-    public:
-
+  public:
     /**
      * @brief Deleted copy constructor.
      */
-    managed(const managed&)             = delete;
+    managed(const managed&) = delete;
 
     /**
      * @brief Move constructor.
@@ -54,37 +50,29 @@ class managed {
     /**
      * @brief Deleted copy-assignment operator.
      */
-    managed& operator=(const managed&)  = delete;
+    managed& operator=(const managed&) = delete;
 
     /**
      * @brief Move-assignment operator.
      */
-    managed& operator=(managed&& other) {
-        m_obj = std::move(other.m_obj);
-    }
+    managed& operator=(managed&& other) { m_obj = std::move(other.m_obj); }
 
     /**
      * @brief Destructor.
      */
-    ~managed() {
-        m_obj.destroy();
-    }
+    ~managed() { m_obj.destroy(); }
 
     /**
      * @brief Dereference operator.
      */
-    T& operator*() {
-        return m_obj;
-    }
+    T& operator*() { return m_obj; }
 
     /**
      * @brief Pointer access operator.
      */
-    T* operator->() {
-        return &m_obj;
-    }
+    T* operator->() { return &m_obj; }
 };
 
-}
+} // namespace thallium
 
 #endif

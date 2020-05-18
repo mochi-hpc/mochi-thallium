@@ -12,7 +12,7 @@
 namespace thallium {
 
 /**
- * @brief Type of work units. Used when defining 
+ * @brief Type of work units. Used when defining
  * custom pools.
  */
 enum class unit_type : std::uint8_t {
@@ -22,6 +22,6 @@ enum class unit_type : std::uint8_t {
     other   = ABT_UNIT_TYPE_EXT
 };
 
-}
+} // namespace thallium
 
 #endif

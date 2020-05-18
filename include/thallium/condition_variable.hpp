@@ -9,8 +9,8 @@
 
 #include <abt.h>
 #include <mutex>
-#include <thallium/mutex.hpp>
 #include <thallium/exception.hpp>
+#include <thallium/mutex.hpp>
 
 namespace thallium {
 
@@ -18,34 +18,32 @@ namespace thallium {
  * Exception class thrown by the condition_variable class.
  */
 class condition_variable_exception : public exception {
-
-    public:
-
-        template<typename ... Args>
-            condition_variable_exception(Args&&... args)
-            : exception(std::forward<Args>(args)...) {}
+  public:
+    template <typename... Args>
+    condition_variable_exception(Args&&... args)
+    : exception(std::forward<Args>(args)...) {}
 };
 
-#define TL_CV_EXCEPTION(__fun,__ret) \
-    condition_variable_exception(#__fun," returned ", abt_error_get_name(__ret),\
-            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__);
+#define TL_CV_EXCEPTION(__fun, __ret)                                          \
+    condition_variable_exception(                                              \
+        #__fun, " returned ", abt_error_get_name(__ret), " (",                 \
+        abt_error_get_description(__ret), ") in ", __FILE__, ":", __LINE__);
 
-#define TL_CV_ASSERT(__call) {\
-    int __ret = __call; \
-    if(__ret != ABT_SUCCESS) {\
-        throw TL_CV_EXCEPTION(__call, __ret);\
-    }\
-}
+#define TL_CV_ASSERT(__call)                                                   \
+    {                                                                          \
+        int __ret = __call;                                                    \
+        if(__ret != ABT_SUCCESS) {                                             \
+            throw TL_CV_EXCEPTION(__call, __ret);                              \
+        }                                                                      \
+    }
 
 /**
  * @brief Wrapper for Argobots' ABT_cond.
  */
 class condition_variable {
-
     ABT_cond m_cond;
 
-    public:
-
+  public:
     /**
      * @brief Native handle type.
      */
@@ -56,16 +54,12 @@ class condition_variable {
      *
      * @return the underlying ABT_cond handle.
      */
-    native_handle_type native_handle() const noexcept {
-        return m_cond;
-    }
+    native_handle_type native_handle() const noexcept { return m_cond; }
 
     /**
      * @brief Constructor.
      */
-    condition_variable() {
-        TL_CV_ASSERT(ABT_cond_create(&m_cond));
-    }
+    condition_variable() { TL_CV_ASSERT(ABT_cond_create(&m_cond)); }
 
     /**
      * @brief Destructor.
@@ -78,7 +72,7 @@ class condition_variable {
     /**
      * @brief Copy constructor is deleted.
      */
-    condition_variable(const condition_variable&)  = delete;
+    condition_variable(const condition_variable&) = delete;
 
     /**
      * @brief Copy assignment operator is deleted.
@@ -92,11 +86,12 @@ class condition_variable {
      * leaving the right one invalid.
      */
     condition_variable& operator=(condition_variable&& other) {
-        if(this == &other) return *this;
+        if(this == &other)
+            return *this;
         if(m_cond != ABT_COND_NULL) {
             TL_CV_ASSERT(ABT_cond_free(&m_cond));
         }
-        m_cond = other.m_cond;
+        m_cond       = other.m_cond;
         other.m_cond = ABT_COND_NULL;
         return *this;
     }
@@ -123,12 +118,12 @@ class condition_variable {
      * @brief Wait on a condition variable until a predicate
      * becomes true.
      *
-     * @tparam Predicate predicate type, must have parenthesis 
+     * @tparam Predicate predicate type, must have parenthesis
      *         operator returning bool
      * @param lock Mutex to lock when the condition is satisfied.
      * @param pred Predicate to test.
      */
-    template<class Predicate>
+    template <class Predicate>
     void wait(std::unique_lock<mutex>& lock, Predicate&& pred) {
         while(!pred()) {
             wait(lock);
@@ -138,16 +133,12 @@ class condition_variable {
     /**
      * @brief Notify one waiter.
      */
-    void notify_one() {
-        ABT_cond_signal(m_cond);
-    }
+    void notify_one() { ABT_cond_signal(m_cond); }
 
     /**
      * @brief Notify all waiters.
      */
-    void notify_all() {
-        TL_CV_ASSERT(ABT_cond_broadcast(m_cond));
-    }
+    void notify_all() { TL_CV_ASSERT(ABT_cond_broadcast(m_cond)); }
 
     /**
      * @brief Wait on a condition variable until a specific point in time.
@@ -157,19 +148,24 @@ class condition_variable {
      *
      * @return true if lock was acquired, false if timeout
      */
-    bool wait_until(std::unique_lock<mutex>& lock, const struct timespec *abstime) {
-        int ret = ABT_cond_timedwait(m_cond, lock.mutex()->native_handle(), abstime);
+    bool wait_until(std::unique_lock<mutex>& lock,
+                    const struct timespec*   abstime) {
+        int ret =
+            ABT_cond_timedwait(m_cond, lock.mutex()->native_handle(), abstime);
         if(ABT_SUCCESS == ret) {
             return true;
         } else if(ABT_ERR_COND_TIMEDOUT == ret) {
             return false;
         } else {
-            throw TL_CV_EXCEPTION(ABT_cond_timedwait(m_cond, lock.mutex()->native_handle(), abstime),ret);
+            throw TL_CV_EXCEPTION(
+                ABT_cond_timedwait(m_cond, lock.mutex()->native_handle(),
+                                   abstime),
+                ret);
         }
     }
 };
 
-}
+} // namespace thallium
 
 #undef TL_CV_EXCEPTION
 #undef TL_CV_ASSERT

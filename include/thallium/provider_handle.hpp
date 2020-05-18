@@ -1,14 +1,14 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_PROVIDER_HANDLE_HPP
 #define __THALLIUM_PROVIDER_HANDLE_HPP
 
 #include <cstdint>
-#include <string>
 #include <margo.h>
+#include <string>
 #include <thallium/endpoint.hpp>
 #include <thallium/margo_exception.hpp>
 
@@ -18,16 +18,13 @@ namespace thallium {
  * The provider_handle class encapsulates an enpoint
  * with a provider id to reference a particular provider object
  * at a given address. provider_handle inherites from endpoint
- * so it can be used wherever endpoint is needed. 
+ * so it can be used wherever endpoint is needed.
  */
 class provider_handle : public endpoint {
-
-private:
-
+  private:
     uint16_t m_provider_id;
 
-public:
-
+  public:
     /**
      * @brief Constructor from a HG address.
      *
@@ -35,8 +32,10 @@ public:
      * @param addr Address to encapsulate.
      * @param provider_id provider id.
      */
-    provider_handle(engine& e, hg_addr_t addr, uint16_t provider_id=0, bool take_ownership=true)
-    : endpoint(e, addr, take_ownership), m_provider_id(provider_id) {}
+    provider_handle(engine& e, hg_addr_t addr, uint16_t provider_id = 0,
+                    bool take_ownership = true)
+    : endpoint(e, addr, take_ownership)
+    , m_provider_id(provider_id) {}
 
     /**
      * @brief Constructor.
@@ -44,8 +43,9 @@ public:
      * @param e enpoint to encapsulate.
      * @param provider_id provider id.
      */
-    provider_handle(endpoint e, uint16_t provider_id=0)
-    : endpoint(std::move(e)), m_provider_id(provider_id) {}
+    provider_handle(endpoint e, uint16_t provider_id = 0)
+    : endpoint(std::move(e))
+    , m_provider_id(provider_id) {}
 
     /**
      * @brief Default constructor defined so that provider_handlers can
@@ -83,11 +83,9 @@ public:
      *
      * @return the provider id.
      */
-    uint16_t provider_id() const {
-        return m_provider_id;
-    }
+    uint16_t provider_id() const { return m_provider_id; }
 };
 
-}
+} // namespace thallium
 
 #endif

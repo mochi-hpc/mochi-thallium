@@ -1,6 +1,6 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_BULK_MODE_HPP
@@ -20,6 +20,6 @@ enum class bulk_mode : hg_uint32_t {
     write_only = HG_BULK_WRITE_ONLY
 };
 
-}
+} // namespace thallium
 
 #endif

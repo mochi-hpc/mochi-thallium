@@ -1,15 +1,15 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_PACKED_RESPONSE_HPP
 #define __THALLIUM_PACKED_RESPONSE_HPP
 
 #include <thallium/margo_exception.hpp>
-#include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/proc_input_archive.hpp>
 #include <thallium/proc_object.hpp>
+#include <thallium/serialization/proc_input_archive.hpp>
+#include <thallium/serialization/serialize.hpp>
 
 namespace thallium {
 
@@ -22,12 +22,10 @@ class async_response;
  * RPC if the RPC sent one.
  */
 class packed_response {
-
     friend class callable_remote_procedure;
     friend class async_response;
 
-private:
-
+  private:
     engine*     m_engine = nullptr;
     hg_handle_t m_handle = HG_HANDLE_NULL;
 
@@ -39,15 +37,15 @@ private:
      * @param e Engine associated with the RPC.
      */
     packed_response(hg_handle_t h, engine* e)
-    : m_engine(e), m_handle(h) {
+    : m_engine(e)
+    , m_handle(h) {
         hg_return_t ret = margo_ref_incr(h);
         MARGO_ASSERT(ret, margo_ref_incr);
     }
 
     packed_response() = default;
 
-public:
-
+  public:
     ~packed_response() {
         if(m_handle != HG_HANDLE_NULL) {
             margo_destroy(m_handle);
@@ -61,14 +59,14 @@ public:
      *
      * @return Buffer converted into the desired type.
      */
-    template<typename T>
-    T as() const {
+    template <typename T> T as() const {
         if(m_handle == HG_HANDLE_NULL) {
-            throw exception("Cannot unpack data from handle. Are you trying to "
-                    "unpack data from an RPC that does not return any?");
+            throw exception(
+                "Cannot unpack data from handle. Are you trying to "
+                "unpack data from an RPC that does not return any?");
         }
         std::tuple<T> t;
-        meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
+        meta_proc_fn  mproc = [this, &t](hg_proc_t proc) {
             return proc_object(proc, t, m_engine);
         };
         hg_return_t ret = margo_get_output(m_handle, &mproc);
@@ -93,15 +91,15 @@ public:
      *
      * @return buffer content converted into the desired std::tuple.
      */
-    template<typename T1, typename T2, typename ... Tn>
-    auto as() const {
+    template <typename T1, typename T2, typename... Tn> auto as() const {
         if(m_handle == HG_HANDLE_NULL) {
-            throw exception("Cannot unpack data from handle. Are you trying to "
-                    "unpack data from an RPC that does not return any?");
+            throw exception(
+                "Cannot unpack data from handle. Are you trying to "
+                "unpack data from an RPC that does not return any?");
         }
-        std::tuple<typename std::decay<T1>::type, 
-            typename std::decay<T2>::type, 
-            typename std::decay_t<Tn>::type...> t;
+        std::tuple<typename std::decay<T1>::type, typename std::decay<T2>::type,
+                   typename std::decay_t<Tn>::type...>
+                     t;
         meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
             return proc_object(proc, t, &m_engine);
         };
@@ -121,13 +119,9 @@ public:
      *
      * @return An object of the desired type.
      */
-    template<typename T>
-    operator T() const {
-        return as<T>();
-    }
-
+    template <typename T> operator T() const { return as<T>(); }
 };
 
-}
+} // namespace thallium
 
 #endif

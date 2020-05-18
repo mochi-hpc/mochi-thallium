@@ -7,13 +7,13 @@
 #ifndef __THALLIUM_SCHEDULER_HPP
 #define __THALLIUM_SCHEDULER_HPP
 
-#include <memory>
-#include <vector>
 #include <abt.h>
+#include <memory>
+#include <thallium/abt_errors.hpp>
+#include <thallium/exception.hpp>
 #include <thallium/managed.hpp>
 #include <thallium/pool.hpp>
-#include <thallium/exception.hpp>
-#include <thallium/abt_errors.hpp>
+#include <vector>
 
 namespace thallium {
 
@@ -24,34 +24,33 @@ class xstream;
  * Exception class thrown by the scheduler class.
  */
 class scheduler_exception : public exception {
-
-    public:
-
-    template<typename ... Args>
-        scheduler_exception(Args&&... args)
-        : exception(std::forward<Args>(args)...) {}
+  public:
+    template <typename... Args>
+    scheduler_exception(Args&&... args)
+    : exception(std::forward<Args>(args)...) {}
 };
 
-#define TL_SCHED_EXCEPTION(__fun,__ret) \
-    scheduler_exception(#__fun," returned ", abt_error_get_name(__ret),\
-            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__)
+#define TL_SCHED_EXCEPTION(__fun, __ret)                                       \
+    scheduler_exception(#__fun, " returned ", abt_error_get_name(__ret), " (", \
+                        abt_error_get_description(__ret), ") in ", __FILE__,   \
+                        ":", __LINE__)
 
-#define TL_SCHED_ASSERT(__call) {\
-    int __ret = __call; \
-    if(__ret != ABT_SUCCESS) {\
-        throw TL_SCHED_EXCEPTION(__call, __ret);\
-    }\
-}
+#define TL_SCHED_ASSERT(__call)                                                \
+    {                                                                          \
+        int __ret = __call;                                                    \
+        if(__ret != ABT_SUCCESS) {                                             \
+            throw TL_SCHED_EXCEPTION(__call, __ret);                           \
+        }                                                                      \
+    }
 
 /**
  * @brief Wrapper for Argobots' ABT_scheduler.
  */
 class scheduler {
-
     friend class xstream;
     friend class managed<scheduler>;
 
-    public:
+  public:
     /**
      * @brief Predefined scheduler types:
      * default, basic, priority, random-work-stealing.
@@ -63,20 +62,18 @@ class scheduler {
         randws = ABT_SCHED_RANDWS
     };
 
-    private:
-
-    template<typename S, typename Salloc = std::allocator<S>>
+  private:
+    template <typename S, typename Salloc = std::allocator<S>>
     struct sched_def {
-
-        private:
-
+      private:
         static Salloc scheduler_allocator;
 
-        public:
-
+      public:
         static int init(ABT_sched s, ABT_sched_config) {
-            auto ss = std::allocator_traits<Salloc>::allocate(scheduler_allocator, 1);
-            std::allocator_traits<Salloc>::construct(scheduler_allocator,ss,s);
+            auto ss =
+                std::allocator_traits<Salloc>::allocate(scheduler_allocator, 1);
+            std::allocator_traits<Salloc>::construct(scheduler_allocator, ss,
+                                                     s);
             return ABT_sched_set_data(s, reinterpret_cast<void*>(ss));
         }
 
@@ -89,15 +86,16 @@ class scheduler {
 
         static int free(ABT_sched s) {
             void* data;
-            int ret = ABT_sched_get_data(s, &data);
+            int   ret = ABT_sched_get_data(s, &data);
             if(ret != ABT_SUCCESS)
                 return ret;
             S* impl = reinterpret_cast<S*>(data);
             std::allocator_traits<Salloc>::destroy(scheduler_allocator, impl);
-            std::allocator_traits<Salloc>::deallocate(scheduler_allocator,impl,1);
+            std::allocator_traits<Salloc>::deallocate(scheduler_allocator, impl,
+                                                      1);
             return ret;
         }
-        
+
         static ABT_pool get_migr_pool(ABT_sched s) {
             void* data;
             ABT_sched_get_data(s, &data);
@@ -108,23 +106,20 @@ class scheduler {
 
     ABT_sched m_sched;
 
-    protected:
-
+  protected:
     explicit scheduler(ABT_sched s)
     : m_sched(s) {}
 
-    private:
-
+  private:
     void destroy() {
         // XXX for now the "automatic" parameter in scheduler config
         // is not implemented so if we free things here we end up with
         // double-free corruptions
-//        if(m_sched != ABT_SCHED_NULL)
-//            ABT_sched_free(&m_sched);
+        //        if(m_sched != ABT_SCHED_NULL)
+        //            ABT_sched_free(&m_sched);
     }
 
-    public:
-
+  public:
     /**
      * @brief Underlying native handle type.
      */
@@ -135,9 +130,7 @@ class scheduler {
      *
      * @return the underlying native handle.
      */
-    native_handle_type native_handle() const {
-        return m_sched;
-    }
+    native_handle_type native_handle() const { return m_sched; }
 
     /**
      * @brief Creates a scheduler based on a custom class S.
@@ -148,10 +141,10 @@ class scheduler {
      * @param end End iterator for the container of pools.
      * @return a managed<scheduler> object.
      */
-    template<typename S, typename I>
+    template <typename S, typename I>
     static managed<scheduler> create(const I& begin, const I& end) {
         std::vector<ABT_pool> pools;
-        unsigned i = 0;
+        unsigned              i = 0;
         for(auto it = begin; it != end; it++, i++) {
             pools.push_back(it->native_handle());
         }
@@ -162,7 +155,8 @@ class scheduler {
         def.free          = sched_def<S>::free;
         def.get_migr_pool = sched_def<S>::get_migr_pool;
         ABT_sched sched;
-        TL_SCHED_ASSERT(ABT_sched_create(&def, i, pools.data(), ABT_SCHED_CONFIG_NULL, &sched));
+        TL_SCHED_ASSERT(ABT_sched_create(&def, i, pools.data(),
+                                         ABT_SCHED_CONFIG_NULL, &sched));
         return managed<scheduler>(sched);
     }
 
@@ -175,8 +169,7 @@ class scheduler {
      * @param end End iterator for the container of pools.
      * @return a managed<scheduler> object.
      */
-    template<typename S>
-    static managed<scheduler> create(const pool& p) {
+    template <typename S> static managed<scheduler> create(const pool& p) {
         std::vector<ABT_pool> pools(1);
         pools[0] = p.native_handle();
         ABT_sched_def def;
@@ -186,7 +179,8 @@ class scheduler {
         def.free          = sched_def<S>::free;
         def.get_migr_pool = sched_def<S>::get_migr_pool;
         ABT_sched sched;
-        TL_SCHED_ASSERT(ABT_sched_create(&def, 1, pools.data(), ABT_SCHED_CONFIG_NULL, &sched));
+        TL_SCHED_ASSERT(ABT_sched_create(&def, 1, pools.data(),
+                                         ABT_SCHED_CONFIG_NULL, &sched));
         return managed<scheduler>(sched);
     }
 
@@ -199,16 +193,17 @@ class scheduler {
      * @param end End iterator for the container of pools.
      * @return a managed<scheduler> object.
      */
-    template<typename I>
+    template <typename I>
     static managed<scheduler> create(predef spd, const I& begin, const I& end) {
         std::vector<ABT_pool> pools;
-        unsigned i = 0;
+        unsigned              i = 0;
         for(auto it = begin; it != end; it++, i++) {
             pools.push_back(it->native_handle());
         }
         ABT_sched_predef predef = (ABT_sched_predef)spd;
-        ABT_sched sched;
-        TL_SCHED_ASSERT(ABT_sched_create_basic(predef, i, &pools[0], ABT_SCHED_CONFIG_NULL, &sched));
+        ABT_sched        sched;
+        TL_SCHED_ASSERT(ABT_sched_create_basic(predef, i, &pools[0],
+                                               ABT_SCHED_CONFIG_NULL, &sched));
         return managed<scheduler>(sched);
     }
 
@@ -223,10 +218,11 @@ class scheduler {
      */
     static managed<scheduler> create(predef spd, const pool& p) {
         std::vector<ABT_pool> pools(1);
-        pools[0] = p.native_handle();
+        pools[0]                = p.native_handle();
         ABT_sched_predef predef = (ABT_sched_predef)spd;
-        ABT_sched sched;
-        TL_SCHED_ASSERT(ABT_sched_create_basic(predef, 1, &pools[0], ABT_SCHED_CONFIG_NULL, &sched));
+        ABT_sched        sched;
+        TL_SCHED_ASSERT(ABT_sched_create_basic(predef, 1, &pools[0],
+                                               ABT_SCHED_CONFIG_NULL, &sched));
         return managed<scheduler>(sched);
     }
 
@@ -252,8 +248,9 @@ class scheduler {
      * @brief Move assignment operator.
      */
     scheduler& operator=(scheduler&& other) {
-        if(this == &other) return *this;
-        m_sched = other.m_sched;
+        if(this == &other)
+            return *this;
+        m_sched       = other.m_sched;
         other.m_sched = ABT_SCHED_NULL;
         return *this;
     }
@@ -310,11 +307,11 @@ class scheduler {
 
     /**
      * @brief Check if the scheduler needs to stop.
-     * Check if there has been an exit or a finish request and 
-     * if the conditions are respected (empty pool for a finish 
-     * request). If we are on the primary ES, we will jump back 
+     * Check if there has been an exit or a finish request and
+     * if the conditions are respected (empty pool for a finish
+     * request). If we are on the primary ES, we will jump back
      * to the main ULT, if the scheduler has nothing to do.
-     * It is the user's responsibility to take proper measures 
+     * It is the user's responsibility to take proper measures
      * to stop the scheduling loop, depending on the value given by stop.
      *
      * @return true if the scheduler has to stop.
@@ -328,22 +325,18 @@ class scheduler {
     /**
      * @brief Ask a scheduler to stop as soon as possible.
      * The scheduler will stop even if its pools are not empty.
-     * It is the user's responsibility to ensure that the left 
+     * It is the user's responsibility to ensure that the left
      * work will be done by another scheduler.
      */
-    void exit() {
-        TL_SCHED_ASSERT(ABT_sched_exit(m_sched));
-    }
+    void exit() { TL_SCHED_ASSERT(ABT_sched_exit(m_sched)); }
 
     /**
      * @brief Ask a scheduler to finish. The scheduler will stop
-     * when its pools will be empty. 
+     * when its pools will be empty.
      */
-    void finish() {
-        TL_SCHED_ASSERT(ABT_sched_finish(m_sched));
-    }
+    void finish() { TL_SCHED_ASSERT(ABT_sched_finish(m_sched)); }
 };
 
-}
+} // namespace thallium
 
 #endif /* end of include guard */

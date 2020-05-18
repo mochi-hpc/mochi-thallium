@@ -7,17 +7,17 @@
 #ifndef __THALLIUM_XSTREAM_HPP
 #define __THALLIUM_XSTREAM_HPP
 
+#include <abt.h>
 #include <memory>
 #include <vector>
-#include <abt.h>
 
+#include <thallium/abt_errors.hpp>
 #include <thallium/anonymous.hpp>
+#include <thallium/exception.hpp>
+#include <thallium/managed.hpp>
+#include <thallium/pool.hpp>
 #include <thallium/scheduler.hpp>
 #include <thallium/thread.hpp>
-#include <thallium/pool.hpp>
-#include <thallium/managed.hpp>
-#include <thallium/exception.hpp>
-#include <thallium/abt_errors.hpp>
 
 namespace thallium {
 
@@ -25,24 +25,24 @@ namespace thallium {
  * Exception class thrown by the task class.
  */
 class xstream_exception : public exception {
-
-    public:
-
-        template<typename ... Args>
-        xstream_exception(Args&&... args)
-        : exception(std::forward<Args>(args)...) {}
+  public:
+    template <typename... Args>
+    xstream_exception(Args&&... args)
+    : exception(std::forward<Args>(args)...) {}
 };
 
-#define TL_ES_EXCEPTION(__fun,__ret) \
-    xstream_exception(#__fun," returned ", abt_error_get_name(__ret),\
-            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__);
+#define TL_ES_EXCEPTION(__fun, __ret)                                          \
+    xstream_exception(#__fun, " returned ", abt_error_get_name(__ret), " (",   \
+                      abt_error_get_description(__ret), ") in ", __FILE__,     \
+                      ":", __LINE__);
 
-#define TL_ES_ASSERT(__call) {\
-    int __ret = __call; \
-    if(__ret != ABT_SUCCESS) {\
-        throw TL_ES_EXCEPTION(__call, __ret);\
-    }\
-}
+#define TL_ES_ASSERT(__call)                                                   \
+    {                                                                          \
+        int __ret = __call;                                                    \
+        if(__ret != ABT_SUCCESS) {                                             \
+            throw TL_ES_EXCEPTION(__call, __ret);                              \
+        }                                                                      \
+    }
 
 /**
  * @brief The xstream_state enum represents
@@ -57,7 +57,6 @@ enum class xstream_state : std::int32_t {
  * @brief Wrapper for Argobots' ABT_xstream.
  */
 class xstream {
-
     friend class task;
     friend class managed<xstream>;
 
@@ -77,8 +76,7 @@ class xstream {
             ABT_xstream_free(&m_xstream);
     }
 
-	public:
-
+  public:
     /**
      * @brief Native handle type.
      */
@@ -89,12 +87,10 @@ class xstream {
      *
      * @return the native handle.
      */
-    native_handle_type native_handle() const {
-        return m_xstream;
-    }
+    native_handle_type native_handle() const { return m_xstream; }
 
     /**
-     * @brief Creates a managed xstream object with a 
+     * @brief Creates a managed xstream object with a
      * default scheduler and private pool.
      *
      * @return a managed<xstream> object.
@@ -115,10 +111,11 @@ class xstream {
      * @return a managed<xstream> object.
      */
     static managed<xstream> create(scheduler::predef spd, const pool& p) {
-        ABT_pool thePool = p.native_handle();
-        ABT_sched_predef predef = (ABT_sched_predef)spd;
-        ABT_xstream es;
-        TL_ES_ASSERT(ABT_xstream_create_basic(predef, 1, &thePool, ABT_SCHED_CONFIG_NULL, &es));
+        ABT_pool         thePool = p.native_handle();
+        ABT_sched_predef predef  = (ABT_sched_predef)spd;
+        ABT_xstream      es;
+        TL_ES_ASSERT(ABT_xstream_create_basic(predef, 1, &thePool,
+                                              ABT_SCHED_CONFIG_NULL, &es));
         return managed<xstream>(es);
     }
 
@@ -132,16 +129,18 @@ class xstream {
      *
      * @return a managed<xstream> object.
      */
-    template<typename I>
-    static managed<xstream> create(scheduler::predef spd, const I& begin, const I& end) {
+    template <typename I>
+    static managed<xstream> create(scheduler::predef spd, const I& begin,
+                                   const I& end) {
         std::vector<ABT_pool> pools;
-        unsigned i = 0;
+        unsigned              i = 0;
         for(auto it = begin; it != end; it++, i++) {
             pools.push_back(it->native_handle());
         }
         ABT_sched_predef predef = (ABT_sched_predef)spd;
-        ABT_xstream es;
-        TL_ES_ASSERT(ABT_xstream_create_basic(predef, i, &pools[0], ABT_SCHED_CONFIG_NULL, &es));
+        ABT_xstream      es;
+        TL_ES_ASSERT(ABT_xstream_create_basic(predef, i, &pools[0],
+                                              ABT_SCHED_CONFIG_NULL, &es));
         return managed<xstream>(es);
     }
 
@@ -169,14 +168,16 @@ class xstream {
      */
     static managed<xstream> create(const scheduler& sched, int rank) {
         ABT_xstream es;
-        TL_ES_ASSERT(ABT_xstream_create_with_rank(sched.native_handle(), rank, &es));
+        TL_ES_ASSERT(
+            ABT_xstream_create_with_rank(sched.native_handle(), rank, &es));
         return managed<xstream>(es);
     }
 
     /**
      * @brief Default constructor. Does NOT create an ES, but a null handle.
      */
-    xstream() : m_xstream(ABT_XSTREAM_NULL) {}
+    xstream()
+    : m_xstream(ABT_XSTREAM_NULL) {}
 
     /**
      * @brief Copy-constructor.
@@ -187,7 +188,7 @@ class xstream {
      * @brief Move-constructor. Will invalidate
      * the moved-from xstream instance.
      */
-    xstream(xstream&& other) 
+    xstream(xstream&& other)
     : m_xstream(other.m_xstream) {
         other.m_xstream = ABT_XSTREAM_NULL;
     }
@@ -201,8 +202,9 @@ class xstream {
      * @brief Move-assignment operator.
      */
     xstream& operator=(xstream&& other) {
-        if(&other == this) return *this;
-        m_xstream = other.m_xstream;
+        if(&other == this)
+            return *this;
+        m_xstream       = other.m_xstream;
         other.m_xstream = ABT_XSTREAM_NULL;
         return *this;
     }
@@ -215,28 +217,22 @@ class xstream {
     /**
      * @brief Wait for xstream to terminate.
      *
-     * The xstream cannot be the same as the 
-     * xstream associated with calling thread. 
-     * If they are identical, this routine returns immediately without 
+     * The xstream cannot be the same as the
+     * xstream associated with calling thread.
+     * If they are identical, this routine returns immediately without
      * waiting for the xstream's termination.
      */
-    void join() {
-        TL_ES_ASSERT(ABT_xstream_join(m_xstream));
-    }
+    void join() { TL_ES_ASSERT(ABT_xstream_join(m_xstream)); }
 
     /**
      * @brief Request the cancelation of the target ES.
      */
-    void cancel() {
-        TL_ES_ASSERT(ABT_xstream_cancel(m_xstream));
-    }
+    void cancel() { TL_ES_ASSERT(ABT_xstream_cancel(m_xstream)); }
 
     /**
      * @brief Revives a joined ES.
      */
-    void revive() {
-        TL_ES_ASSERT(ABT_xstream_revive(m_xstream));
-    }
+    void revive() { TL_ES_ASSERT(ABT_xstream_revive(m_xstream)); }
 
     /**
      * @brief Get the rank of the ES.
@@ -254,9 +250,7 @@ class xstream {
      *
      * @param r rank to set the ES to.
      */
-    void set_rank(int r) {
-        TL_ES_ASSERT(ABT_xstream_set_rank(m_xstream, r));
-    }
+    void set_rank(int r) { TL_ES_ASSERT(ABT_xstream_set_rank(m_xstream, r)); }
 
     /**
      * @brief Check whether this ES if the primary ES.
@@ -293,8 +287,8 @@ class xstream {
 
     /**
      * @brief Set the CPU affinity of the ES.
-     * This method binds the target ES xstream to the target 
-     * CPU whose ID is cpuid. Here, the CPU ID corresponds to 
+     * This method binds the target ES xstream to the target
+     * CPU whose ID is cpuid. Here, the CPU ID corresponds to
      * the processor index used by OS.
      *
      * @param cpuid CPU ID
@@ -313,7 +307,8 @@ class xstream {
         int num_cpus;
         TL_ES_ASSERT(ABT_xstream_get_affinity(m_xstream, 0, NULL, &num_cpus));
         std::vector<int> cpuset(num_cpus);
-        TL_ES_ASSERT(ABT_xstream_get_affinity(m_xstream, num_cpus, &(cpuset[0]), &num_cpus));
+        TL_ES_ASSERT(ABT_xstream_get_affinity(m_xstream, num_cpus, &(cpuset[0]),
+                                              &num_cpus));
         return cpuset;
     }
 
@@ -325,20 +320,21 @@ class xstream {
      * @param begin start iterator of CPU IDs.
      * @param end end iterator of CPU ID.
      */
-    template<typename I>
-    void set_affinity(const I& begin, const I& end) {
+    template <typename I> void set_affinity(const I& begin, const I& end) {
         std::vector<int> cpuset(begin, end);
-        TL_ES_ASSERT(ABT_xstream_set_affinity(m_xstream, cpuset.size(), &(cpuset[0])));
+        TL_ES_ASSERT(
+            ABT_xstream_set_affinity(m_xstream, cpuset.size(), &(cpuset[0])));
     }
 
     /**
      * @brief Compares two ES.
      *
-     * @return true if the ES are the same, false otherwise. 
+     * @return true if the ES are the same, false otherwise.
      */
     bool operator==(const xstream& other) const {
         ABT_bool result;
-        TL_ES_ASSERT(ABT_xstream_equal(m_xstream, other.native_handle(), &result));
+        TL_ES_ASSERT(
+            ABT_xstream_equal(m_xstream, other.native_handle(), &result));
         return result == ABT_TRUE;
     }
 
@@ -347,18 +343,14 @@ class xstream {
      *
      * @return true if the ES is null.
      */
-    bool is_null() const {
-        return m_xstream == ABT_XSTREAM_NULL;
-    }
+    bool is_null() const { return m_xstream == ABT_XSTREAM_NULL; }
 
     /**
      * @brief Checks whether the ES is not null.
      *
      * @return true if the ES is not null, false otherwise.
      */
-    operator bool() const {
-        return !is_null();
-    }
+    operator bool() const { return !is_null(); }
 
     /**
      * @brief Sets the scheduler that the ES should use.
@@ -371,22 +363,25 @@ class xstream {
 
     /**
      * @brief Sets the scheduler that the ES schould use, using
-     * a scheduler predefinition and a set of pools that this scheduler should use.
+     * a scheduler predefinition and a set of pools that this scheduler should
+     * use.
      *
      * @tparam I type of iterator for the container of pools.
      * @param s scheduler predefinition.
      * @param begin starting iterator of the list of pools.
      * @param end end iterator of the list of pools.
      */
-    template<typename I>
-    void set_main_sched(const scheduler::predef& s, const I& begin, const I& end) {
+    template <typename I>
+    void set_main_sched(const scheduler::predef& s, const I& begin,
+                        const I& end) {
         std::vector<ABT_pool> pools;
-        unsigned i = 0;
+        unsigned              i = 0;
         for(auto it = begin; it != end; it++, i++) {
             pools.push_back(it->native_handle());
         }
         ABT_sched_predef predef = (ABT_sched_predef)s;
-        TL_ES_ASSERT(ABT_xstream_set_main_sched_basic(m_xstream, predef, i, &pools[0]));
+        TL_ES_ASSERT(
+            ABT_xstream_set_main_sched_basic(m_xstream, predef, i, &pools[0]));
     }
 
     /**
@@ -408,10 +403,11 @@ class xstream {
      *
      * @return a vector of pools associated with the ES.
      */
-    std::vector<pool> get_main_pools(int max_pools=-1) const {
+    std::vector<pool> get_main_pools(int max_pools = -1) const {
         std::vector<ABT_pool> pools;
-        std::vector<pool> result;
-        if(max_pools == 0) return result;
+        std::vector<pool>     result;
+        if(max_pools == 0)
+            return result;
 
         ABT_sched sched;
         TL_ES_ASSERT(ABT_xstream_get_main_sched(m_xstream, &sched));
@@ -436,16 +432,16 @@ class xstream {
      *
      * @return a managed<thread> object managing the created thread.
      */
-    template<typename F>
-    managed<thread> make_thread(F&& f) {
+    template <typename F> managed<thread> make_thread(F&& f) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp));
+        return thread::create_on_xstream(m_xstream, forward_work_unit,
+                                         static_cast<void*>(fp));
     }
 
-    template<typename F>
-    void make_thread(F&& f, const anonymous& a) {
+    template <typename F> void make_thread(F&& f, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), a);
+        thread::create_on_xstream(m_xstream, forward_work_unit,
+                                  static_cast<void*>(fp), a);
     }
 
     /**
@@ -458,16 +454,18 @@ class xstream {
      *
      * @return a managed<thread> object managing the created thread.
      */
-    template<typename F>
+    template <typename F>
     managed<thread> make_thread(F&& f, const thread::attribute& attr) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), attr);
+        return thread::create_on_xstream(m_xstream, forward_work_unit,
+                                         static_cast<void*>(fp), attr);
     }
 
-    template<typename F>
+    template <typename F>
     void make_thread(F&& f, const thread::attribute& attr, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        thread::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), attr, a);
+        thread::create_on_xstream(m_xstream, forward_work_unit,
+                                  static_cast<void*>(fp), attr, a);
     }
 
     /**
@@ -479,28 +477,26 @@ class xstream {
      *
      * @return a managed<task> object managing the create task.
      */
-    template<typename F>
-    managed<task> make_task(F&& f) {
+    template <typename F> managed<task> make_task(F&& f) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return task::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp));
+        return task::create_on_xstream(m_xstream, forward_work_unit,
+                                       static_cast<void*>(fp));
     }
 
-    template<typename F>
-    void make_task(F&& f, const anonymous& a) {
+    template <typename F> void make_task(F&& f, const anonymous& a) {
         auto fp = new std::function<void(void)>(std::forward<F>(f));
-        task::create_on_xstream(m_xstream, forward_work_unit, static_cast<void*>(fp), a);
+        task::create_on_xstream(m_xstream, forward_work_unit,
+                                static_cast<void*>(fp), a);
     }
 
     /**
      * @brief Terminate the ES associated with the calling ULT.
      */
-    static void exit() {
-        TL_ES_ASSERT(ABT_xstream_exit());
-    }
+    static void exit() { TL_ES_ASSERT(ABT_xstream_exit()); }
 
     /**
-     * @brief Return the ES handle associated with the caller 
-     * work unit. 
+     * @brief Return the ES handle associated with the caller
+     * work unit.
      *
      * @return the ES handle associated with the caller work unit.
      */
@@ -546,7 +542,7 @@ class xstream {
     }
 };
 
-}
+} // namespace thallium
 
 #undef TL_ES_EXCEPTION
 #undef TL_ES_ASSERT

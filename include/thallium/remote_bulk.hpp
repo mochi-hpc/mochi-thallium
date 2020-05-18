@@ -1,16 +1,16 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_REMOTE_BULK_HPP
 #define __THALLIUM_REMOTE_BULK_HPP
 
 #include <cstdint>
-#include <string>
-#include <vector>
 #include <margo.h>
+#include <string>
 #include <thallium/bulk.hpp>
+#include <vector>
 
 namespace thallium {
 
@@ -20,36 +20,34 @@ namespace thallium {
  * RDMA operations.
  */
 class remote_bulk {
-
     friend class bulk;
 
-private:
-
-    bulk::bulk_segment  m_segment;
-    endpoint            m_endpoint;
+  private:
+    bulk::bulk_segment m_segment;
+    endpoint           m_endpoint;
 
     /**
      * @brief Constructor. Made private since remote_bulk objects
      * are created by the function bulk::on() or bulk_segment::on()
-     * functions. 
+     * functions.
      *
      * @param b bulk_segment that created the remote_bulk object.
      * @param ep endpoint on which the bulk_segment is.
      */
     remote_bulk(bulk::bulk_segment b, endpoint ep)
-    : m_segment(std::move(b)), m_endpoint(std::move(ep)) {}
+    : m_segment(std::move(b))
+    , m_endpoint(std::move(ep)) {}
 
-public:
-
+  public:
     /**
      * @brief Default copy constructor.
      */
-    remote_bulk(const remote_bulk&)            = default;
+    remote_bulk(const remote_bulk&) = default;
 
     /**
      * @brief Default move constructor.
      */
-    remote_bulk(remote_bulk&&)                 = default;
+    remote_bulk(remote_bulk&&) = default;
 
     /**
      * @brief Default copy-assignment operator.
@@ -59,7 +57,7 @@ public:
     /**
      * @brief Default move-assignment operator.
      */
-    remote_bulk& operator=(remote_bulk&&)      = default;
+    remote_bulk& operator=(remote_bulk&&) = default;
 
     /**
      * @brief Performs a pull operation from the remote_bulk
@@ -106,6 +104,6 @@ public:
     }
 };
 
-}
+} // namespace thallium
 
 #endif

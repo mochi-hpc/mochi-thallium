@@ -7,12 +7,12 @@
 #ifndef __THALLIUM_TASK_HPP
 #define __THALLIUM_TASK_HPP
 
-#include <cstdint>
 #include <abt.h>
-#include <thallium/anonymous.hpp>
-#include <thallium/managed.hpp>
-#include <thallium/exception.hpp>
+#include <cstdint>
 #include <thallium/abt_errors.hpp>
+#include <thallium/anonymous.hpp>
+#include <thallium/exception.hpp>
+#include <thallium/managed.hpp>
 
 namespace thallium {
 
@@ -20,24 +20,24 @@ namespace thallium {
  * Exception class thrown by the task class.
  */
 class task_exception : public exception {
-
-    public:
-
-    template<typename ... Args>
-        task_exception(Args&&... args)
-        : exception(std::forward<Args>(args)...) {}
+  public:
+    template <typename... Args>
+    task_exception(Args&&... args)
+    : exception(std::forward<Args>(args)...) {}
 };
 
-#define TL_TASK_EXCEPTION(__fun,__ret) \
-    task_exception(#__fun," returned ", abt_error_get_name(__ret),\
-            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__);
+#define TL_TASK_EXCEPTION(__fun, __ret)                                        \
+    task_exception(#__fun, " returned ", abt_error_get_name(__ret), " (",      \
+                   abt_error_get_description(__ret), ") in ", __FILE__, ":",   \
+                   __LINE__);
 
-#define TL_TASK_ASSERT(__call) {\
-    int __ret = __call; \
-    if(__ret != ABT_SUCCESS) {\
-        throw TL_TASK_EXCEPTION(__call, __ret);\
-    }\
-}
+#define TL_TASK_ASSERT(__call)                                                 \
+    {                                                                          \
+        int __ret = __call;                                                    \
+        if(__ret != ABT_SUCCESS) {                                             \
+            throw TL_TASK_EXCEPTION(__call, __ret);                            \
+        }                                                                      \
+    }
 
 class pool;
 class xstream;
@@ -60,7 +60,6 @@ enum class task_state : std::int32_t {
  * use managed<task> instead.
  */
 class task {
-
     friend class pool;
     friend class xstream;
     friend class managed<task>;
@@ -70,33 +69,36 @@ class task {
     task(ABT_task t)
     : m_task(t) {}
 
-    static managed<task> create_on_xstream(ABT_xstream es, void(*f)(void*), void* arg) {
+    static managed<task> create_on_xstream(ABT_xstream es, void (*f)(void*),
+                                           void*       arg) {
         ABT_task t;
         TL_TASK_ASSERT(ABT_task_create_on_xstream(es, f, arg, &t));
         return managed<task>(t);
     }
 
-    static void create_on_xstream(ABT_xstream es, void(*f)(void*), void* arg, const anonymous&) {
+    static void create_on_xstream(ABT_xstream es, void (*f)(void*), void* arg,
+                                  const anonymous&) {
         TL_TASK_ASSERT(ABT_task_create_on_xstream(es, f, arg, NULL));
     }
 
-    static managed<task> create_on_pool(ABT_pool p, void(*f)(void*), void* arg) {
+    static managed<task> create_on_pool(ABT_pool p, void (*f)(void*),
+                                        void*    arg) {
         ABT_task t;
         TL_TASK_ASSERT(ABT_task_create(p, f, arg, &t));
         return managed<task>(t);
     }
-    
-    static void create_on_pool(ABT_pool p, void(*f)(void*), void* arg, const anonymous&) {
+
+    static void create_on_pool(ABT_pool p, void (*f)(void*), void* arg,
+                               const anonymous&) {
         TL_TASK_ASSERT(ABT_task_create(p, f, arg, NULL));
-    } 
+    }
 
     void destroy() {
         if(m_task != ABT_TASK_NULL)
             ABT_task_free(&m_task);
     }
 
-    public:
-
+  public:
     /**
      * @brief Native handle type.
      */
@@ -124,8 +126,9 @@ class task {
      * the object moved to.
      */
     task& operator=(task&& other) {
-        if(this == &other) return *this;
-        m_task = other.m_task;
+        if(this == &other)
+            return *this;
+        m_task       = other.m_task;
         other.m_task = ABT_TASK_NULL;
         return *this;
     }
@@ -134,7 +137,7 @@ class task {
      * @brief Move constructor. The object moved from will
      * be invalidated.
      */
-    task(task&& other) 
+    task(task&& other)
     : m_task(other.m_task) {
         other.m_task = ABT_TASK_NULL;
     }
@@ -143,31 +146,25 @@ class task {
      * @brief Destructor.
      */
     ~task() = default;
-    
+
     /**
      * @brief Blocks until the task terminates.
      * Since this routine blocks, only ULTs can call this routine.
      * If tasks use this routine, the behavior is undefined.
      */
-    void join() {
-        TL_TASK_ASSERT(ABT_task_join(m_task));
-    }
+    void join() { TL_TASK_ASSERT(ABT_task_join(m_task)); }
 
     /**
      * @brief Request the cancelation of the target task.
      */
-    void cancel() {
-        TL_TASK_ASSERT(ABT_task_cancel(m_task));
-    }
+    void cancel() { TL_TASK_ASSERT(ABT_task_cancel(m_task)); }
 
     /**
      * @brief Get the native handle of this task.
      *
      * @return the native ABT_task handle.
      */
-    ABT_task native_handle() const {
-        return m_task;
-    }
+    ABT_task native_handle() const { return m_task; }
 
     /**
      * @brief Get the id of the task.
@@ -192,9 +189,9 @@ class task {
     }
 
     /**
-     * @brief Sets the task's migratability. By default, all tasks 
+     * @brief Sets the task's migratability. By default, all tasks
      * are migratable. If flag is true, the task becomes migratable.
-     * On the other hand, if flag is false, the target tasklet 
+     * On the other hand, if flag is false, the target tasklet
      * becomes unmigratable.
      *
      * @param flag true to make the task migratable, false otherwise.
@@ -229,7 +226,7 @@ class task {
     }
 
     /**
-     * @brief Returns the ES associated with the task. 
+     * @brief Returns the ES associated with the task.
      * If the target task is not associated with any ES,
      * a null xstream is returned.
      *
@@ -239,7 +236,7 @@ class task {
 
     /**
      * @brief If the task is not running, returns the pool where it is,
-     * else returns the last pool where it was (the pool from which the 
+     * else returns the last pool where it was (the pool from which the
      * task was popped).
      *
      * @return the last pool that had the task.
@@ -258,7 +255,7 @@ class task {
     }
 
     /**
-     * @brief Returns the handle of the calling task. 
+     * @brief Returns the handle of the calling task.
      * If ULTs call this routine, a null task will be returned.
      *
      * @return the handle to the calling task.
@@ -282,7 +279,7 @@ class task {
     }
 };
 
-}
+} // namespace thallium
 
 #undef TL_TASK_EXCEPTION
 #undef TL_TASK_ASSERT

@@ -17,34 +17,32 @@ namespace thallium {
  * Exception class thrown by the barrier class.
  */
 class barrier_exception : public exception {
-
-    public:
-
-    template<typename ... Args>
+  public:
+    template <typename... Args>
     barrier_exception(Args&&... args)
     : exception(std::forward<Args>(args)...) {}
 };
 
-#define TL_BARRIER_EXCEPTION(__fun,__ret) \
-    barrier_exception(#__fun," returned ", abt_error_get_name(__ret),\
-            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__);
+#define TL_BARRIER_EXCEPTION(__fun, __ret)                                     \
+    barrier_exception(#__fun, " returned ", abt_error_get_name(__ret), " (",   \
+                      abt_error_get_description(__ret), ") in ", __FILE__,     \
+                      ":", __LINE__);
 
-#define TL_BARRIER_ASSERT(__call) {\
-    int __ret = __call; \
-    if(__ret != ABT_SUCCESS) {\
-        throw TL_BARRIER_EXCEPTION(__call, __ret);\
-    }\
-}
+#define TL_BARRIER_ASSERT(__call)                                              \
+    {                                                                          \
+        int __ret = __call;                                                    \
+        if(__ret != ABT_SUCCESS) {                                             \
+            throw TL_BARRIER_EXCEPTION(__call, __ret);                         \
+        }                                                                      \
+    }
 
 /**
  * @brief Wrapper for Argobots' ABT_barrier.
  */
 class barrier {
-
     ABT_barrier m_barrier;
 
-    public:
-
+  public:
     /**
      * @brief Native handle type (ABT_barrier)
      */
@@ -62,13 +60,13 @@ class barrier {
     /**
      * @brief Copy constructor is deleted.
      */
-    barrier(const barrier& other)            = delete;
+    barrier(const barrier& other) = delete;
 
     /**
      * @brief Copy assignment operator is deleted.
      */
     barrier& operator=(const barrier& other) = delete;
-    
+
     /**
      * @brief Move assignment operator.
      *
@@ -78,11 +76,12 @@ class barrier {
      * The right operand will be invalidated.
      */
     barrier& operator=(barrier&& other) {
-        if(this == &other) return *this;
+        if(this == &other)
+            return *this;
         if(m_barrier != ABT_BARRIER_NULL) {
             TL_BARRIER_ASSERT(ABT_barrier_free(&m_barrier));
         }
-        m_barrier = other.m_barrier;
+        m_barrier       = other.m_barrier;
         other.m_barrier = ABT_BARRIER_NULL;
         return *this;
     }
@@ -93,7 +92,7 @@ class barrier {
      *
      * @param other barrier object to move from.
      */
-    barrier(barrier&& other) 
+    barrier(barrier&& other)
     : m_barrier(other.m_barrier) {
         other.m_barrier = ABT_BARRIER_NULL;
     }
@@ -123,9 +122,7 @@ class barrier {
     /**
      * @brief Waits on the barrier.
      */
-    void wait() {
-        TL_BARRIER_ASSERT(ABT_barrier_wait(m_barrier));
-    }
+    void wait() { TL_BARRIER_ASSERT(ABT_barrier_wait(m_barrier)); }
 
     /**
      * @brief Get the number of waiters that the barrier
@@ -144,12 +141,10 @@ class barrier {
      *
      * @return the underlying ABT_barrier handle.
      */
-    native_handle_type native_handle() const noexcept {
-        return m_barrier;
-    }
+    native_handle_type native_handle() const noexcept { return m_barrier; }
 };
 
-}
+} // namespace thallium
 
 #undef TL_BARRIER_EXCEPTION
 #undef TL_BARRIER_ASSERT

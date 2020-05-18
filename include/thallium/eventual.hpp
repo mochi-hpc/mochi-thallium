@@ -6,9 +6,9 @@
 #ifndef __THALLIUM_EVENTUAL_HPP
 #define __THALLIUM_EVENTUAL_HPP
 
-#include <type_traits>
 #include <abt.h>
 #include <thallium/exception.hpp>
+#include <type_traits>
 
 namespace thallium {
 
@@ -16,24 +16,24 @@ namespace thallium {
  * Exception class thrown by the eventual class.
  */
 class eventual_exception : public exception {
-
-    public:
-
-        template<typename ... Args>
-            eventual_exception(Args&&... args)
-            : exception(std::forward<Args>(args)...) {}
+  public:
+    template <typename... Args>
+    eventual_exception(Args&&... args)
+    : exception(std::forward<Args>(args)...) {}
 };
 
-#define TL_EVENTUAL_EXCEPTION(__fun,__ret) \
-    eventual_exception(#__fun," returned ", abt_error_get_name(__ret),\
-            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__);
+#define TL_EVENTUAL_EXCEPTION(__fun, __ret)                                    \
+    eventual_exception(#__fun, " returned ", abt_error_get_name(__ret), " (",  \
+                       abt_error_get_description(__ret), ") in ", __FILE__,    \
+                       ":", __LINE__);
 
-#define TL_EVENTUAL_ASSERT(__call) {\
-    int __ret = __call; \
-    if(__ret != ABT_SUCCESS) {\
-        throw TL_EVENTUAL_EXCEPTION(__call, __ret);\
-    }\
-}
+#define TL_EVENTUAL_ASSERT(__call)                                             \
+    {                                                                          \
+        int __ret = __call;                                                    \
+        if(__ret != ABT_SUCCESS) {                                             \
+            throw TL_EVENTUAL_EXCEPTION(__call, __ret);                        \
+        }                                                                      \
+    }
 
 /**
  * @brief The eventual class wraps an ABT_eventual object.
@@ -41,55 +41,44 @@ class eventual_exception : public exception {
  * the object stored by the eventual. T must be default-constructible
  * and assignable.
  */
-template<typename T>
-class eventual {
-
-
-    public:
-
+template <typename T> class eventual {
+  public:
     /**
      * @brief Type of value stored by the eventual.
      */
-    using value_type = typename std::remove_reference<typename std::remove_cv<T>::type>::type;
+    using value_type =
+        typename std::remove_reference<typename std::remove_cv<T>::type>::type;
     /**
      * @brief Native handle type.
      */
     using native_handle_type = ABT_eventual;
 
-    private:
-
+  private:
     ABT_eventual m_eventual;
     value_type   m_value;
 
-    public:
-
+  public:
     /**
      * @brief Get the underlying native handle.
      *
      * @return The underlying native handle.
      */
-    ABT_eventual native_handle() const noexcept {
-        return m_eventual;
-    }
+    ABT_eventual native_handle() const noexcept { return m_eventual; }
 
     /**
      * @brief Constryctor.
      */
-    eventual() {
-        TL_EVENTUAL_ASSERT(ABT_eventual_create(0, &m_eventual));
-    }
+    eventual() { TL_EVENTUAL_ASSERT(ABT_eventual_create(0, &m_eventual)); }
 
     /**
      * @brief Destructor.
      */
-    ~eventual() {
-        ABT_eventual_free(&m_eventual);
-    }
+    ~eventual() { ABT_eventual_free(&m_eventual); }
 
     /**
      * @brief Copy constructor is deleted.
      */
-    eventual(const eventual& other)            = delete;
+    eventual(const eventual& other) = delete;
 
     /**
      * @brief Copy assignment operator is deleted.
@@ -103,11 +92,12 @@ class eventual {
      * the right operand.
      */
     eventual& operator=(eventual&& other) {
-        if(this == other.m_eventual) return *this;
+        if(this == other.m_eventual)
+            return *this;
         if(m_eventual != ABT_EVENTUAL_NULL) {
             TL_EVENTUAL_ASSERT(ABT_eventual_free(&m_eventual));
         }
-        m_eventual = other.m_eventual;
+        m_eventual       = other.m_eventual;
         other.m_eventual = ABT_EVENTUAL_NULL;
         return *this;
     }
@@ -117,7 +107,7 @@ class eventual {
      */
     eventual(eventual&& other)
     : m_eventual(other.m_eventual) {
-            other.m_eventual = ABT_EVENTUAL_NULL;
+        other.m_eventual = ABT_EVENTUAL_NULL;
     }
 
     /**
@@ -153,57 +143,44 @@ class eventual {
     /**
      * @brief Reset the eventual.
      */
-    void reset() {
-        TL_EVENTUAL_ASSERT(ABT_eventual_reset(m_eventual));
-    }
+    void reset() { TL_EVENTUAL_ASSERT(ABT_eventual_reset(m_eventual)); }
 };
 
 /**
  * @brief Specialization of eventual class for T=void
  */
-template<>
-class eventual<void> {
-
-    public:
-
+template <> class eventual<void> {
+  public:
     /**
      * @brief Native handle type.
      */
     using native_handle_type = ABT_eventual;
 
-    private:
-
+  private:
     ABT_eventual m_eventual;
 
-    public:
-
+  public:
     /**
      * @brief Returns the underlying native handle.
      *
      * @return The underlying native handle.
      */
-    ABT_eventual native_handle() const noexcept {
-        return m_eventual;
-    }
+    ABT_eventual native_handle() const noexcept { return m_eventual; }
 
     /**
      * @brief Constructor.
      */
-    eventual() {
-        TL_EVENTUAL_ASSERT(ABT_eventual_create(0, &m_eventual));
-    }
+    eventual() { TL_EVENTUAL_ASSERT(ABT_eventual_create(0, &m_eventual)); }
 
     /**
      * @brief Destructor.
      */
-    ~eventual() {
-        ABT_eventual_free(&m_eventual);
-    }
+    ~eventual() { ABT_eventual_free(&m_eventual); }
 
     /**
      * @brief Copy constructor is deleted.
      */
-    eventual(const eventual& other)            = delete;
+    eventual(const eventual& other) = delete;
 
     /**
      * @brief Copy assignment operator is deleted.
@@ -216,12 +193,13 @@ class eventual<void> {
      * right operand's resource to the left. This invalidates
      * the right operand.
      */
-    eventual& operator=(eventual&& other) { 
-        if(m_eventual == other.m_eventual) return *this;
+    eventual& operator=(eventual&& other) {
+        if(m_eventual == other.m_eventual)
+            return *this;
         if(m_eventual != ABT_EVENTUAL_NULL) {
             TL_EVENTUAL_ASSERT(ABT_eventual_free(&m_eventual));
         }
-        m_eventual = other.m_eventual;
+        m_eventual       = other.m_eventual;
         other.m_eventual = ABT_EVENTUAL_NULL;
         return *this;
     }
@@ -231,7 +209,7 @@ class eventual<void> {
      */
     eventual(eventual&& other)
     : m_eventual(other.m_eventual) {
-            other.m_eventual = ABT_EVENTUAL_NULL;
+        other.m_eventual = ABT_EVENTUAL_NULL;
     }
 
     /**
@@ -244,19 +222,15 @@ class eventual<void> {
     /**
      * @brief Wait on the eventual.
      */
-    void wait() {
-        TL_EVENTUAL_ASSERT(ABT_eventual_wait(m_eventual, nullptr));
-    }
+    void wait() { TL_EVENTUAL_ASSERT(ABT_eventual_wait(m_eventual, nullptr)); }
 
     /**
      * @brief Reset the eventual.
      */
-    void reset() {
-        TL_EVENTUAL_ASSERT(ABT_eventual_reset(m_eventual));
-    }
+    void reset() { TL_EVENTUAL_ASSERT(ABT_eventual_reset(m_eventual)); }
 };
 
-}
+} // namespace thallium
 
 #undef TL_EVENTUAL_EXCEPTION
 #undef TL_EVENTUAL_ASSERT

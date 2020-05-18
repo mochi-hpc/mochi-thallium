@@ -1,6 +1,6 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #include <thallium/bulk.hpp>
@@ -18,7 +18,8 @@ bulk::bulk_segment bulk::select(std::size_t offset, std::size_t size) const {
     return bulk_segment(*this, offset, size);
 }
 
-bulk::bulk_segment bulk::operator()(std::size_t offset, std::size_t size) const {
+bulk::bulk_segment bulk::operator()(std::size_t offset,
+                                    std::size_t size) const {
     return select(offset, size);
 }
 
@@ -39,10 +40,10 @@ std::size_t bulk::bulk_segment::operator<<(const remote_bulk& b) const {
 }
 
 std::size_t bulk::operator>>(const remote_bulk& b) const {
-    return b << (this->select(0,size()));
+    return b << (this->select(0, size()));
 }
 
 std::size_t bulk::operator<<(const remote_bulk& b) const {
-    return b >> (this->select(0,size()));
+    return b >> (this->select(0, size()));
 }
-}
+} // namespace thallium

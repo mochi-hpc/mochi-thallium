@@ -11,6 +11,6 @@ namespace thallium {
 
 struct anonymous {};
 
-}
+} // namespace thallium
 
 #endif

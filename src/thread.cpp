@@ -1,8 +1,8 @@
-#include <thallium/thread.hpp>
-#include <thallium/pool.hpp>
-#include <thallium/xstream.hpp>
-#include <thallium/scheduler.hpp>
 #include <thallium/engine.hpp>
+#include <thallium/pool.hpp>
+#include <thallium/scheduler.hpp>
+#include <thallium/thread.hpp>
+#include <thallium/xstream.hpp>
 
 namespace thallium {
 
@@ -28,4 +28,4 @@ void thread::sleep(engine& eng, double ms) {
     margo_thread_sleep(eng.get_margo_instance(), ms);
 }
 
-}
+} // namespace thallium

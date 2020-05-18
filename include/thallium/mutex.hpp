@@ -8,8 +8,8 @@
 #define __THALLIUM_MUTEX_HPP
 
 #include <abt.h>
-#include <thallium/exception.hpp>
 #include <thallium/abt_errors.hpp>
+#include <thallium/exception.hpp>
 
 namespace thallium {
 
@@ -17,35 +17,33 @@ namespace thallium {
  * Exception class thrown by the mutex class.
  */
 class mutex_exception : public exception {
-
-    public:
-
-        template<typename ... Args>
-        mutex_exception(Args&&... args)
-        : exception(std::forward<Args>(args)...) {}
+  public:
+    template <typename... Args>
+    mutex_exception(Args&&... args)
+    : exception(std::forward<Args>(args)...) {}
 };
 
-#define TL_MUTEX_EXCEPTION(__fun,__ret) \
-    mutex_exception(#__fun," returned ", abt_error_get_name(__ret),\
-            " (", abt_error_get_description(__ret),") in ",__FILE__,":",__LINE__);
+#define TL_MUTEX_EXCEPTION(__fun, __ret)                                       \
+    mutex_exception(#__fun, " returned ", abt_error_get_name(__ret), " (",     \
+                    abt_error_get_description(__ret), ") in ", __FILE__, ":",  \
+                    __LINE__);
 
-#define TL_MUTEX_ASSERT(__call) {\
-    int __ret = __call; \
-    if(__ret != ABT_SUCCESS) {\
-        throw TL_MUTEX_EXCEPTION(__call, __ret);\
-    }\
-}
+#define TL_MUTEX_ASSERT(__call)                                                \
+    {                                                                          \
+        int __ret = __call;                                                    \
+        if(__ret != ABT_SUCCESS) {                                             \
+            throw TL_MUTEX_EXCEPTION(__call, __ret);                           \
+        }                                                                      \
+    }
 
 /**
  * @brief The mutex class is an equivalent of std::mutex
  * but build around Argobot's mutex.
  */
 class mutex {
-
     ABT_mutex m_mutex;
 
-    public:
-
+  public:
     /**
      * @brief Type of the underlying native handle.
      */
@@ -83,7 +81,7 @@ class mutex {
         if(m_mutex != ABT_MUTEX_NULL) {
             TL_MUTEX_ASSERT(ABT_mutex_free(&m_mutex));
         }
-        m_mutex = other.m_mutex;
+        m_mutex       = other.m_mutex;
         other.m_mutex = ABT_MUTEX_NULL;
         return *this;
     }
@@ -92,7 +90,7 @@ class mutex {
      * @brief Move constructor.
      */
     mutex(mutex&& other) {
-        m_mutex = other.m_mutex;
+        m_mutex       = other.m_mutex;
         other.m_mutex = ABT_MUTEX_NULL;
     }
 
@@ -107,23 +105,17 @@ class mutex {
     /**
      * @brief Lock the mutex.
      */
-    void lock() {
-        TL_MUTEX_ASSERT(ABT_mutex_lock(m_mutex));
-    }
+    void lock() { TL_MUTEX_ASSERT(ABT_mutex_lock(m_mutex)); }
 
     /**
      * @brief Lock the mutex in low priority.
      */
-    void lock_low() {
-        TL_MUTEX_ASSERT(ABT_mutex_lock_low(m_mutex));
-    }
+    void lock_low() { TL_MUTEX_ASSERT(ABT_mutex_lock_low(m_mutex)); }
 
     /**
      * @brief Lock the mutex without context switch.
      */
-    void spin_lock() {
-        TL_MUTEX_ASSERT(ABT_mutex_spinlock(m_mutex));
-    }
+    void spin_lock() { TL_MUTEX_ASSERT(ABT_mutex_spinlock(m_mutex)); }
 
     /**
      * @brief Try locking the mutex without blocking.
@@ -137,7 +129,7 @@ class mutex {
         } else if(ABT_ERR_MUTEX_LOCKED == ret) {
             return false;
         } else {
-           TL_MUTEX_EXCEPTION(ABT_mutex_trylock(m_mutex), ret); 
+            TL_MUTEX_EXCEPTION(ABT_mutex_trylock(m_mutex), ret);
         }
         return false;
     }
@@ -145,34 +137,26 @@ class mutex {
     /**
      * @brief Unlock the mutex.
      */
-    void unlock() {
-        TL_MUTEX_ASSERT(ABT_mutex_unlock(m_mutex));
-    }
+    void unlock() { TL_MUTEX_ASSERT(ABT_mutex_unlock(m_mutex)); }
 
     /**
      * @brief Hand over the mutex within the ES.
      */
-    void unlock_se() {
-        TL_MUTEX_ASSERT(ABT_mutex_unlock_se(m_mutex));
-    }
-    
+    void unlock_se() { TL_MUTEX_ASSERT(ABT_mutex_unlock_se(m_mutex)); }
+
     /**
      * @brief Get the underlying native handle.
      *
      * @return the underlying native handle.
      */
-    ABT_mutex native_handle() const noexcept {
-        return m_mutex;
-    }
+    ABT_mutex native_handle() const noexcept { return m_mutex; }
 };
 
 /**
  * @brief Child class of mutex to represent a recursive mutex.
  */
 class recursive_mutex : public mutex {
-
-    public:
-
+  public:
     /**
      * @brief Constructor.
      */
@@ -188,7 +172,7 @@ class recursive_mutex : public mutex {
      * @brief Move constructor.
      */
     recursive_mutex(recursive_mutex&& other)
-        : mutex(std::move(other)) {}
+    : mutex(std::move(other)) {}
 
     /**
      * @brief Copy assignment operator is deleted.
@@ -201,7 +185,7 @@ class recursive_mutex : public mutex {
     recursive_mutex& operator=(recursive_mutex&& other) = default;
 };
 
-}
+} // namespace thallium
 
 #undef TL_MUTEX_EXCEPTION
 #undef TL_MUTEX_ASSERT
