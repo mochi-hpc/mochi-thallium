@@ -9,6 +9,7 @@
 #include <thallium/margo_exception.hpp>
 #include <thallium/packed_response.hpp>
 #include <thallium/proc_object.hpp>
+#include <thallium/timeout.hpp>
 #include <utility>
 #include <vector>
 
