@@ -48,7 +48,8 @@ bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
         buf_sizes[i] = segments[i].second;
     }
     hg_return_t ret = margo_bulk_create(
-        m_mid, count, &buf_ptrs[0], &buf_sizes[0], (hg_uint32_t)flag, &handle);
+        m_mid, count, &buf_ptrs[0], &buf_sizes[0],
+        static_cast<hg_uint32_t>(flag), &handle);
     MARGO_ASSERT(ret, margo_bulk_create);
     return bulk(*this, handle, true);
 }
@@ -77,9 +78,9 @@ remote_procedure engine::define(const std::string&                         name,
 
     m_rpcs[id] = fun;
 
-    rpc_callback_data* cb_data = new rpc_callback_data;
-    cb_data->m_engine          = this;
-    cb_data->m_function        = void_cast(&m_rpcs[id]);
+    auto* cb_data       = new rpc_callback_data;
+    cb_data->m_engine   = this;
+    cb_data->m_function = void_cast(&m_rpcs[id]);
 
     hg_return_t ret =
         margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);

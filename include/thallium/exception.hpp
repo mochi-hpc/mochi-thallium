@@ -12,7 +12,7 @@
 
 namespace thallium {
 
-class exception {
+class exception : public std::exception {
     std::string m_msg;
 
   public:
