@@ -56,6 +56,7 @@ class engine {
 
   private:
     using rpc_t = std::function<void(const request&)>;
+    using finalize_callback_t = std::function<void()>;
 
     margo_instance_id                  m_mid;
     bool                               m_is_server;
@@ -63,10 +64,6 @@ class engine {
     std::atomic<bool>                  m_finalize_called;
     hg_context_t*                      m_hg_context = nullptr;
     hg_class_t*                        m_hg_class   = nullptr;
-    std::list<std::pair<intptr_t, std::function<void(void)>>>
-        m_prefinalize_callbacks;
-    std::list<std::pair<intptr_t, std::function<void(void)>>>
-        m_finalize_callbacks;
 
     /**
      * @brief Encapsulation of some data needed by RPC callbacks
@@ -88,23 +85,20 @@ class engine {
         delete cb_data;
     }
 
-    static void on_finalize_cb(void* arg) {
+    static void on_engine_finalize_cb(void* arg) {
         engine* e            = static_cast<engine*>(arg);
         e->m_finalize_called = true;
-        while(!(e->m_finalize_callbacks.empty())) {
-            auto cb = e->m_finalize_callbacks.front();
-            e->m_finalize_callbacks.pop_front();
-            cb.second();
-        }
     }
 
-    static void on_prefinalize_cb(void* arg) {
+    static void on_engine_prefinalize_cb(void* arg) {
         engine* e = static_cast<engine*>(arg);
-        while(!(e->m_prefinalize_callbacks.empty())) {
-            auto cb = e->m_prefinalize_callbacks.front();
-            e->m_prefinalize_callbacks.pop_front();
-            cb.second();
-        }
+        (void)e; // This callback does nothing for now
+    }
+
+    static void finalize_callback_wrapper(void* arg) {
+        auto cb = static_cast<finalize_callback_t*>(arg);
+        (*cb)();
+        delete cb;
     }
 
   public:
@@ -124,11 +118,12 @@ class engine {
         m_finalize_called = false;
         m_mid = margo_init(addr.c_str(), mode, use_progress_thread ? 1 : 0,
                            rpc_thread_count);
-        // XXX throw an exception if m_mid not initialized
+        if(!m_mid)
+            MARGO_THROW(margo_init, "Could not initialize Margo");
         m_owns_mid = true;
-        margo_push_prefinalize_callback(m_mid, &engine::on_prefinalize_cb,
+        margo_push_prefinalize_callback(m_mid, &engine::on_engine_prefinalize_cb,
                                         static_cast<void*>(this));
-        margo_push_finalize_callback(m_mid, &engine::on_finalize_cb,
+        margo_push_finalize_callback(m_mid, &engine::on_engine_finalize_cb,
                                      static_cast<void*>(this));
     }
 
@@ -139,18 +134,23 @@ class engine {
         m_owns_mid        = true;
 
         m_hg_class = HG_Init(addr.c_str(), mode);
-        // if(!hg_class); // XXX throw exception
+        if(!m_hg_class) {
+           throw exception("HG_Init failed in thallium::engine constructor"); 
+        }
 
         m_hg_context = HG_Context_create(m_hg_class);
-        // if(!hg_context); // XXX throw exception
+        if(!m_hg_context) {
+            throw exception("HG_Context_create failed in thallium::engine constructor");
+        }
 
         m_mid =
             margo_init_pool(progress_pool.native_handle(),
                             default_handler_pool.native_handle(), m_hg_context);
-        // XXX throw an exception if m_mid not initialized
-        margo_push_prefinalize_callback(m_mid, &engine::on_prefinalize_cb,
+        if(!m_mid)
+            MARGO_THROW(margo_init, "Could not initialize Margo");
+        margo_push_prefinalize_callback(m_mid, &engine::on_engine_prefinalize_cb,
                                         static_cast<void*>(this));
-        margo_push_finalize_callback(m_mid, &engine::on_finalize_cb,
+        margo_push_finalize_callback(m_mid, &engine::on_engine_finalize_cb,
                                      static_cast<void*>(this));
     }
 
@@ -164,10 +164,15 @@ class engine {
         m_mid       = mid;
         m_is_server = (mode == THALLIUM_SERVER_MODE);
         m_owns_mid  = false;
-        margo_push_prefinalize_callback(m_mid, &engine::on_prefinalize_cb,
+        // an engine initialize with a margo instance is just a wrapper
+        // it doesn't need to push prefinalize and finalize callbacks,
+        // at least currently.
+        /*
+        margo_push_prefinalize_callback(m_mid, &engine::on_engine_prefinalize_cb,
                                         static_cast<void*>(this));
-        margo_push_finalize_callback(m_mid, &engine::on_finalize_cb,
+        margo_push_finalize_callback(m_mid, &engine::on_engine_finalize_cb,
                                      static_cast<void*>(this));
+        */
     }
 
     /**
@@ -179,10 +184,15 @@ class engine {
         m_mid       = mid;
         m_owns_mid  = false;
         m_is_server = margo_is_listening(mid);
-        margo_push_prefinalize_callback(m_mid, &engine::on_prefinalize_cb,
+        // an engine initialize with a margo instance is just a wrapper
+        // it doesn't need to push prefinalize and finalize callbacks,
+        // at least currently.
+        /*
+        margo_push_prefinalize_callback(m_mid, &engine::on_engine_prefinalize_cb,
                                         static_cast<void*>(this));
-        margo_push_finalize_callback(m_mid, &engine::on_finalize_cb,
+        margo_push_finalize_callback(m_mid, &engine::on_engine_finalize_cb,
                                      static_cast<void*>(this));
+        */
     }
 
     /**
@@ -348,22 +358,24 @@ class engine {
      * @param f callback.
      */
     template <typename F> void push_prefinalize_callback(F&& f) {
-        m_prefinalize_callbacks.emplace_back(0, std::forward<F>(f));
+        push_prefinalize_callback(static_cast<const void*>(this), std::forward<F>(f));
     }
 
     /**
      * @brief Same as push_prefinalize_callback(F&& f) but takes an object whose
      * address will be used to identify the callback (e.g. a provider).
      *
-     * @tparam T Type of object used to identify the callback.
      * @tparam F Callback type.
      * @param owner Pointer to the object owning the callback.
      * @param f Callback.
      */
-    template <typename T, typename F>
-    void push_prefinalize_callback(const T* owner, F&& f) {
-        m_prefinalize_callbacks.emplace_back(reinterpret_cast<intptr_t>(owner),
-                                             std::forward<F>(f));
+    template <typename F>
+    void push_prefinalize_callback(const void* owner, F&& f) {
+        auto cb = new finalize_callback_t(std::forward<F>(f));
+        margo_provider_push_prefinalize_callback(m_mid,
+            owner,
+            finalize_callback_wrapper,
+            static_cast<void*>(cb));
     }
 
     /**
@@ -374,15 +386,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_prefinalize_callback() {
-        auto it = std::find_if(m_prefinalize_callbacks.rbegin(),
-                               m_prefinalize_callbacks.rend(),
-                               [](const auto& p) { return p.first == 0; });
-        if(it != m_prefinalize_callbacks.rend()) {
-            auto cb = std::move(it->second);
-            m_prefinalize_callbacks.erase(std::next(it).base());
-            return cb;
-        }
-        return std::function<void(void)>();
+        return pop_prefinalize_callback(static_cast<const void*>(this));
     }
 
     /**
@@ -394,31 +398,30 @@ class engine {
      *
      * @return finalization callback.
      */
-    template <typename T>
-    std::function<void(void)> pop_prefinalize_callback(const T* owner) {
-        auto it = std::find_if(
-            m_prefinalize_callbacks.rbegin(), m_prefinalize_callbacks.rend(),
-            [owner](const auto& p) {
-                return p.first == reinterpret_cast<intptr_t>(owner);
-            });
-        if(it != m_prefinalize_callbacks.rend()) {
-            auto cb = std::move(it->second);
-            m_prefinalize_callbacks.erase(std::next(it).base());
-            return cb;
-        }
-        return std::function<void(void)>();
+    std::function<void(void)> pop_prefinalize_callback(const void* owner) {
+        margo_finalize_callback_t cb = nullptr;
+        void* uargs = nullptr;
+        int ret = margo_provider_top_prefinalize_callback(m_mid,
+            owner,
+            &cb,
+            &uargs);
+        if(ret == 0) return std::function<void(void)>();
+        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
+        finalize_callback_t f_copy = *f;
+        delete f;
+        margo_provider_pop_prefinalize_callback(m_mid, owner);
+        return f_copy;
     }
 
     template <typename F>
     [[deprecated("Use push_finalize_callback")]] void on_finalize(F&& f) {
-        m_finalize_callbacks.emplace_back(0, std::forward<F>(f));
+        push_finalize_callback(std::forward<F>(f));
     }
 
     template <typename T, typename F>
     [[deprecated("Use push_finalize_callback")]] void
     on_finalize(const T& owner, F&& f) {
-        m_finalize_callbacks.emplace_back(reinterpret_cast<intptr_t>(&owner),
-                                          std::forward<F>(f));
+        push_finalize_callback(static_cast<const void*>(&owner), std::forward<F>(f));
     }
 
     /**
@@ -430,7 +433,7 @@ class engine {
      * @param f callback.
      */
     template <typename F> void push_finalize_callback(F&& f) {
-        m_finalize_callbacks.emplace_back(0, std::forward<F>(f));
+        push_finalize_callback(static_cast<const void*>(this), std::forward<F>(f));
     }
 
     /**
@@ -442,10 +445,13 @@ class engine {
      * @param owner Pointer to the object owning the callback.
      * @param f Callback.
      */
-    template <typename T, typename F>
-    void push_finalize_callback(const T* owner, F&& f) {
-        m_finalize_callbacks.emplace_back(reinterpret_cast<intptr_t>(owner),
-                                          std::forward<F>(f));
+    template<typename F>
+    void push_finalize_callback(const void* owner, F&& f) {
+        auto cb = new finalize_callback_t(std::forward<F>(f));
+        margo_provider_push_finalize_callback(m_mid,
+            owner,
+            finalize_callback_wrapper,
+            static_cast<void*>(cb));
     }
 
     /**
@@ -456,15 +462,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_finalize_callback() {
-        auto it = std::find_if(m_finalize_callbacks.rbegin(),
-                               m_finalize_callbacks.rend(),
-                               [](const auto& p) { return p.first == 0; });
-        if(it != m_finalize_callbacks.rend()) {
-            auto cb = std::move(it->second);
-            m_finalize_callbacks.erase(std::next(it).base());
-            return cb;
-        }
-        return std::function<void(void)>();
+        return pop_finalize_callback(static_cast<const void*>(this));
     }
 
     /**
@@ -476,19 +474,19 @@ class engine {
      *
      * @return finalization callback.
      */
-    template <typename T>
-    std::function<void(void)> pop_finalize_callback(const T* owner) {
-        auto it = std::find_if(
-            m_finalize_callbacks.rbegin(), m_finalize_callbacks.rend(),
-            [owner](const auto& p) {
-                return p.first == reinterpret_cast<intptr_t>(owner);
-            });
-        if(it != m_finalize_callbacks.rend()) {
-            auto cb = std::move(it->second);
-            m_finalize_callbacks.erase(std::next(it).base());
-            return cb;
-        }
-        return std::function<void(void)>();
+    std::function<void(void)> pop_finalize_callback(const void* owner) {
+        margo_finalize_callback_t cb = nullptr;
+        void* uargs = nullptr;
+        int ret = margo_provider_top_finalize_callback(m_mid,
+            owner,
+            &cb,
+            &uargs);
+        if(ret == 0) return std::function<void(void)>();
+        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
+        finalize_callback_t f_copy = *f;
+        delete f;
+        margo_provider_pop_finalize_callback(m_mid, owner);
+        return f_copy;
     }
 
     /**
