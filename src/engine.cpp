@@ -12,6 +12,31 @@
 
 namespace thallium {
 
+/**
+ * @brief Function run as a ULT when receiving an RPC.
+ *
+ * @param handle handle of the RPC.
+ */
+hg_return_t thallium_generic_rpc(hg_handle_t handle) {
+    margo_instance_id mid = margo_hg_handle_get_instance(handle);
+    THALLIUM_ASSERT_CONDITION(mid != 0,
+            "margo_hg_handle_get_instance returned null");
+    const struct hg_info* info = margo_get_info(handle);
+    THALLIUM_ASSERT_CONDITION(info != nullptr,
+            "margo_get_info returned null");
+    void* data = margo_registered_data(mid, info->id);
+    THALLIUM_ASSERT_CONDITION(data != nullptr,
+            "margo_registered_data returned null");
+    auto    cb_data = static_cast<engine::rpc_callback_data*>(data);
+    auto    rpc_ptr = cb_data->m_function;
+    request req(cb_data->m_engine, handle, false);
+    (*rpc_ptr)(req);
+    margo_destroy(handle); // because of margo_ref_incr in rpc_callback
+    return HG_SUCCESS;
+}
+
+DEFINE_MARGO_RPC_HANDLER(thallium_generic_rpc);
+
 endpoint engine::lookup(const std::string& address) const {
     hg_addr_t   addr;
     hg_return_t ret = margo_addr_lookup(m_mid, address.c_str(), &addr);
@@ -31,8 +56,7 @@ remote_procedure engine::define(const std::string& name) {
     hg_id_t   id;
     margo_registered_name(m_mid, name.c_str(), &id, &flag);
     if(flag == HG_FALSE) {
-        id = margo_register_name(m_mid, name.c_str(), meta_serialization,
-                                 meta_serialization, nullptr);
+        id = MARGO_REGISTER(m_mid, name.c_str(), meta_serialization, meta_serialization, NULL);
     }
     return remote_procedure(*this, id);
 }
@@ -72,15 +96,15 @@ remote_procedure engine::define(const std::string&                         name,
                                 const std::function<void(const request&)>& fun,
                                 uint16_t provider_id, const pool& p) {
 
-    hg_id_t id = margo_provider_register_name(
+    hg_id_t id = MARGO_REGISTER_PROVIDER(
         m_mid, name.c_str(), meta_serialization, meta_serialization,
-        rpc_callback<rpc_t, false>, provider_id, p.native_handle());
+        thallium_generic_rpc, provider_id, p.native_handle());
 
-    m_rpcs[id] = fun;
+    auto rpc = new rpc_t(fun); // make copy of the function object
 
     auto* cb_data       = new rpc_callback_data;
     cb_data->m_engine   = this;
-    cb_data->m_function = void_cast(&m_rpcs[id]);
+    cb_data->m_function = rpc;
 
     hg_return_t ret =
         margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);

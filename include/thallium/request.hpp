@@ -26,6 +26,7 @@ class endpoint;
  */
 class request {
     friend class engine;
+    friend hg_return_t thallium_generic_rpc(hg_handle_t handle);
 
   private:
     engine*     m_engine;
@@ -43,7 +44,9 @@ class request {
     request(engine* e, hg_handle_t h, bool disable_resp)
     : m_engine(e)
     , m_handle(h)
-    , m_disable_response(disable_resp) {}
+    , m_disable_response(disable_resp) {
+        margo_ref_incr(m_handle);
+    }
 
   public:
     /**

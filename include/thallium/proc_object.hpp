@@ -45,7 +45,7 @@ class request;
 
 typedef std::function<hg_return_t(hg_proc_t)> meta_proc_fn;
 
-inline hg_return_t meta_serialization(hg_proc_t proc, void* data) {
+inline hg_return_t hg_proc_meta_serialization(hg_proc_t proc, void* data) {
     auto fun = reinterpret_cast<meta_proc_fn*>(data);
     return (*fun)(proc);
 }

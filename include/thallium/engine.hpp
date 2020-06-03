@@ -34,6 +34,9 @@ class remote_bulk;
 class remote_procedure;
 template <typename T> class provider;
 
+DECLARE_MARGO_RPC_HANDLER(thallium_generic_rpc);
+hg_return_t thallium_generic_rpc(hg_handle_t handle);
+
 /**
  * @brief The engine class is at the core of Thallium,
  * it is the first object to instanciate to start using the
@@ -49,11 +52,12 @@ class engine {
     friend class callable_remote_procedure;
     template <typename T> friend class provider;
 
+    friend hg_return_t thallium_generic_rpc(hg_handle_t handle);
+
   private:
     using rpc_t = std::function<void(const request&)>;
 
     margo_instance_id                  m_mid;
-    std::unordered_map<hg_id_t, rpc_t> m_rpcs;
     bool                               m_is_server;
     bool                               m_owns_mid;
     std::atomic<bool>                  m_finalize_called;
@@ -70,7 +74,7 @@ class engine {
      */
     struct rpc_callback_data {
         engine* m_engine;
-        void*   m_function;
+        rpc_t*  m_function;
     };
 
     /**
@@ -80,66 +84,8 @@ class engine {
      */
     static void free_rpc_callback_data(void* data) {
         rpc_callback_data* cb_data = (rpc_callback_data*)data;
+        delete cb_data->m_function;
         delete cb_data;
-    }
-
-    /**
-     * @brief Function run as a ULT when receiving an RPC.
-     *
-     * @tparam F type of the function to call.
-     * @tparam disable_response whether the caller expects a response.
-     * @param handle handle of the RPC.
-     */
-    template <typename F, bool disable_response>
-    static void rpc_handler_ult(hg_handle_t handle) {
-        margo_instance_id mid = margo_hg_handle_get_instance(handle);
-        THALLIUM_ASSERT_CONDITION(mid != 0,
-                                  "margo_hg_handle_get_instance returned null");
-        __margo_internal_pre_wrapper_hooks(mid, handle);
-        using G                    = typename std::remove_reference<F>::type;
-        const struct hg_info* info = margo_get_info(handle);
-        THALLIUM_ASSERT_CONDITION(info != nullptr,
-                                  "margo_get_info returned null");
-        void* data = margo_registered_data(mid, info->id);
-        THALLIUM_ASSERT_CONDITION(data != nullptr,
-                                  "margo_registered_data returned null");
-        auto    cb_data = static_cast<rpc_callback_data*>(data);
-        auto    f       = function_cast<G>(cb_data->m_function);
-        request req(cb_data->m_engine, handle, disable_response);
-        (*f)(req);
-        margo_destroy(handle); // because of margo_ref_incr in rpc_callback
-        __margo_internal_post_wrapper_hooks(mid);
-    }
-
-    /**
-     * @brief Callback called when an RPC is received.
-     *
-     * @tparam F type of the function exposed by the user for this RPC.
-     * @tparam disable_response whether the caller expects a response.
-     * @param handle handle of the RPC.
-     *
-     * @return HG_SUCCESS or a Mercury error code.
-     */
-    template <typename F, bool disable_response>
-    static hg_return_t rpc_callback(hg_handle_t handle) {
-        int               ret;
-        ABT_pool          pool;
-        margo_instance_id mid;
-        mid = margo_hg_handle_get_instance(handle);
-        if(mid == MARGO_INSTANCE_NULL) {
-            return HG_OTHER_ERROR;
-        }
-        pool = margo_hg_handle_get_handler_pool(handle);
-        __margo_internal_incr_pending(mid);
-        margo_ref_incr(handle);
-        ret = ABT_thread_create(
-            pool, (void (*)(void*))rpc_handler_ult<F, disable_response>, handle,
-            ABT_THREAD_ATTR_NULL, NULL);
-        if(ret != 0) {
-            margo_destroy(handle);
-            return HG_NOMEM_ERROR;
-        }
-        return HG_SUCCESS;
     }
 
     static void on_finalize_cb(void* arg) {
@@ -574,34 +520,35 @@ remote_procedure
 engine::define(const std::string&                                    name,
                const std::function<void(const request&, T1, Tn...)>& fun,
                uint16_t provider_id, const pool& p) {
-    hg_id_t id = margo_provider_register_name(
+    hg_id_t id = MARGO_REGISTER_PROVIDER(
         m_mid, name.c_str(), meta_serialization, meta_serialization,
-        rpc_callback<rpc_t, false>, provider_id, p.native_handle());
+        thallium_generic_rpc, provider_id, p.native_handle());
 
-    m_rpcs[id] = [fun, this](const request& r) {
-        std::function<void(T1, Tn...)> call_function =
-            [&fun, &r](const T1& a1, const Tn&... args) {
-                fun(r, a1, args...);
+    auto rpc_callback = new rpc_t(
+        [fun, this](const request& r) {
+            std::function<void(T1, Tn...)> call_function =
+                [&fun, &r](const T1& a1, const Tn&... args) {
+                    fun(r, a1, args...);
+                };
+                std::tuple<typename std::decay<T1>::type,
+                   typename std::decay<Tn>::type...> iargs;
+            meta_proc_fn mproc = [this, &iargs](hg_proc_t proc) {
+                return proc_object(proc, iargs, this);
             };
-        std::tuple<typename std::decay<T1>::type,
-                   typename std::decay<Tn>::type...>
-                     iargs;
-        meta_proc_fn mproc = [this, &iargs](hg_proc_t proc) {
-            return proc_object(proc, iargs, this);
-        };
-        hg_return_t ret = margo_get_input(r.m_handle, &mproc);
-        if(ret != HG_SUCCESS)
-            return ret;
-        ret = margo_free_input(r.m_handle, &mproc);
-        if(ret != HG_SUCCESS)
-            return ret;
-        apply_function_to_tuple(call_function, iargs);
-        return HG_SUCCESS;
-    };
+            hg_return_t ret = margo_get_input(r.m_handle, &mproc);
+            if(ret != HG_SUCCESS)
+                return ret;
+            ret = margo_free_input(r.m_handle, &mproc);
+            if(ret != HG_SUCCESS)
+                return ret;
+            apply_function_to_tuple(call_function, iargs);
+            return HG_SUCCESS;
+        }
+    );
 
     rpc_callback_data* cb_data = new rpc_callback_data;
     cb_data->m_engine          = this;
-    cb_data->m_function        = void_cast(&m_rpcs[id]);
+    cb_data->m_function        = rpc_callback;
 
     hg_return_t ret =
         margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
