@@ -379,6 +379,37 @@ class engine {
     }
 
     /**
+     * @brief Gets the most recently pushed pre-finalization callback and
+     * returns it. If no finalization callback are present, this function
+     * returns a null std::function.
+     *
+     * @return finalization callback.
+     */
+    std::function<void(void)> top_prefinalize_callback() const {
+        return top_prefinalize_callback(static_cast<const void*>(this));
+    }
+
+    /**
+     * @brief Gets the most recently pushed pre-finalization callback pushed for
+     * a given owner.
+     *
+     * @param owner Pointer to the owner.
+     *
+     * @return finalization callback.
+     */
+    std::function<void(void)> top_prefinalize_callback(const void* owner) const {
+        margo_finalize_callback_t cb = nullptr;
+        void* uargs = nullptr;
+        int ret = margo_provider_top_prefinalize_callback(m_mid,
+            owner,
+            &cb,
+            &uargs);
+        if(ret == 0) return std::function<void(void)>();
+        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
+        return *f;
+    }
+
+    /**
      * @brief Pops the most recently pushed pre-finalization callback and
      * returns it. If no finalization callback are present, this function
      * returns a null std::function.
@@ -393,7 +424,6 @@ class engine {
      * @brief Pops the most recently pushed pre-finalization callback pushed for
      * a given owner.
      *
-     * @tparam T Type of owner.
      * @param owner Pointer to the owner.
      *
      * @return finalization callback.
@@ -455,6 +485,37 @@ class engine {
     }
 
     /**
+     * @brief Getss the most recently pushed finalization callback and returns
+     * it. If no finalization callback are present, this function returns a null
+     * std::function.
+     *
+     * @return finalization callback.
+     */
+    std::function<void(void)> top_finalize_callback() const {
+        return top_finalize_callback(static_cast<const void*>(this));
+    }
+
+    /**
+     * @brief Gets the most recently pushed finalization callback pushed for a
+     * given owner.
+     *
+     * @param owner Pointer to the owner.
+     *
+     * @return finalization callback.
+     */
+    std::function<void(void)> top_finalize_callback(const void* owner) const {
+        margo_finalize_callback_t cb = nullptr;
+        void* uargs = nullptr;
+        int ret = margo_provider_top_finalize_callback(m_mid,
+            owner,
+            &cb,
+            &uargs);
+        if(ret == 0) return std::function<void(void)>();
+        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
+        return *f;
+    }
+
+    /**
      * @brief Pops the most recently pushed finalization callback and returns
      * it. If no finalization callback are present, this function returns a null
      * std::function.
@@ -469,7 +530,6 @@ class engine {
      * @brief Pops the most recently pushed finalization callback pushed for a
      * given owner.
      *
-     * @tparam T Type of owner.
      * @param owner Pointer to the owner.
      *
      * @return finalization callback.
