@@ -29,7 +29,7 @@ class my_sum_provider : public tl::provider<my_sum_provider> {
 
     public:
 
-    my_sum_provider(tl::engine& e, uint16_t provider_id=1)
+    my_sum_provider(const tl::engine& e, uint16_t provider_id=1)
     : tl::provider<my_sum_provider>(e, provider_id) {
         define("prod", &my_sum_provider::prod);
         define("sum", &my_sum_provider::sum);
@@ -38,7 +38,7 @@ class my_sum_provider : public tl::provider<my_sum_provider> {
     }
 
     ~my_sum_provider() {
-        wait_for_finalize();
+        get_engine().wait_for_finalize();
     }
 };
 

@@ -55,7 +55,7 @@ class callable_remote_procedure {
      * @param ep endpoint on which to call the RPC.
      * @param ignore_resp whether the response should be ignored.
      */
-    callable_remote_procedure(const std::weak_ptr<detail::engine_impl>& e,
+    callable_remote_procedure(std::weak_ptr<detail::engine_impl> e,
                               hg_id_t id, const endpoint& ep,
                               bool ignore_resp, uint16_t provider_id = 0);
 

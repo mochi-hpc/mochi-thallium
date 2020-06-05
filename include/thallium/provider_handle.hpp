@@ -32,7 +32,8 @@ class provider_handle : public endpoint {
      * @param addr Address to encapsulate.
      * @param provider_id provider id.
      */
-    provider_handle(engine& e, hg_addr_t addr, uint16_t provider_id = 0,
+    provider_handle(const engine& e, hg_addr_t addr,
+                    uint16_t provider_id = 0,
                     bool take_ownership = true)
     : endpoint(e, addr, take_ownership)
     , m_provider_id(provider_id) {}

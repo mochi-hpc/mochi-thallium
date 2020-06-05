@@ -40,8 +40,8 @@ class packed_response {
      * @param h Handle containing the result of an RPC.
      * @param e Engine associated with the RPC.
      */
-    packed_response(hg_handle_t h, const std::weak_ptr<detail::engine_impl>& e)
-    : m_engine_impl(e)
+    packed_response(hg_handle_t h, std::weak_ptr<detail::engine_impl> e)
+    : m_engine_impl(std::move(e))
     , m_handle(h) {
         hg_return_t ret = margo_ref_incr(h);
         MARGO_ASSERT(ret, margo_ref_incr);

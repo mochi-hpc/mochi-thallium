@@ -15,7 +15,6 @@
 #include <string>
 #include <thallium/bulk_mode.hpp>
 #include <thallium/config.hpp>
-#include <thallium/function_cast.hpp>
 #include <thallium/pool.hpp>
 #include <thallium/proc_object.hpp>
 #include <thallium/request.hpp>
@@ -239,8 +238,7 @@ class engine {
         if(m_impl.use_count() > 1) return;
         if(m_impl->m_owns_mid) {
             if(m_impl->m_is_server) {
-                if(!m_impl->m_finalize_called)
-                    margo_wait_for_finalize(m_impl->m_mid);
+                wait_for_finalize();
             } else {
                 if(!m_impl->m_finalize_called)
                     finalize();
@@ -259,14 +257,18 @@ class engine {
      *
      * @return The margo instance id.
      */
-    margo_instance_id get_margo_instance() const { 
+    margo_instance_id get_margo_instance() const {
+        // TODO throw if m_impl is invalid
         return m_impl->m_mid;
     }
 
     /**
      * @brief Finalize the engine. Can be called by any thread.
      */
-    void finalize() { margo_finalize(m_impl->m_mid); }
+    void finalize() {
+        // TODO throw if m_impl is invalid
+        margo_finalize(m_impl->m_mid);
+    }
 
     /**
      * @brief Makes the calling thread block until someone calls
@@ -378,7 +380,7 @@ class engine {
      * @param f callback.
      */
     template <typename F> void push_prefinalize_callback(F&& f) {
-        push_prefinalize_callback(static_cast<const void*>(this), std::forward<F>(f));
+        push_prefinalize_callback(static_cast<const void*>(m_impl.get()), std::forward<F>(f));
     }
 
     /**
@@ -602,16 +604,18 @@ engine::define(const std::string&                                    name,
         m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization,
         thallium_generic_rpc, provider_id, p.native_handle());
 
+    // TODO fail if m_impl is invalid
+    std::weak_ptr<detail::engine_impl> w_impl = m_impl;
     auto rpc_callback =
-        [fun, this](const request& r) {
+        [fun, w_impl=std::move(w_impl)](const request& r) {
             std::function<void(T1, Tn...)> call_function =
                 [&fun, &r](const T1& a1, const Tn&... args) {
                     fun(r, a1, args...);
                 };
                 std::tuple<typename std::decay<T1>::type,
                    typename std::decay<Tn>::type...> iargs;
-            meta_proc_fn mproc = [this, &iargs](hg_proc_t proc) {
-                return proc_object(proc, iargs, m_impl);
+            meta_proc_fn mproc = [w_impl, &iargs](hg_proc_t proc) {
+                return proc_object(proc, iargs, w_impl);
             };
             hg_return_t ret = margo_get_input(r.m_handle, &mproc);
             if(ret != HG_SUCCESS)

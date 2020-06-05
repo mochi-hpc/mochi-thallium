@@ -11,12 +11,12 @@
 
 namespace thallium {
 
-callable_remote_procedure::callable_remote_procedure(const std::weak_ptr<detail::engine_impl>& e,
+callable_remote_procedure::callable_remote_procedure(std::weak_ptr<detail::engine_impl> e,
                                                      hg_id_t id,
                                                      const endpoint& ep,
                                                      bool     ignore_resp,
                                                      uint16_t provider_id)
-: m_engine_impl(e)
+: m_engine_impl(std::move(e))
 , m_ignore_response(ignore_resp)
 , m_provider_id(provider_id) {
     m_ignore_response = ignore_resp;

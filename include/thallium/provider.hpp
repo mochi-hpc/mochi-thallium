@@ -30,33 +30,35 @@ typedef std::integral_constant<bool, true> ignore_return_value;
  */
 template <typename T> class provider {
   private:
-    engine&  m_engine;
+    std::weak_ptr<detail::engine_impl>  m_engine_impl;
     uint16_t m_provider_id;
 
   public:
-    provider(engine& e, uint16_t provider_id)
-    : m_engine(e)
-    , m_provider_id(provider_id) {}
+    provider(const engine& e, uint16_t provider_id)
+    : m_engine_impl(e.m_impl)
+    , m_provider_id(provider_id) {
+        // TODO throw if engine is invalid
+    }
 
-    virtual ~provider() {}
+    virtual ~provider() = default;
 
     /**
-     * @brief Copy-constructor is deleted.
+     * @brief Copy-constructor.
      */
     provider(const provider& other) = delete;
 
     /**
-     * @brief Move-constructor is deleted.
+     * @brief Move-constructor.
      */
     provider(provider&& other) = delete;
 
     /**
-     * @brief Move-assignment operator is deleted.
+     * @brief Move-assignment operator.
      */
     provider& operator=(provider&& other) = delete;
 
     /**
-     * @brief Copy-assignment operator is deleted.
+     * @brief Copy-assignment operator.
      */
     provider& operator=(const provider& other) = delete;
 
@@ -64,12 +66,19 @@ template <typename T> class provider {
     /**
      * @brief Waits for the engine to finalize.
      */
-    inline void wait_for_finalize() { m_engine.wait_for_finalize(); }
+    [[deprecated("Use the engine's wait_for_finalize method instead")]]
+        inline void wait_for_finalize() {
+            get_engine().wait_for_finalize();
+        }
 
     /**
      * @brief Finalize the engine.
      */
-    inline void finalize() { m_engine.finalize(); }
+    [[deprecated("Use the engine's finalize method instead")]]
+        inline void finalize() {
+            auto engine_impl = m_engine_impl.lock();
+            get_engine().finalize();
+        }
 
   private:
     // define_member as RPC for the case return value is NOT void and
@@ -88,7 +97,7 @@ template <typename T> class provider {
             [self, func](const request& req, Args... args) {
                 (self->*func)(req, args...);
             };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+        return get_engine().define(std::forward<S>(name), fun, m_provider_id, p);
     }
 
     // define_member as RPC for the case the return value is NOT void
@@ -108,7 +117,7 @@ template <typename T> class provider {
                 R r = (self->*func)(args...);
                 req.respond(r);
             };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+        return get_engine().define(std::forward<S>(name), fun, m_provider_id, p);
     }
 
     // define_memver as RPC for the case the return value IS void
@@ -127,7 +136,7 @@ template <typename T> class provider {
             [self, func](const request& req, Args... args) {
                 (self->*func)(req, args...);
             };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+        return get_engine().define(std::forward<S>(name), fun, m_provider_id, p);
     }
 
     // define_member as RPC for the case the return value IS void
@@ -145,7 +154,7 @@ template <typename T> class provider {
             [self, func](const request& req, Args... args) {
                 (self->*func)(args...);
             };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p)
+        return get_engine().define(std::forward<S>(name), fun, m_provider_id, p)
             .disable_response();
     }
 
@@ -169,7 +178,7 @@ template <typename T> class provider {
             [self, func](const request& req, Args... args) {
                 (self->*func)(req, args...);
             };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+        return get_engine().define(std::forward<S>(name), fun, m_provider_id, p);
     }
 
     // define_member as RPC for the case the return value is NOT void
@@ -189,7 +198,7 @@ template <typename T> class provider {
                 R r = (self->*func)(args...);
                 req.respond(r);
             };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+        return get_engine().define(std::forward<S>(name), fun, m_provider_id, p);
     }
 
     // define_memver as RPC for the case the return value IS void
@@ -208,7 +217,7 @@ template <typename T> class provider {
             [self, func](const request& req, Args... args) {
                 (self->*func)(req, args...);
             };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p);
+        return get_engine().define(std::forward<S>(name), fun, m_provider_id, p);
     }
 
     // define_member as RPC for the case the return value IS void
@@ -226,7 +235,7 @@ template <typename T> class provider {
             [self, func](const request& req, Args... args) {
                 (self->*func)(args...);
             };
-        return m_engine.define(std::forward<S>(name), fun, m_provider_id, p)
+        return get_engine().define(std::forward<S>(name), fun, m_provider_id, p)
             .disable_response();
     }
 
@@ -334,14 +343,11 @@ template <typename T> class provider {
      *
      * @return The engine associated with this provider.
      */
-    const engine& get_engine() const { return m_engine; }
-
-    /**
-     * @brief Get the engine associated with this provider.
-     *
-     * @return The engine associated with this provider.
-     */
-    engine& get_engine() { return m_engine; }
+    engine get_engine() const {
+        auto engine_impl = m_engine_impl.lock();
+        // TODO throw if engine is invalid
+        return engine(engine_impl);
+    }
 
     /**
      * @brief Get the provider id.

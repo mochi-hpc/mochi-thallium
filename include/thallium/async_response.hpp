@@ -44,10 +44,10 @@ class async_response {
      * @param c callable_remote_procedure that created the async_response.
      * @param ignore_resp whether response should be ignored.
      */
-    async_response(margo_request req, const std::weak_ptr<detail::engine_impl>& e,
+    async_response(margo_request req, std::weak_ptr<detail::engine_impl> e,
                    hg_handle_t handle, bool ignore_resp)
     : m_request(req)
-    , m_engine_impl(e)
+    , m_engine_impl(std::move(e))
     , m_handle(handle)
     , m_ignore_response(ignore_resp) {
         margo_ref_incr(handle);

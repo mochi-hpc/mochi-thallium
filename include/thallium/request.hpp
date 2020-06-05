@@ -44,8 +44,8 @@ class request {
      * @param h handle of the RPC that was received.
      * @param disable_resp whether responses are disabled.
      */
-    request(const std::weak_ptr<detail::engine_impl>& e, hg_handle_t h, bool disable_resp)
-    : m_engine_impl(e)
+    request(std::weak_ptr<detail::engine_impl> e, hg_handle_t h, bool disable_resp)
+    : m_engine_impl(std::move(e))
     , m_handle(h)
     , m_disable_response(disable_resp) {
         margo_ref_incr(m_handle);
