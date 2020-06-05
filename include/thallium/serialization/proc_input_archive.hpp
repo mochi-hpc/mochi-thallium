@@ -12,13 +12,6 @@
 
 #include <thallium/serialization/cereal/archives.hpp>
 
-namespace thallium {
-
-    using proc_input_archive = cereal_input_archive;
-
-}
-
-
 #else
 
 #include <mercury_proc.h>

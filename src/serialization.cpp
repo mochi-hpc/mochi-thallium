@@ -2,7 +2,6 @@
 #include "thallium/serialization/proc_output_archive.hpp"
 #include "thallium/engine.hpp"
 
-#ifndef THALLIUM_USE_CEREAL
 namespace thallium {
 
     engine proc_input_archive::get_engine() const {
@@ -16,4 +15,3 @@ namespace thallium {
     }
 
 }
-#endif

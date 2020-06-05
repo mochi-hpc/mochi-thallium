@@ -12,12 +12,6 @@
 
 #include <thallium/serialization/cereal/archives.hpp>
 
-namespace thallium {
-
-    using proc_output_archive = cereal_output_archive;
-
-}
-
 #else
 
 #include <string>
