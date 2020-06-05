@@ -5,13 +5,15 @@
 namespace thallium {
 
     engine proc_input_archive::get_engine() const {
-        // TODO check if weak_ptr is valid
-        return engine(m_engine_impl.lock());
+        auto engine_impl = m_engine_impl.lock();
+        if(!engine_impl) throw exception("Invalid engine");
+        return engine(engine_impl);
     }
 
     engine proc_output_archive::get_engine() const {
-        // TODO check if weak_ptr is valid
-        return engine(m_engine_impl.lock());
+        auto engine_impl = m_engine_impl.lock();
+        if(!engine_impl) throw exception("Invalid engine");
+        return engine(engine_impl);
     }
 
 }

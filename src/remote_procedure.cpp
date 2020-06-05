@@ -26,15 +26,15 @@ remote_procedure::on(const provider_handle& ph) const {
 }
 
 void remote_procedure::deregister() {
-    // TODO throw if engine is not valid
     auto engine_impl = m_engine_impl.lock();
+    if(!engine_impl) throw exception("Invalid engine");
     margo_deregister(engine_impl->m_mid, m_id);
 }
 
 remote_procedure& remote_procedure::disable_response() {
     m_ignore_response = true;
-    // TODO throw if engine is not valid
     auto engine_impl = m_engine_impl.lock();
+    if(!engine_impl) throw exception("Invalid engine");
     margo_registered_disable_response(engine_impl->m_mid, m_id, HG_TRUE);
     return *this;
 }

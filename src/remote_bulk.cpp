@@ -12,7 +12,7 @@ namespace thallium {
 std::size_t remote_bulk::operator>>(const bulk::bulk_segment& dest) const {
 
     auto engine_impl = m_segment.m_bulk.m_engine_impl.lock();
-    // TODO throw if engine_impl is invalid
+    if(!engine_impl) throw exception("Invalid engine");
     margo_instance_id mid           = engine_impl->m_mid;
     hg_bulk_op_t      op            = HG_BULK_PULL;
     hg_addr_t         origin_addr   = m_endpoint.m_addr;
@@ -36,7 +36,7 @@ std::size_t remote_bulk::operator>>(const bulk::bulk_segment& dest) const {
 std::size_t remote_bulk::operator<<(const bulk::bulk_segment& src) const {
 
     auto engine_impl = m_segment.m_bulk.m_engine_impl.lock();
-    // TODO throw if engine_impl is invalid
+    if(!engine_impl) throw exception("Invalid engine");
     margo_instance_id mid           = engine_impl->m_mid;
     hg_bulk_op_t      op            = HG_BULK_PUSH;
     hg_addr_t         origin_addr   = m_endpoint.m_addr;

@@ -29,17 +29,20 @@ hg_return_t thallium_generic_rpc(hg_handle_t handle) {
             "margo_registered_data returned null");
     auto    cb_data = static_cast<engine::rpc_callback_data*>(data);
     auto&   rpc = cb_data->m_function;
-    // TODO throw if m_engine_impl is invalid
+    if(!(cb_data->m_engine_impl.lock())) {
+        margo_destroy(handle);
+        return HG_OTHER_ERROR;
+    }
     request req(cb_data->m_engine_impl, handle, false);
     rpc(req);
-    margo_destroy(handle); // because of margo_ref_incr in rpc_callback
+    margo_destroy(handle);
     return HG_SUCCESS;
 }
 
 DEFINE_MARGO_RPC_HANDLER(thallium_generic_rpc);
 
 endpoint engine::lookup(const std::string& address) const {
-    // TODO throw if m_impl is invalid
+    if(!m_impl) throw exception("Invalid engine");
     hg_addr_t   addr;
     hg_return_t ret = margo_addr_lookup(m_impl->m_mid, address.c_str(), &addr);
     MARGO_ASSERT(ret, margo_addr_lookup);
@@ -47,7 +50,7 @@ endpoint engine::lookup(const std::string& address) const {
 }
 
 endpoint engine::self() const {
-    // TODO throw if m_impl is invalid
+    if(!m_impl) throw exception("Invalid engine");
     hg_addr_t   self_addr;
     hg_return_t ret = margo_addr_self(m_impl->m_mid, &self_addr);
     MARGO_ASSERT(ret, margo_addr_self);
@@ -57,7 +60,7 @@ endpoint engine::self() const {
 remote_procedure engine::define(const std::string& name) {
     hg_bool_t flag;
     hg_id_t   id;
-    // TODO throw if m_impl is invalid
+    if(!m_impl) throw exception("Invalid engine");
     margo_registered_name(m_impl->m_mid, name.c_str(), &id, &flag);
     if(flag == HG_FALSE) {
         id = MARGO_REGISTER(m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization, NULL);
@@ -67,6 +70,7 @@ remote_procedure engine::define(const std::string& name) {
 
 bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
                     bulk_mode                                    flag) {
+    if(!m_impl) throw exception("Invalid engine");
     hg_bulk_t              handle;
     hg_uint32_t            count = segments.size();
     std::vector<void*>     buf_ptrs(count);
@@ -75,7 +79,6 @@ bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
         buf_ptrs[i]  = segments[i].first;
         buf_sizes[i] = segments[i].second;
     }
-    // TODO throw if m_impl is invalid
     hg_return_t ret = margo_bulk_create(
         m_impl->m_mid, count, &buf_ptrs[0], &buf_sizes[0],
         static_cast<hg_uint32_t>(flag), &handle);
@@ -84,28 +87,28 @@ bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
 }
 
 bulk engine::wrap(hg_bulk_t blk, bool is_local) {
+    if(!m_impl) throw exception("Invalid engine");
     hg_return_t hret = margo_bulk_ref_incr(blk);
     MARGO_ASSERT(hret, margo_bulk_ref_incr);
-    // TODO throw if m_impl is invalid
     return bulk(m_impl, blk, is_local);
 }
 
 void engine::shutdown_remote_engine(const endpoint& ep) const {
-    // TODO throw if m_impl is invalid
+    if(!m_impl) throw exception("Invalid engine");
     int         ret = margo_shutdown_remote_instance(m_impl->m_mid, ep.m_addr);
     hg_return_t r   = ret == 0 ? HG_SUCCESS : HG_OTHER_ERROR;
     MARGO_ASSERT(r, margo_shutdown_remote_instance);
 }
 
 void engine::enable_remote_shutdown() {
-    // TODO throw if m_impl is invalid
+    if(!m_impl) throw exception("Invalid engine");
     margo_enable_remote_shutdown(m_impl->m_mid);
 }
 
 remote_procedure engine::define(const std::string&                         name,
                                 const std::function<void(const request&)>& fun,
                                 uint16_t provider_id, const pool& p) {
-    // TODO throw if m_impl is invalid
+    if(!m_impl) throw exception("Invalid engine");
     hg_id_t id = MARGO_REGISTER_PROVIDER(
         m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization,
         thallium_generic_rpc, provider_id, p.native_handle());

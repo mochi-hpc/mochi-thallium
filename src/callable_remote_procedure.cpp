@@ -21,7 +21,7 @@ callable_remote_procedure::callable_remote_procedure(std::weak_ptr<detail::engin
 , m_provider_id(provider_id) {
     m_ignore_response = ignore_resp;
     auto engine_impl = ep.m_engine_impl.lock();
-    // TODO throw if engine_impl is invalid
+    if(!engine_impl) throw exception("Invalid engine");
     hg_return_t ret =
         margo_create(engine_impl->m_mid, ep.m_addr, id, &m_handle);
     MARGO_ASSERT(ret, margo_create);

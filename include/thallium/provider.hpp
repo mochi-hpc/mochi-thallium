@@ -37,7 +37,7 @@ template <typename T> class provider {
     provider(const engine& e, uint16_t provider_id)
     : m_engine_impl(e.m_impl)
     , m_provider_id(provider_id) {
-        // TODO throw if engine is invalid
+        if(!e.m_impl) throw exception("Invalid engine");
     }
 
     virtual ~provider() = default;
@@ -77,6 +77,7 @@ template <typename T> class provider {
     [[deprecated("Use the engine's finalize method instead")]]
         inline void finalize() {
             auto engine_impl = m_engine_impl.lock();
+            if(!engine_impl) throw exception("Invalid thallium engine state");
             get_engine().finalize();
         }
 
@@ -345,7 +346,7 @@ template <typename T> class provider {
      */
     engine get_engine() const {
         auto engine_impl = m_engine_impl.lock();
-        // TODO throw if engine is invalid
+        if(!engine_impl) throw exception("Invalid thallium engine state");
         return engine(engine_impl);
     }
 

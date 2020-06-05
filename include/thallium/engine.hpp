@@ -258,7 +258,7 @@ class engine {
      * @return The margo instance id.
      */
     margo_instance_id get_margo_instance() const {
-        // TODO throw if m_impl is invalid
+        if(!m_impl) throw exception("Invalid engine");
         return m_impl->m_mid;
     }
 
@@ -266,7 +266,7 @@ class engine {
      * @brief Finalize the engine. Can be called by any thread.
      */
     void finalize() {
-        // TODO throw if m_impl is invalid
+        if(!m_impl) throw exception("Invalid engine");
         margo_finalize(m_impl->m_mid);
     }
 
@@ -276,6 +276,7 @@ class engine {
      * if finalize was already called.
      */
     void wait_for_finalize() {
+        if(!m_impl) throw exception("Invalid engine");
         if(!m_impl->m_finalize_called)
             margo_wait_for_finalize(m_impl->m_mid);
     }
@@ -380,6 +381,7 @@ class engine {
      * @param f callback.
      */
     template <typename F> void push_prefinalize_callback(F&& f) {
+        if(!m_impl) throw exception("Invalid engine");
         push_prefinalize_callback(static_cast<const void*>(m_impl.get()), std::forward<F>(f));
     }
 
@@ -393,6 +395,7 @@ class engine {
      */
     template <typename F>
     void push_prefinalize_callback(const void* owner, F&& f) {
+        if(!m_impl) throw exception("Invalid engine");
         auto cb = new finalize_callback_t(std::forward<F>(f));
         margo_provider_push_prefinalize_callback(m_impl->m_mid,
             owner,
@@ -408,6 +411,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> top_prefinalize_callback() const {
+        if(!m_impl) throw exception("Invalid engine");
         return top_prefinalize_callback(static_cast<const void*>(m_impl.get()));
     }
 
@@ -422,6 +426,7 @@ class engine {
     std::function<void(void)> top_prefinalize_callback(const void* owner) const {
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
+        if(!m_impl) throw exception("Invalid engine");
         int ret = margo_provider_top_prefinalize_callback(m_impl->m_mid,
             owner,
             &cb,
@@ -439,6 +444,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_prefinalize_callback() {
+        if(!m_impl) throw exception("Invalid engine");
         return pop_prefinalize_callback(static_cast<const void*>(m_impl.get()));
     }
 
@@ -453,6 +459,7 @@ class engine {
     std::function<void(void)> pop_prefinalize_callback(const void* owner) {
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
+        if(!m_impl) throw exception("Invalid engine");
         int ret = margo_provider_top_prefinalize_callback(m_impl->m_mid,
             owner,
             &cb,
@@ -461,6 +468,7 @@ class engine {
         finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs);
         finalize_callback_t f_copy = *f;
         delete f;
+        if(!m_impl) throw exception("Invalid engine");
         margo_provider_pop_prefinalize_callback(m_impl->m_mid, owner);
         return f_copy;
     }
@@ -485,6 +493,7 @@ class engine {
      * @param f callback.
      */
     template <typename F> void push_finalize_callback(F&& f) {
+        if(!m_impl) throw exception("Invalid engine");
         push_finalize_callback(static_cast<const void*>(m_impl.get()), std::forward<F>(f));
     }
 
@@ -499,6 +508,7 @@ class engine {
      */
     template<typename F>
     void push_finalize_callback(const void* owner, F&& f) {
+        if(!m_impl) throw exception("Invalid engine");
         auto cb = new finalize_callback_t(std::forward<F>(f));
         margo_provider_push_finalize_callback(m_impl->m_mid,
             owner,
@@ -514,6 +524,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> top_finalize_callback() const {
+        if(!m_impl) throw exception("Invalid engine");
         return top_finalize_callback(static_cast<const void*>(m_impl.get()));
     }
 
@@ -528,6 +539,7 @@ class engine {
     std::function<void(void)> top_finalize_callback(const void* owner) const {
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
+        if(!m_impl) throw exception("Invalid engine");
         int ret = margo_provider_top_finalize_callback(m_impl->m_mid,
             owner,
             &cb,
@@ -545,6 +557,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_finalize_callback() {
+        if(!m_impl) throw exception("Invalid engine");
         return pop_finalize_callback(static_cast<const void*>(m_impl.get()));
     }
 
@@ -559,6 +572,7 @@ class engine {
     std::function<void(void)> pop_finalize_callback(const void* owner) {
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
+        if(!m_impl) throw exception("Invalid engine");
         int ret = margo_provider_top_finalize_callback(m_impl->m_mid,
             owner,
             &cb,
@@ -600,11 +614,11 @@ remote_procedure
 engine::define(const std::string&                                    name,
                const std::function<void(const request&, T1, Tn...)>& fun,
                uint16_t provider_id, const pool& p) {
+    if(!m_impl) throw exception("Invalid engine");
     hg_id_t id = MARGO_REGISTER_PROVIDER(
         m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization,
         thallium_generic_rpc, provider_id, p.native_handle());
 
-    // TODO fail if m_impl is invalid
     std::weak_ptr<detail::engine_impl> w_impl = m_impl;
     auto rpc_callback =
         [fun, w_impl=std::move(w_impl)](const request& r) {
