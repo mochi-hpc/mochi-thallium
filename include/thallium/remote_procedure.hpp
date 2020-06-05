@@ -14,6 +14,9 @@ class engine;
 class endpoint;
 class provider_handle;
 class callable_remote_procedure;
+namespace detail {
+    struct engine_impl;
+}
 
 /**
  * @brief remote_procedure objects are produced by
@@ -26,9 +29,9 @@ class remote_procedure {
     friend class engine;
 
   private:
-    engine* m_engine;
-    hg_id_t m_id;
-    bool    m_ignore_response;
+    std::weak_ptr<detail::engine_impl> m_engine_impl;
+    hg_id_t                            m_id;
+    bool                               m_ignore_response;
 
     /**
      * @brief Constructor. Made private because remote_procedure
@@ -37,7 +40,7 @@ class remote_procedure {
      * @param e Engine object that created the remote_procedure.
      * @param id Mercury RPC id.
      */
-    remote_procedure(engine& e, hg_id_t id);
+    remote_procedure(std::weak_ptr<detail::engine_impl> e, hg_id_t id);
 
   public:
     /**

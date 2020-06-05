@@ -18,7 +18,7 @@ packed_response async_response::wait() {
     MARGO_ASSERT(ret, margo_wait);
     if(m_ignore_response)
         return packed_response();
-    return packed_response(m_handle, m_engine);
+    return packed_response(m_handle, m_engine_impl);
 }
 
 } // namespace thallium

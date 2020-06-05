@@ -26,6 +26,7 @@ namespace thallium {
 #include <stdexcept>
 #include <cstring>
 #include <string>
+#include <memory>
 #include <thallium/serialization/serialize.hpp>
 
 namespace thallium {
@@ -33,6 +34,10 @@ namespace thallium {
 using namespace std::string_literals;
 
 class engine;
+
+namespace detail {
+    struct engine_impl;
+}
 
 /**
  * proc_input_archive wraps a hg_proc_t object and
@@ -45,8 +50,8 @@ class proc_input_archive : public input_archive {
 
 private:
 
-    hg_proc_t     m_proc;
-    engine*       m_engine;
+    hg_proc_t                 m_proc;
+    std::weak_ptr<detail::engine_impl>  m_engine_impl;
 
     template<typename T, bool b>
     inline void read_impl(T&& t, const std::integral_constant<bool, b>&) {
@@ -66,11 +71,11 @@ public:
      * \param p : hg_proc_t from which to read.
      * \param engine : thallium engine.
      */
-    proc_input_archive(hg_proc_t p, engine& e)
-    : m_proc(p), m_engine(&e) {}
+    proc_input_archive(hg_proc_t p, const std::weak_ptr<detail::engine_impl>& e)
+    : m_proc(p), m_engine_impl(e) {}
 
     proc_input_archive(hg_proc_t p)
-    : m_proc(p), m_engine(nullptr) {}
+    : m_proc(p), m_engine_impl() {}
 
     /**
      * Operator to get C++ objects of type T from the archive.
@@ -136,13 +141,15 @@ public:
     }
 
     /**
-     * @brief Returns the engine registered in the archive.
+     * @brief Returns the engine impl registered in the archive.
      *
-     * @return The engine registered in the archive.
+     * @return The engine impl registered in the archive.
      */
-    engine& get_engine() const {
-        return *m_engine;
+    const std::weak_ptr<detail::engine_impl>& get_engine_impl() const {
+        return m_engine_impl;
     }
+
+    engine get_engine() const;
 
     /**
      * @brief Returns the hg_proc_t object handling the current

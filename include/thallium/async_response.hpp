@@ -17,6 +17,10 @@ namespace thallium {
 
 class callable_remote_procedure;
 
+namespace detail {
+    struct engine_impl;
+}
+
 /**
  * @brief async_response objects are created by sending an
  * RPC in a non-blocking way. They can be used to wait for
@@ -26,10 +30,10 @@ class async_response {
     friend class callable_remote_procedure;
 
   private:
-    margo_request m_request;
-    engine*       m_engine;
-    hg_handle_t   m_handle;
-    bool          m_ignore_response;
+    margo_request                      m_request;
+    std::weak_ptr<detail::engine_impl> m_engine_impl;
+    hg_handle_t                        m_handle;
+    bool                               m_ignore_response;
 
     /**
      * @brief Constructor. Made private since async_response
@@ -40,10 +44,10 @@ class async_response {
      * @param c callable_remote_procedure that created the async_response.
      * @param ignore_resp whether response should be ignored.
      */
-    async_response(margo_request req, engine* e, hg_handle_t handle,
-                   bool ignore_resp)
+    async_response(margo_request req, const std::weak_ptr<detail::engine_impl>& e,
+                   hg_handle_t handle, bool ignore_resp)
     : m_request(req)
-    , m_engine(e)
+    , m_engine_impl(e)
     , m_handle(handle)
     , m_ignore_response(ignore_resp) {
         margo_ref_incr(handle);
@@ -62,11 +66,10 @@ class async_response {
      */
     async_response(async_response&& other)
     : m_request(other.m_request)
-    , m_engine(other.m_engine)
+    , m_engine_impl(std::move(other.m_engine_impl))
     , m_handle(other.m_handle)
     , m_ignore_response(other.m_ignore_response) {
         other.m_request = MARGO_REQUEST_NULL;
-        other.m_engine  = nullptr;
         other.m_handle  = HG_HANDLE_NULL;
     }
 
@@ -85,11 +88,10 @@ class async_response {
         if(m_handle != HG_HANDLE_NULL)
             margo_destroy(m_handle);
         m_request         = other.m_request;
-        m_engine          = other.m_engine;
+        m_engine_impl     = std::move(other.m_engine_impl);
         m_handle          = other.m_handle;
         m_ignore_response = other.m_ignore_response;
         other.m_request   = MARGO_REQUEST_NULL;
-        other.m_engine    = nullptr;
         other.m_handle    = HG_HANDLE_NULL;
         return *this;
     }
@@ -158,7 +160,7 @@ class async_response {
         if(completed->m_ignore_response) {
             return packed_response();
         }
-        return packed_response(completed->m_handle, completed->m_engine);
+        return packed_response(completed->m_handle, completed->m_engine_impl);
     }
 };
 

@@ -28,6 +28,9 @@ namespace thallium {
 namespace thallium {
 
 class engine;
+namespace detail {
+    struct engine_impl;
+}
 
 using namespace std::string_literals;
 
@@ -40,7 +43,7 @@ class proc_output_archive : public output_archive {
 private:
 
     hg_proc_t   m_proc;
-    engine*     m_engine;
+    std::weak_ptr<detail::engine_impl> m_engine_impl;
 
     template<typename T, bool b>
     inline void write_impl(T&& t, const std::integral_constant<bool, b>&) {
@@ -60,11 +63,11 @@ public:
      * \param p : reference to an hg_proc_t object.
      * \param e : thallium engine.
      */
-    proc_output_archive(hg_proc_t p, engine& e)
-    : m_proc(p), m_engine(&e) {}
+    proc_output_archive(hg_proc_t p, std::weak_ptr<detail::engine_impl> e)
+    : m_proc(p), m_engine_impl(std::move(e)) {}
 
     proc_output_archive(hg_proc_t p)
-    : m_proc(p), m_engine(nullptr) {}
+    : m_proc(p), m_engine_impl() {}
 
     /**
      * Operator to add a C++ object of type T into the archive.
@@ -134,9 +137,11 @@ public:
      *
      * @return The engine registered in the archive.
      */
-    engine& get_engine() const {
-        return *m_engine;
+    const std::weak_ptr<detail::engine_impl>& get_engine_impl() const {
+        return m_engine_impl;
     }
+
+    engine get_engine() const;
 
     /**
      * @brief Returns the hg_proc_t object handling the current serialization.

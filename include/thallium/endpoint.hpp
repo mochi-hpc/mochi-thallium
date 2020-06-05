@@ -6,6 +6,7 @@
 #ifndef __THALLIUM_ENDPOINT_HPP
 #define __THALLIUM_ENDPOINT_HPP
 
+#include <memory>
 #include <cstdint>
 #include <margo.h>
 #include <string>
@@ -18,6 +19,10 @@ class endpoint;
 template <typename S> S& operator<<(S& s, const thallium::endpoint& e);
 
 namespace thallium {
+
+namespace detail {
+    class engine_impl;
+}
 
 class engine;
 class request;
@@ -34,8 +39,12 @@ class endpoint {
     friend class remote_bulk;
 
   private:
-    engine*   m_engine;
+    std::weak_ptr<detail::engine_impl> m_engine_impl;
     hg_addr_t m_addr;
+
+    endpoint(std::weak_ptr<detail::engine_impl> e, hg_addr_t addr)
+    : m_engine_impl(std::move(e))
+    , m_addr(addr) {}
 
   public:
     /**
@@ -45,14 +54,14 @@ class endpoint {
      * @param e Engine that created the endpoint.
      * @param addr Mercury address.
      */
-    endpoint(engine& e, hg_addr_t addr, bool take_ownership = true);
+    endpoint(const engine& e, hg_addr_t addr, bool take_ownership = true);
 
     /**
      * @brief Default constructor defined so that endpoints can
      * be member of other objects and assigned later.
      */
     endpoint()
-    : m_engine(nullptr)
+    : m_engine_impl()
     , m_addr(HG_ADDR_NULL) {}
 
     /**
@@ -64,8 +73,9 @@ class endpoint {
      * @brief Move constructor.
      */
     endpoint(endpoint&& other)
-    : m_engine(other.m_engine)
+    : m_engine_impl(other.m_engine_impl)
     , m_addr(other.m_addr) {
+        other.m_engine_impl.reset();
         other.m_addr = HG_ADDR_NULL;
     }
 

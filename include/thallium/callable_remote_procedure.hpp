@@ -26,6 +26,10 @@ class engine;
 class remote_procedure;
 class endpoint;
 
+namespace detail {
+    class engine_impl;
+}
+
 /**
  * @brief callable_remote_procedure objects represent an RPC
  * ready to be called (using the parenthesis operator).
@@ -37,10 +41,10 @@ class callable_remote_procedure {
     friend class async_response;
 
   private:
-    engine*     m_engine;
-    hg_handle_t m_handle;
-    bool        m_ignore_response;
-    uint16_t    m_provider_id;
+    std::weak_ptr<detail::engine_impl> m_engine_impl;
+    hg_handle_t                        m_handle;
+    bool                               m_ignore_response;
+    uint16_t                           m_provider_id;
 
     /**
      * @brief Constructor. Made private since callable_remote_procedure can only
@@ -51,7 +55,8 @@ class callable_remote_procedure {
      * @param ep endpoint on which to call the RPC.
      * @param ignore_resp whether the response should be ignored.
      */
-    callable_remote_procedure(engine& e, hg_id_t id, const endpoint& ep,
+    callable_remote_procedure(const std::weak_ptr<detail::engine_impl>& e,
+                              hg_id_t id, const endpoint& ep,
                               bool ignore_resp, uint16_t provider_id = 0);
 
     /**
@@ -71,7 +76,7 @@ class callable_remote_procedure {
         hg_return_t  ret;
         meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
             return proc_object(proc, const_cast<std::tuple<T...>&>(args),
-                               m_engine);
+                               m_engine_impl);
         };
         if(timeout_ms > 0.0) {
             ret = margo_provider_forward_timed(
@@ -89,7 +94,7 @@ class callable_remote_procedure {
         }
         if(m_ignore_response)
             return packed_response();
-        return packed_response(m_handle, m_engine);
+        return packed_response(m_handle, m_engine_impl);
     }
 
     packed_response forward(double timeout_ms = -1.0) const {
@@ -111,7 +116,7 @@ class callable_remote_procedure {
         }
         if(m_ignore_response)
             return packed_response();
-        return packed_response(m_handle, m_engine);
+        return packed_response(m_handle, m_engine_impl);
     }
 
     /**
@@ -135,7 +140,7 @@ class callable_remote_procedure {
         margo_request req;
         meta_proc_fn  mproc = [this, &args](hg_proc_t proc) {
             return proc_object(proc, const_cast<std::tuple<T...>&>(args),
-                               m_engine);
+                               m_engine_impl);
         };
         if(timeout_ms > 0.0) {
             ret = margo_provider_iforward_timed(
@@ -149,7 +154,7 @@ class callable_remote_procedure {
                 const_cast<void*>(static_cast<const void*>(&mproc)), &req);
             MARGO_ASSERT(ret, margo_provider_iforward);
         }
-        return async_response(req, m_engine, m_handle, m_ignore_response);
+        return async_response(req, m_engine_impl, m_handle, m_ignore_response);
     }
 
     async_response iforward(double timeout_ms = -1.0) const {
@@ -168,7 +173,7 @@ class callable_remote_procedure {
                 const_cast<void*>(static_cast<const void*>(&mproc)), &req);
             MARGO_ASSERT(ret, margo_provider_iforward);
         }
-        return async_response(req, m_engine, m_handle, m_ignore_response);
+        return async_response(req, m_engine_impl, m_handle, m_ignore_response);
     }
 
   public:

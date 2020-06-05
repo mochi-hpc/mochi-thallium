@@ -16,6 +16,10 @@ namespace thallium {
 class callable_remote_procedure;
 class async_response;
 
+namespace detail {
+    struct engine_impl;
+}
+
 /**
  * @brief packed_response objects are created as a reponse to
  * an RPC. They can be used to extract the response from the
@@ -26,7 +30,7 @@ class packed_response {
     friend class async_response;
 
   private:
-    engine*     m_engine = nullptr;
+    std::weak_ptr<detail::engine_impl> m_engine_impl;
     hg_handle_t m_handle = HG_HANDLE_NULL;
 
     /**
@@ -36,8 +40,8 @@ class packed_response {
      * @param h Handle containing the result of an RPC.
      * @param e Engine associated with the RPC.
      */
-    packed_response(hg_handle_t h, engine* e)
-    : m_engine(e)
+    packed_response(hg_handle_t h, const std::weak_ptr<detail::engine_impl>& e)
+    : m_engine_impl(e)
     , m_handle(h) {
         hg_return_t ret = margo_ref_incr(h);
         MARGO_ASSERT(ret, margo_ref_incr);
@@ -67,7 +71,7 @@ class packed_response {
         }
         std::tuple<T> t;
         meta_proc_fn  mproc = [this, &t](hg_proc_t proc) {
-            return proc_object(proc, t, m_engine);
+            return proc_object(proc, t, m_engine_impl);
         };
         hg_return_t ret = margo_get_output(m_handle, &mproc);
         MARGO_ASSERT(ret, margo_get_output);
@@ -101,7 +105,7 @@ class packed_response {
                    typename std::decay_t<Tn>::type...>
                      t;
         meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
-            return proc_object(proc, t, &m_engine);
+            return proc_object(proc, t, m_engine_impl);
         };
         hg_return_t ret = margo_get_output(m_handle, &mproc);
         MARGO_ASSERT(ret, margo_get_output);

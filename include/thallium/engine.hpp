@@ -32,10 +32,25 @@ class bulk;
 class endpoint;
 class remote_bulk;
 class remote_procedure;
+class proc_input_archive;
+class proc_output_archive;
 template <typename T> class provider;
 
 DECLARE_MARGO_RPC_HANDLER(thallium_generic_rpc);
 hg_return_t thallium_generic_rpc(hg_handle_t handle);
+
+namespace detail {
+
+    struct engine_impl {
+        margo_instance_id                  m_mid;
+        bool                               m_is_server;
+        bool                               m_owns_mid;
+        std::atomic<bool>                  m_finalize_called;
+        hg_context_t*                      m_hg_context = nullptr;
+        hg_class_t*                        m_hg_class   = nullptr;
+    };
+
+}
 
 /**
  * @brief The engine class is at the core of Thallium,
@@ -50,6 +65,8 @@ class engine {
     friend class remote_bulk;
     friend class remote_procedure;
     friend class callable_remote_procedure;
+    friend class proc_input_archive;
+    friend class proc_output_archive;
     template <typename T> friend class provider;
 
     friend hg_return_t thallium_generic_rpc(hg_handle_t handle);
@@ -58,20 +75,15 @@ class engine {
     using rpc_t = std::function<void(const request&)>;
     using finalize_callback_t = std::function<void()>;
 
-    margo_instance_id                  m_mid;
-    bool                               m_is_server;
-    bool                               m_owns_mid;
-    std::atomic<bool>                  m_finalize_called;
-    hg_context_t*                      m_hg_context = nullptr;
-    hg_class_t*                        m_hg_class   = nullptr;
+    std::shared_ptr<detail::engine_impl> m_impl;
 
     /**
      * @brief Encapsulation of some data needed by RPC callbacks
      * (namely, the initiating thallium engine and the function to call)
      */
     struct rpc_callback_data {
-        engine* m_engine;
-        rpc_t*  m_function;
+        std::weak_ptr<detail::engine_impl> m_engine_impl;
+        rpc_t                              m_function;
     };
 
     /**
@@ -81,17 +93,16 @@ class engine {
      */
     static void free_rpc_callback_data(void* data) {
         rpc_callback_data* cb_data = (rpc_callback_data*)data;
-        delete cb_data->m_function;
         delete cb_data;
     }
 
     static void on_engine_finalize_cb(void* arg) {
-        engine* e            = static_cast<engine*>(arg);
+        auto e               = static_cast<detail::engine_impl*>(arg);
         e->m_finalize_called = true;
     }
 
     static void on_engine_prefinalize_cb(void* arg) {
-        engine* e = static_cast<engine*>(arg);
+        auto e = static_cast<detail::engine_impl*>(arg);
         (void)e; // This callback does nothing for now
     }
 
@@ -101,7 +112,17 @@ class engine {
         delete cb;
     }
 
+    engine(std::shared_ptr<detail::engine_impl> impl)
+    : m_impl(std::move(impl)) {}
+
   public:
+
+    /**
+     * @brief The default constructor is there to handle the case of
+     * declaring and assigning the engine in different places of the code.
+     */
+    engine() = default;
+
     /**
      * @brief Constructor.
      *
@@ -113,66 +134,48 @@ class engine {
      * Use -1 to indicate that RPCs should be serviced in the progress ES.
      */
     engine(const std::string& addr, int mode, bool use_progress_thread = false,
-           std::int32_t rpc_thread_count = 0) {
-        m_is_server       = (mode == THALLIUM_SERVER_MODE);
-        m_finalize_called = false;
-        m_mid = margo_init(addr.c_str(), mode, use_progress_thread ? 1 : 0,
+           std::int32_t rpc_thread_count = 0) 
+    : m_impl(std::make_shared<detail::engine_impl>()) {
+        m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
+        m_impl->m_finalize_called = false;
+        m_impl->m_mid = margo_init(addr.c_str(), mode, use_progress_thread ? 1 : 0,
                            rpc_thread_count);
-        if(!m_mid)
+        if(!m_impl->m_mid)
             MARGO_THROW(margo_init, "Could not initialize Margo");
-        m_owns_mid = true;
-        margo_push_prefinalize_callback(m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(this));
-        margo_push_finalize_callback(m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(this));
+        m_impl->m_owns_mid = true;
+        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
+                                        static_cast<void*>(m_impl.get()));
+        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
+                                     static_cast<void*>(m_impl.get()));
     }
 
     engine(const std::string& addr, int mode, const pool& progress_pool,
-           const pool& default_handler_pool) {
-        m_is_server       = (mode == THALLIUM_SERVER_MODE);
-        m_finalize_called = false;
-        m_owns_mid        = true;
+           const pool& default_handler_pool)
+    :  m_impl(std::make_shared<detail::engine_impl>()) {
+        m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
+        m_impl->m_finalize_called = false;
+        m_impl->m_owns_mid        = true;
 
-        m_hg_class = HG_Init(addr.c_str(), mode);
-        if(!m_hg_class) {
+        m_impl->m_hg_class = HG_Init(addr.c_str(), mode);
+        if(!m_impl->m_hg_class) {
            throw exception("HG_Init failed in thallium::engine constructor"); 
         }
 
-        m_hg_context = HG_Context_create(m_hg_class);
-        if(!m_hg_context) {
+        m_impl->m_hg_context = HG_Context_create(m_impl->m_hg_class);
+        if(!m_impl->m_hg_context) {
             throw exception("HG_Context_create failed in thallium::engine constructor");
         }
 
-        m_mid =
+        m_impl->m_mid =
             margo_init_pool(progress_pool.native_handle(),
-                            default_handler_pool.native_handle(), m_hg_context);
-        if(!m_mid)
+                            default_handler_pool.native_handle(),
+                            m_impl->m_hg_context);
+        if(!m_impl->m_mid)
             MARGO_THROW(margo_init, "Could not initialize Margo");
-        margo_push_prefinalize_callback(m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(this));
-        margo_push_finalize_callback(m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(this));
-    }
-
-    /**
-     * @brief Builds an engine around an existing margo instance.
-     *
-     * @param mid Margo instance.
-     * @param mode THALLIUM_SERVER_MODE or THALLIUM_CLIENT_MODE.
-     */
-    [[deprecated]] engine(margo_instance_id mid, int mode) {
-        m_mid       = mid;
-        m_is_server = (mode == THALLIUM_SERVER_MODE);
-        m_owns_mid  = false;
-        // an engine initialize with a margo instance is just a wrapper
-        // it doesn't need to push prefinalize and finalize callbacks,
-        // at least currently.
-        /*
-        margo_push_prefinalize_callback(m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(this));
-        margo_push_finalize_callback(m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(this));
-        */
+        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
+                                        static_cast<void*>(m_impl.get()));
+        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
+                                     static_cast<void*>(m_impl.get()));
     }
 
     /**
@@ -180,58 +183,73 @@ class engine {
      *
      * @param mid Margo instance.
      */
-    engine(margo_instance_id mid) {
-        m_mid       = mid;
-        m_owns_mid  = false;
-        m_is_server = margo_is_listening(mid);
+    engine(margo_instance_id mid)
+    : m_impl(std::make_shared<detail::engine_impl>()) {
+        m_impl->m_mid       = mid;
+        m_impl->m_owns_mid  = false;
+        m_impl->m_is_server = margo_is_listening(mid);
         // an engine initialize with a margo instance is just a wrapper
         // it doesn't need to push prefinalize and finalize callbacks,
         // at least currently.
         /*
-        margo_push_prefinalize_callback(m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(this));
-        margo_push_finalize_callback(m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(this));
+        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
+                                        static_cast<void*>(m_impl.get()));
+        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
+                                     static_cast<void*>(m_impl.get()));
         */
     }
 
     /**
-     * @brief Copy-constructor is deleted.
+     * @brief Copy-constructor.
      */
-    engine(const engine& other) = delete;
+    engine(const engine& other) = default;
 
     /**
-     * @brief Move-constructor is deleted.
+     * @brief Move-constructor. This method will invalidate
+     * the engine that is moved from.
      */
-    engine(engine&& other) = delete;
+    engine(engine&& other) = default;
 
     /**
-     * @brief Move-assignment operator is deleted.
+     * @brief Move-assignment operator. This method will invalidate
+     * the engine that it moved from.
      */
-    engine& operator=(engine&& other) = delete;
+    engine& operator=(engine&& other) {
+        if(m_impl == other.m_impl) return *this;
+        if(m_impl) this->~engine();
+        m_impl = std::move(other.m_impl);
+        return *this;
+    }
 
     /**
      * @brief Copy-assignment operator is deleted.
      */
-    engine& operator=(const engine& other) = delete;
+    engine& operator=(const engine& other) {
+        if(m_impl == other.m_impl) return *this;
+        if(m_impl) this->~engine();
+        m_impl = other.m_impl;
+        return *this;
+    }
 
     /**
      * @brief Destructor.
      */
     ~engine() {
-        if(m_owns_mid) {
-            if(m_is_server) {
-                if(!m_finalize_called)
-                    margo_wait_for_finalize(m_mid);
+        if(!m_impl) return;
+        if(m_impl.use_count() > 1) return;
+        if(m_impl->m_owns_mid) {
+            if(m_impl->m_is_server) {
+                if(!m_impl->m_finalize_called)
+                    margo_wait_for_finalize(m_impl->m_mid);
             } else {
-                if(!m_finalize_called)
+                if(!m_impl->m_finalize_called)
                     finalize();
             }
         }
-        if(m_hg_context)
-            HG_Context_destroy(m_hg_context);
-        if(m_hg_class)
-            HG_Finalize(m_hg_class);
+        if(m_impl->m_hg_context)
+            HG_Context_destroy(m_impl->m_hg_context);
+        if(m_impl->m_hg_class)
+            HG_Finalize(m_impl->m_hg_class);
     }
 
     /**
@@ -241,12 +259,14 @@ class engine {
      *
      * @return The margo instance id.
      */
-    margo_instance_id get_margo_instance() const { return m_mid; }
+    margo_instance_id get_margo_instance() const { 
+        return m_impl->m_mid;
+    }
 
     /**
      * @brief Finalize the engine. Can be called by any thread.
      */
-    void finalize() { margo_finalize(m_mid); }
+    void finalize() { margo_finalize(m_impl->m_mid); }
 
     /**
      * @brief Makes the calling thread block until someone calls
@@ -254,8 +274,8 @@ class engine {
      * if finalize was already called.
      */
     void wait_for_finalize() {
-        if(!m_finalize_called)
-            margo_wait_for_finalize(m_mid);
+        if(!m_impl->m_finalize_called)
+            margo_wait_for_finalize(m_impl->m_mid);
     }
 
     /**
@@ -372,7 +392,7 @@ class engine {
     template <typename F>
     void push_prefinalize_callback(const void* owner, F&& f) {
         auto cb = new finalize_callback_t(std::forward<F>(f));
-        margo_provider_push_prefinalize_callback(m_mid,
+        margo_provider_push_prefinalize_callback(m_impl->m_mid,
             owner,
             finalize_callback_wrapper,
             static_cast<void*>(cb));
@@ -386,7 +406,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> top_prefinalize_callback() const {
-        return top_prefinalize_callback(static_cast<const void*>(this));
+        return top_prefinalize_callback(static_cast<const void*>(m_impl.get()));
     }
 
     /**
@@ -400,7 +420,7 @@ class engine {
     std::function<void(void)> top_prefinalize_callback(const void* owner) const {
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
-        int ret = margo_provider_top_prefinalize_callback(m_mid,
+        int ret = margo_provider_top_prefinalize_callback(m_impl->m_mid,
             owner,
             &cb,
             &uargs);
@@ -417,7 +437,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_prefinalize_callback() {
-        return pop_prefinalize_callback(static_cast<const void*>(this));
+        return pop_prefinalize_callback(static_cast<const void*>(m_impl.get()));
     }
 
     /**
@@ -431,15 +451,15 @@ class engine {
     std::function<void(void)> pop_prefinalize_callback(const void* owner) {
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
-        int ret = margo_provider_top_prefinalize_callback(m_mid,
+        int ret = margo_provider_top_prefinalize_callback(m_impl->m_mid,
             owner,
             &cb,
             &uargs);
         if(ret == 0) return std::function<void(void)>();
-        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
+        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs);
         finalize_callback_t f_copy = *f;
         delete f;
-        margo_provider_pop_prefinalize_callback(m_mid, owner);
+        margo_provider_pop_prefinalize_callback(m_impl->m_mid, owner);
         return f_copy;
     }
 
@@ -463,7 +483,7 @@ class engine {
      * @param f callback.
      */
     template <typename F> void push_finalize_callback(F&& f) {
-        push_finalize_callback(static_cast<const void*>(this), std::forward<F>(f));
+        push_finalize_callback(static_cast<const void*>(m_impl.get()), std::forward<F>(f));
     }
 
     /**
@@ -478,7 +498,7 @@ class engine {
     template<typename F>
     void push_finalize_callback(const void* owner, F&& f) {
         auto cb = new finalize_callback_t(std::forward<F>(f));
-        margo_provider_push_finalize_callback(m_mid,
+        margo_provider_push_finalize_callback(m_impl->m_mid,
             owner,
             finalize_callback_wrapper,
             static_cast<void*>(cb));
@@ -492,7 +512,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> top_finalize_callback() const {
-        return top_finalize_callback(static_cast<const void*>(this));
+        return top_finalize_callback(static_cast<const void*>(m_impl.get()));
     }
 
     /**
@@ -506,7 +526,7 @@ class engine {
     std::function<void(void)> top_finalize_callback(const void* owner) const {
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
-        int ret = margo_provider_top_finalize_callback(m_mid,
+        int ret = margo_provider_top_finalize_callback(m_impl->m_mid,
             owner,
             &cb,
             &uargs);
@@ -523,7 +543,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_finalize_callback() {
-        return pop_finalize_callback(static_cast<const void*>(this));
+        return pop_finalize_callback(static_cast<const void*>(m_impl.get()));
     }
 
     /**
@@ -537,7 +557,7 @@ class engine {
     std::function<void(void)> pop_finalize_callback(const void* owner) {
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
-        int ret = margo_provider_top_finalize_callback(m_mid,
+        int ret = margo_provider_top_finalize_callback(m_impl->m_mid,
             owner,
             &cb,
             &uargs);
@@ -545,7 +565,7 @@ class engine {
         finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
         finalize_callback_t f_copy = *f;
         delete f;
-        margo_provider_pop_finalize_callback(m_mid, owner);
+        margo_provider_pop_finalize_callback(m_impl->m_mid, owner);
         return f_copy;
     }
 
@@ -579,10 +599,10 @@ engine::define(const std::string&                                    name,
                const std::function<void(const request&, T1, Tn...)>& fun,
                uint16_t provider_id, const pool& p) {
     hg_id_t id = MARGO_REGISTER_PROVIDER(
-        m_mid, name.c_str(), meta_serialization, meta_serialization,
+        m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization,
         thallium_generic_rpc, provider_id, p.native_handle());
 
-    auto rpc_callback = new rpc_t(
+    auto rpc_callback =
         [fun, this](const request& r) {
             std::function<void(T1, Tn...)> call_function =
                 [&fun, &r](const T1& a1, const Tn&... args) {
@@ -591,7 +611,7 @@ engine::define(const std::string&                                    name,
                 std::tuple<typename std::decay<T1>::type,
                    typename std::decay<Tn>::type...> iargs;
             meta_proc_fn mproc = [this, &iargs](hg_proc_t proc) {
-                return proc_object(proc, iargs, this);
+                return proc_object(proc, iargs, m_impl);
             };
             hg_return_t ret = margo_get_input(r.m_handle, &mproc);
             if(ret != HG_SUCCESS)
@@ -601,18 +621,17 @@ engine::define(const std::string&                                    name,
                 return ret;
             apply_function_to_tuple(call_function, iargs);
             return HG_SUCCESS;
-        }
-    );
+        };
 
     rpc_callback_data* cb_data = new rpc_callback_data;
-    cb_data->m_engine          = this;
-    cb_data->m_function        = rpc_callback;
+    cb_data->m_engine_impl = m_impl;
+    cb_data->m_function = std::move(rpc_callback);
 
     hg_return_t ret =
-        margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
+        margo_register_data(m_impl->m_mid, id, (void*)cb_data, free_rpc_callback_data);
     MARGO_ASSERT(ret, margo_register_data);
 
-    return remote_procedure(*this, id);
+    return remote_procedure(m_impl, id);
 }
 
 template <typename... Args>

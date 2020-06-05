@@ -16,6 +16,7 @@ set(thallium-src abt_errors.cpp
 		 request.cpp
 		 remote_bulk.cpp
 		 scheduler.cpp
+		 serialization.cpp
 		 task.cpp
 		 thread.cpp)
 

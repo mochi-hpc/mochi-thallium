@@ -17,6 +17,9 @@ namespace thallium {
 
 class engine;
 class remote_bulk;
+namespace detail {
+    struct engine_impl;
+}
 
 /**
  * @brief bulk objects represent abstractions of memory
@@ -28,9 +31,9 @@ class bulk {
     friend class remote_bulk;
 
   private:
-    engine*   m_engine   = nullptr;
-    hg_bulk_t m_bulk     = HG_BULK_NULL;
-    bool      m_is_local = true;
+    std::weak_ptr<detail::engine_impl> m_engine_impl;
+    hg_bulk_t m_bulk        = HG_BULK_NULL;
+    bool      m_is_local    = true;
 
     /**
      * @brief Constructor. Made private as bulk objects
@@ -42,8 +45,8 @@ class bulk {
      * @param local Whether the bulk handle referes to memory that is
      * local to this process.
      */
-    bulk(engine& e, hg_bulk_t b, bool local)
-    : m_engine(&e)
+    bulk(std::weak_ptr<detail::engine_impl> e, hg_bulk_t b, bool local)
+    : m_engine_impl(std::move(e))
     , m_bulk(b)
     , m_is_local(local) {}
 
@@ -172,7 +175,7 @@ class bulk {
      * object as class member and associate it later with an actual bulk.
      */
     bulk()
-    : m_engine(nullptr)
+    : m_engine_impl()
     , m_bulk(HG_BULK_NULL)
     , m_is_local(false) {}
 
@@ -180,7 +183,7 @@ class bulk {
      * @brief Copy constructor.
      */
     bulk(const bulk& other)
-    : m_engine(other.m_engine)
+    : m_engine_impl(other.m_engine_impl)
     , m_bulk(other.m_bulk)
     , m_is_local(other.m_is_local) {
         if(other.m_bulk != HG_BULK_NULL) {
@@ -193,7 +196,7 @@ class bulk {
      * @brief Move constructor.
      */
     bulk(bulk&& other)
-    : m_engine(other.m_engine)
+    : m_engine_impl(std::move(other.m_engine_impl))
     , m_bulk(other.m_bulk)
     , m_is_local(other.m_is_local) {
         other.m_bulk = HG_BULK_NULL;
@@ -209,8 +212,8 @@ class bulk {
             hg_return_t ret = margo_bulk_free(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_free);
         }
-        m_bulk     = other.m_bulk;
-        m_engine   = other.m_engine;
+        m_bulk        = other.m_bulk;
+        m_engine_impl = other.m_engine_impl;
         m_is_local = other.m_is_local;
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_ref_incr(m_bulk);
@@ -229,10 +232,10 @@ class bulk {
             hg_return_t ret = margo_bulk_free(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_free);
         }
-        m_engine     = other.m_engine;
-        m_bulk       = other.m_bulk;
-        m_is_local   = other.m_is_local;
-        other.m_bulk = HG_BULK_NULL;
+        m_engine_impl = other.m_engine_impl;
+        m_bulk        = other.m_bulk;
+        m_is_local    = other.m_is_local;
+        other.m_bulk  = HG_BULK_NULL;
         return *this;
     }
 
@@ -264,15 +267,6 @@ class bulk {
      * @return true if the bulk handle is null, false otherwise.
      */
     bool is_null() const { return m_bulk == HG_BULK_NULL; }
-
-    /**
-     * @brief Set the eager mode. When eager mode is true,
-     * Mercury will try to send the bulk's exposed data along
-     * with the bulk handle when sending the bulk handle over RPC.
-     *
-     * @param eager Whether to use eager mode or not.
-     */
-    [[deprecated]] void set_eager_mode(bool eager) { (void)eager; }
 
     /**
      * @brief Builds a remote_bulk object by associating it with an endpoint.
@@ -348,8 +342,8 @@ class bulk {
                 "Error during serialization, hg_proc_hg_bulk_t returned"s +
                 std::to_string(ret));
         }
-        if(m_engine == nullptr) {
-            m_engine = &ar.get_engine();
+        if(m_engine_impl.lock() == nullptr) {
+            m_engine_impl = ar.get_engine_impl();
         }
     }
 };

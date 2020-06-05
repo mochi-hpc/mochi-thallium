@@ -16,6 +16,9 @@ namespace thallium {
 
 class engine;
 class endpoint;
+namespace detail {
+    struct engine_impl;
+}
 
 /**
  * @brief A request object is created whenever a server
@@ -29,9 +32,9 @@ class request {
     friend hg_return_t thallium_generic_rpc(hg_handle_t handle);
 
   private:
-    engine*     m_engine;
-    hg_handle_t m_handle;
-    bool        m_disable_response;
+    std::weak_ptr<detail::engine_impl> m_engine_impl;
+    hg_handle_t                        m_handle;
+    bool                               m_disable_response;
 
     /**
      * @brief Constructor. Made private since request are only created
@@ -41,8 +44,8 @@ class request {
      * @param h handle of the RPC that was received.
      * @param disable_resp whether responses are disabled.
      */
-    request(engine* e, hg_handle_t h, bool disable_resp)
-    : m_engine(e)
+    request(const std::weak_ptr<detail::engine_impl>& e, hg_handle_t h, bool disable_resp)
+    : m_engine_impl(e)
     , m_handle(h)
     , m_disable_response(disable_resp) {
         margo_ref_incr(m_handle);
@@ -53,7 +56,7 @@ class request {
      * @brief Copy constructor.
      */
     request(const request& other)
-    : m_engine(other.m_engine)
+    : m_engine_impl(other.m_engine_impl)
     , m_handle(other.m_handle)
     , m_disable_response(other.m_disable_response) {
         hg_return_t ret = margo_ref_incr(m_handle);
@@ -64,7 +67,7 @@ class request {
      * @brief Move constructor.
      */
     request(request&& other)
-    : m_engine(other.m_engine)
+    : m_engine_impl(std::move(other.m_engine_impl))
     , m_handle(other.m_handle)
     , m_disable_response(other.m_disable_response) {
         other.m_handle = HG_HANDLE_NULL;
@@ -79,7 +82,7 @@ class request {
         hg_return_t ret;
         ret = margo_destroy(m_handle);
         MARGO_ASSERT(ret, margo_destroy);
-        m_engine           = other.m_engine;
+        m_engine_impl      = other.m_engine_impl;
         m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
         ret                = margo_ref_incr(m_handle);
@@ -94,7 +97,7 @@ class request {
         if(m_handle == other.m_handle)
             return *this;
         margo_destroy(m_handle);
-        m_engine           = other.m_engine;
+        m_engine_impl      = other.m_engine_impl;
         m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
         other.m_handle     = HG_HANDLE_NULL;
@@ -126,7 +129,7 @@ class request {
         if(m_handle != HG_HANDLE_NULL) {
             auto args = std::make_tuple<const T1&, const T&...>(t1, t...);
             meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
-                return proc_object(proc, args, m_engine);
+                return proc_object(proc, args, m_engine_impl);
             };
             hg_return_t ret = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);

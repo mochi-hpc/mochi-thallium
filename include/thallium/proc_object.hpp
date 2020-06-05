@@ -18,8 +18,13 @@
 #include <thallium/serialization/proc_output_archive.hpp>
 #include <tuple>
 #include <vector>
+#include <memory>
 
 namespace thallium {
+
+namespace detail {
+    struct engine_impl;
+}
 
 #ifdef THALLIUM_DEBUG_RPC_TYPES
 template <typename T> std::string get_type_name() {
@@ -51,10 +56,10 @@ inline hg_return_t hg_proc_meta_serialization(hg_proc_t proc, void* data) {
 }
 
 template <typename T>
-hg_return_t proc_object(hg_proc_t proc, T& data, engine* e) {
+hg_return_t proc_object(hg_proc_t proc, T& data, const std::weak_ptr<detail::engine_impl>& e) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
-        proc_output_archive ar(proc, *e);
+        proc_output_archive ar(proc, e);
 #ifdef THALLIUM_DEBUG_RPC_TYPES
         std::string type_name = get_type_name<T>();
         ar << type_name;
@@ -62,7 +67,7 @@ hg_return_t proc_object(hg_proc_t proc, T& data, engine* e) {
         ar << data;
     } break;
     case HG_DECODE: {
-        proc_input_archive ar(proc, *e);
+        proc_input_archive ar(proc, e);
 #ifdef THALLIUM_DEBUG_RPC_TYPES
         std::string requested_type_name = get_type_name<T>();
         std::string received_type_name;

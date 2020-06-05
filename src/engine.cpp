@@ -28,9 +28,10 @@ hg_return_t thallium_generic_rpc(hg_handle_t handle) {
     THALLIUM_ASSERT_CONDITION(data != nullptr,
             "margo_registered_data returned null");
     auto    cb_data = static_cast<engine::rpc_callback_data*>(data);
-    auto    rpc_ptr = cb_data->m_function;
-    request req(cb_data->m_engine, handle, false);
-    (*rpc_ptr)(req);
+    auto&   rpc = cb_data->m_function;
+    // TODO throw if m_engine_impl is invalid
+    request req(cb_data->m_engine_impl, handle, false);
+    rpc(req);
     margo_destroy(handle); // because of margo_ref_incr in rpc_callback
     return HG_SUCCESS;
 }
@@ -38,15 +39,17 @@ hg_return_t thallium_generic_rpc(hg_handle_t handle) {
 DEFINE_MARGO_RPC_HANDLER(thallium_generic_rpc);
 
 endpoint engine::lookup(const std::string& address) const {
+    // TODO throw if m_impl is invalid
     hg_addr_t   addr;
-    hg_return_t ret = margo_addr_lookup(m_mid, address.c_str(), &addr);
+    hg_return_t ret = margo_addr_lookup(m_impl->m_mid, address.c_str(), &addr);
     MARGO_ASSERT(ret, margo_addr_lookup);
     return endpoint(const_cast<engine&>(*this), addr);
 }
 
 endpoint engine::self() const {
+    // TODO throw if m_impl is invalid
     hg_addr_t   self_addr;
-    hg_return_t ret = margo_addr_self(m_mid, &self_addr);
+    hg_return_t ret = margo_addr_self(m_impl->m_mid, &self_addr);
     MARGO_ASSERT(ret, margo_addr_self);
     return endpoint(const_cast<engine&>(*this), self_addr);
 }
@@ -54,11 +57,12 @@ endpoint engine::self() const {
 remote_procedure engine::define(const std::string& name) {
     hg_bool_t flag;
     hg_id_t   id;
-    margo_registered_name(m_mid, name.c_str(), &id, &flag);
+    // TODO throw if m_impl is invalid
+    margo_registered_name(m_impl->m_mid, name.c_str(), &id, &flag);
     if(flag == HG_FALSE) {
-        id = MARGO_REGISTER(m_mid, name.c_str(), meta_serialization, meta_serialization, NULL);
+        id = MARGO_REGISTER(m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization, NULL);
     }
-    return remote_procedure(*this, id);
+    return remote_procedure(m_impl, id);
 }
 
 bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
@@ -71,46 +75,50 @@ bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
         buf_ptrs[i]  = segments[i].first;
         buf_sizes[i] = segments[i].second;
     }
+    // TODO throw if m_impl is invalid
     hg_return_t ret = margo_bulk_create(
-        m_mid, count, &buf_ptrs[0], &buf_sizes[0],
+        m_impl->m_mid, count, &buf_ptrs[0], &buf_sizes[0],
         static_cast<hg_uint32_t>(flag), &handle);
     MARGO_ASSERT(ret, margo_bulk_create);
-    return bulk(*this, handle, true);
+    return bulk(m_impl, handle, true);
 }
 
 bulk engine::wrap(hg_bulk_t blk, bool is_local) {
     hg_return_t hret = margo_bulk_ref_incr(blk);
     MARGO_ASSERT(hret, margo_bulk_ref_incr);
-    return bulk(*this, blk, is_local);
+    // TODO throw if m_impl is invalid
+    return bulk(m_impl, blk, is_local);
 }
 
 void engine::shutdown_remote_engine(const endpoint& ep) const {
-    int         ret = margo_shutdown_remote_instance(m_mid, ep.m_addr);
+    // TODO throw if m_impl is invalid
+    int         ret = margo_shutdown_remote_instance(m_impl->m_mid, ep.m_addr);
     hg_return_t r   = ret == 0 ? HG_SUCCESS : HG_OTHER_ERROR;
     MARGO_ASSERT(r, margo_shutdown_remote_instance);
 }
 
-void engine::enable_remote_shutdown() { margo_enable_remote_shutdown(m_mid); }
+void engine::enable_remote_shutdown() {
+    // TODO throw if m_impl is invalid
+    margo_enable_remote_shutdown(m_impl->m_mid);
+}
 
 remote_procedure engine::define(const std::string&                         name,
                                 const std::function<void(const request&)>& fun,
                                 uint16_t provider_id, const pool& p) {
-
+    // TODO throw if m_impl is invalid
     hg_id_t id = MARGO_REGISTER_PROVIDER(
-        m_mid, name.c_str(), meta_serialization, meta_serialization,
+        m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization,
         thallium_generic_rpc, provider_id, p.native_handle());
 
-    auto rpc = new rpc_t(fun); // make copy of the function object
-
-    auto* cb_data       = new rpc_callback_data;
-    cb_data->m_engine   = this;
-    cb_data->m_function = rpc;
+    auto* cb_data          = new rpc_callback_data;
+    cb_data->m_engine_impl = m_impl;
+    cb_data->m_function    = fun;
 
     hg_return_t ret =
-        margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
+        margo_register_data(m_impl->m_mid, id, (void*)cb_data, free_rpc_callback_data);
     MARGO_ASSERT(ret, margo_register_data);
 
-    return remote_procedure(*this, id);
+    return remote_procedure(m_impl, id);
 }
 
 } // namespace thallium
