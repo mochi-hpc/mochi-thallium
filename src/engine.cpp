@@ -58,12 +58,16 @@ endpoint engine::self() const {
 }
 
 remote_procedure engine::define(const std::string& name) {
+    return define(name.c_str());
+}
+
+remote_procedure engine::define(const char* name) {
     hg_bool_t flag;
     hg_id_t   id;
     if(!m_impl) throw exception("Invalid engine");
-    margo_registered_name(m_impl->m_mid, name.c_str(), &id, &flag);
+    margo_registered_name(m_impl->m_mid, name, &id, &flag);
     if(flag == HG_FALSE) {
-        id = MARGO_REGISTER(m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization, NULL);
+        id = MARGO_REGISTER(m_impl->m_mid, name, meta_serialization, meta_serialization, NULL);
     }
     return remote_procedure(m_impl, id);
 }

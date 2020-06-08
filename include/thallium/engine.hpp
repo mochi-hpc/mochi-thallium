@@ -298,9 +298,7 @@ class engine {
      * @return a remote_procedure object.
      */
     remote_procedure define(const std::string& name);
-    remote_procedure define(const char* name) {
-        return define(std::string(name));
-    }
+    remote_procedure define(const char* name);
 
     /**
      * @brief Defines an RPC with a name and an std::function
