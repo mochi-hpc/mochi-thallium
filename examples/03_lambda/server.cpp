@@ -16,6 +16,11 @@ int main(int argc, char** argv) {
 
     myEngine.define("sum", sum);
 
+    myEngine.define("mult", [](const tl::request& req, int x, int y) {
+         std::cout << "Computing " << x << "*" << y << std::endl;
+         req.respond(x*y);
+    });
+
     return 0;
 }
 

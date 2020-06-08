@@ -19,6 +19,7 @@
 #include <thallium/proc_object.hpp>
 #include <thallium/request.hpp>
 #include <thallium/tuple_util.hpp>
+#include <thallium/function_util.hpp>
 #include <unordered_map>
 #include <vector>
 
@@ -316,6 +317,20 @@ class engine {
            const std::function<void(const request&, A1, Args...)>& fun,
            uint16_t provider_id = 0, const pool& p = pool());
 
+    template <typename A1, typename... Args>
+    remote_procedure
+    define(const std::string&                                 name,
+           std::function<void(const request&, A1, Args...)>&& fun,
+           uint16_t provider_id = 0, const pool& p = pool());
+
+    template <typename Func>
+    typename std::enable_if<!is_std_function_object<typename std::decay<Func>::type>::value, remote_procedure>::type
+    define(const std::string& name, Func&& fun,
+           uint16_t provider_id = 0, const pool& p = pool()) {
+        using function = typename std::function<typename function_signature<Func>::type>;
+        return define(name, function(std::forward<Func>(fun)), provider_id, p);
+    }
+
     remote_procedure define(const std::string&                         name,
                             const std::function<void(const request&)>& fun,
                             uint16_t provider_id = 0, const pool& p = pool());
@@ -611,8 +626,8 @@ namespace thallium {
 
 template <typename T1, typename... Tn>
 remote_procedure
-engine::define(const std::string&                                    name,
-               const std::function<void(const request&, T1, Tn...)>& fun,
+engine::define(const std::string&                               name,
+               std::function<void(const request&, T1, Tn...)>&& fun,
                uint16_t provider_id, const pool& p) {
     if(!m_impl) throw exception("Invalid engine");
     hg_id_t id = MARGO_REGISTER_PROVIDER(
@@ -620,8 +635,11 @@ engine::define(const std::string&                                    name,
         thallium_generic_rpc, provider_id, p.native_handle());
 
     std::weak_ptr<detail::engine_impl> w_impl = m_impl;
-    auto rpc_callback =
-        [fun, w_impl=std::move(w_impl)](const request& r) {
+    rpc_callback_data* cb_data = new rpc_callback_data;
+    cb_data->m_engine_impl = m_impl;
+
+    cb_data->m_function =
+        [fun=std::move(fun), w_impl=std::move(w_impl)](const request& r) {
             std::function<void(T1, Tn...)> call_function =
                 [&fun, &r](const T1& a1, const Tn&... args) {
                     fun(r, a1, args...);
@@ -641,15 +659,20 @@ engine::define(const std::string&                                    name,
             return HG_SUCCESS;
         };
 
-    rpc_callback_data* cb_data = new rpc_callback_data;
-    cb_data->m_engine_impl = m_impl;
-    cb_data->m_function = std::move(rpc_callback);
-
     hg_return_t ret =
         margo_register_data(m_impl->m_mid, id, (void*)cb_data, free_rpc_callback_data);
     MARGO_ASSERT(ret, margo_register_data);
 
     return remote_procedure(m_impl, id);
+}
+
+template <typename T1, typename... Tn>
+remote_procedure
+engine::define(const std::string&                             name,
+               const std::function<void(const request&, T1, Tn...)>& fun,
+               uint16_t provider_id, const pool& p) {
+    return define(name, std::function<void(const request&, T1, Tn...)>(fun),
+                  provider_id, p);
 }
 
 template <typename... Args>

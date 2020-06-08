@@ -10,9 +10,12 @@ int main(int argc, char** argv) {
     }
     tl::engine myEngine("tcp", THALLIUM_CLIENT_MODE);
     tl::remote_procedure sum = myEngine.define("sum");
+    tl::remote_procedure mult = myEngine.define("mult");
     tl::endpoint server = myEngine.lookup(argv[1]);
     int ret = sum.on(server)(42,63);
-    std::cout << "Server answered " << ret << std::endl;
+    std::cout << "Server answered (sum)" << ret << std::endl;
+    ret = mult.on(server)(42,63);
+    std::cout << "Server answered (mult)" << ret << std::endl;
 
     return 0;
 }
