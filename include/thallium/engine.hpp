@@ -613,6 +613,30 @@ class engine {
      * @brief Enables this engine to be shutdown remotely.
      */
     void enable_remote_shutdown();
+
+    /**
+     * @brief Checks if the engine is listening for incoming RPCs.
+     */
+    bool is_listening() const {
+        if(!m_impl) {
+            throw exception("Invalid engine");
+        }
+        return margo_is_listening(m_impl->m_mid);
+    }
+
+    /**
+     * @brief Get the handler's pool.
+     *
+     * @return The default pool used for RPC handlers.
+     */
+    pool get_handler_pool() const {
+        if(!m_impl) {
+            throw exception("Invalid engine");
+        }
+        ABT_pool p = ABT_POOL_NULL;
+        margo_get_handler_pool(m_impl->m_mid, &p);
+        return pool(p);
+    }
 };
 
 } // namespace thallium
