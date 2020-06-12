@@ -14,14 +14,14 @@
 #include <thallium/anonymous.hpp>
 #include <thallium/exception.hpp>
 #include <thallium/managed.hpp>
-#include <thallium/task.hpp>
-#include <thallium/thread.hpp>
 #include <thallium/unit_type.hpp>
 
 namespace thallium {
 
 class xstream;
 class scheduler;
+class task;
+class thread;
 
 /**
  * Exception class thrown by the pool class.
@@ -62,14 +62,23 @@ class pool {
      * multiple-consumer.
      */
     enum class access : std::int32_t {
-        priv = ABT_POOL_ACCESS_PRIV,
-        spsc = ABT_POOL_ACCESS_SPSC,
-        mpsc = ABT_POOL_ACCESS_MPSC,
-        spmc = ABT_POOL_ACCESS_SPMC,
-        mpmc = ABT_POOL_ACCESS_MPMC
+        priv = ABT_POOL_ACCESS_PRIV, /* Used by only one ES */
+        spsc = ABT_POOL_ACCESS_SPSC, /* Producers on ES1, consumers on ES2 */
+        mpsc = ABT_POOL_ACCESS_MPSC, /* Producers on any ES, consumers on the same ES */
+        spmc = ABT_POOL_ACCESS_SPMC, /* Producers on the same ES, consumers on any ES */
+        mpmc = ABT_POOL_ACCESS_MPMC  /* Producers on any ES, consumers on any ES */
+    };
+
+    /**
+     * @brief Kind of pool.
+     */
+    enum class kind : std::int32_t {
+        fifo      = ABT_POOL_FIFO,     /* FIFO pool */
+        fifo_wait = ABT_POOL_FIFO_WAIT /* FIFO pool with ability to wait for units */
     };
 
   private:
+
     template <typename P, typename U, typename Palloc = std::allocator<P>,
               typename Ualloc = std::allocator<U>>
     struct pool_def {
@@ -186,10 +195,8 @@ class pool {
     }
 
     void destroy() {
-        // XXX for now the "automatic" param in ABT pool creation is ignored
-        // so if we free things here we will end up with double-free corruptions
-        //        if(m_pool != ABT_POOL_NULL)
-        //            ABT_pool_free(&m_pool);
+        if(m_pool != ABT_POOL_NULL)
+            ABT_pool_free(&m_pool);
     }
 
   public:
@@ -219,39 +226,107 @@ class pool {
      */
     native_handle_type native_handle() const noexcept { return m_pool; }
 
-    template <access A, typename P, typename U,
+    /**
+     * @brief Create a pool with user-provided pool type P
+     * and unit type U. Returns it as a managed<pool> object.
+     *
+     * @tparam P Custom pool type
+     * @tparam U Custom unit type
+     * @tparam Palloc Special allocator to allocate a pool
+     * @tparam Ualloc Special allocator to allocate a unit
+     *
+     * @return a managed<pool> object.
+     *
+     * IMPORTANT: The destructor of a managed<pool> will try
+     * to destroy the pool. If the pool is still attached to
+     * a scheduler, this will cause undefined behaviors.
+     * Make sure all the schedulers that use this pool have
+     * been destroyed before the pool goes out of scope.
+     *
+     * The type of unit U should adhere to the following model:
+     *
+     * \code{.cpp}
+     *
+     * class U {
+     *   public:
+     *     // initialization from a thread
+     *     Unit(const thread& t);
+     *     // initialization from a task
+     *     Unit(const task& t);
+     *     // returns the type of unit
+     *     unit_type get_type() const;
+     *     // returns a thread if the unit_type is thread
+     *     const tl::thread& get_thread() const;
+     *     // returns a task if the unit_type is task
+     *     const tl::task& get_task() const;
+     *     // returns whether the unit is in a pool
+     *     bool is_in_pool() const;
+     * };
+     *
+     * \endcode
+     *
+     * The type of pool P should adhere to the following model:
+     *
+     * \code{.cpp}
+     *
+     * class Pool {
+     *   public:
+     *     // access type
+     *     static const pool::access access_type;
+     *     // get the size of the pool
+     *     size_t get_size() const;
+     *     // push a unit into the pool
+     *     void push(U* u);
+     *     // pop a unit from the pool
+     *     my_unit* pop();
+     *     // remove a unit from the pool
+     *     void remove(my_unit* u);
+     * };
+     *
+     * \endcode
+     *
+     */
+    template <typename P, typename U,
               typename Palloc = std::allocator<P>,
               typename Ualloc = std::allocator<U>>
     static managed<pool> create() {
-        using d = pool_def<P, U, Palloc, Ualloc>;
+        auto A = P::access_type;
+        using D = pool_def<P, U, Palloc, Ualloc>;
         ABT_pool_def def;
         def.access               = (ABT_pool_access)A;
-        def.u_get_type           = d::u_get_type;
-        def.u_get_thread         = d::u_get_thread;
-        def.u_get_task           = d::u_get_task;
-        def.u_is_in_pool         = d::u_is_in_pool;
-        def.u_create_from_thread = d::u_create_from_thread;
-        def.u_create_from_task   = d::u_create_from_task;
-        def.u_free               = d::u_free;
-        def.p_init               = d::p_init;
-        def.p_get_size           = d::p_get_size;
-        def.p_push               = d::p_push;
-        def.p_pop                = d::p_pop;
-        def.p_remove             = d::p_remove;
-        def.p_free               = d::p_free;
+        def.u_get_type           = D::u_get_type;
+        def.u_get_thread         = D::u_get_thread;
+        def.u_get_task           = D::u_get_task;
+        def.u_is_in_pool         = D::u_is_in_pool;
+        def.u_create_from_thread = D::u_create_from_thread;
+        def.u_create_from_task   = D::u_create_from_task;
+        def.u_free               = D::u_free;
+        def.p_init               = D::p_init;
+        def.p_get_size           = D::p_get_size;
+        def.p_push               = D::p_push;
+        def.p_pop                = D::p_pop;
+        def.p_remove             = D::p_remove;
+        def.p_free               = D::p_free;
         ABT_pool p;
         TL_POOL_ASSERT(ABT_pool_create(&def, ABT_POOL_CONFIG_NULL, &p));
         return managed<pool>(p);
     }
 
     /**
-     * @brief Constructor.
+     * @brief Builds a pool using a default implementation from Argobots.
      *
      * @param access Access type enabled by the pool.
+     * @param kind Kind of pool (fifo or fifo_wait).
+     *
+     * IMPORTANT: The destructor of a managed<pool> will try
+     * to destroy the pool. If the pool is still attached to
+     * a scheduler, this will cause undefined behaviors.
+     * Make sure all the schedulers that use this pool have
+     * been destroyed before the pool goes out of scope.
      */
-    static managed<pool> create(access a) {
+    static managed<pool> create(access a, kind k = kind::fifo) {
         ABT_pool p;
-        TL_POOL_ASSERT(ABT_pool_create_basic(ABT_POOL_FIFO, (ABT_pool_access)a,
+        TL_POOL_ASSERT(ABT_pool_create_basic((ABT_pool_kind)k, (ABT_pool_access)a,
                                              ABT_FALSE, &p));
         return managed<pool>(p);
     }
@@ -422,17 +497,9 @@ class pool {
      *
      * @return a task object managing the created task.
      */
-    template <typename F> managed<task> make_task(F&& f) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return task::create_on_pool(m_pool, forward_work_unit,
-                                    reinterpret_cast<void*>(fp));
-    }
+    template <typename F> managed<task> make_task(F&& f);
 
-    template <typename F> void make_task(F&& f, const anonymous& a) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        task::create_on_pool(m_pool, forward_work_unit,
-                             reinterpret_cast<void*>(fp), a);
-    }
+    template <typename F> void make_task(F&& f, const anonymous& a);
 
     /**
      * @brief Create a thread running the specified function and push it
@@ -443,41 +510,26 @@ class pool {
      *
      * @return a thread object managing the created thread.
      */
-    template <typename F> managed<thread> make_thread(F&& f) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_pool(m_pool, forward_work_unit,
-                                      reinterpret_cast<void*>(fp));
-    }
+    template <typename F> managed<thread> make_thread(F&& f);
 
-    template <typename F> void make_thread(F&& f, const anonymous& a) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        thread::create_on_pool(m_pool, forward_work_unit,
-                               reinterpret_cast<void*>(fp), a);
-    }
+    template <typename F> void make_thread(F&& f, const anonymous& a);
 
     /**
      * @brief Create a thread running the specified function and push it
      * into the pool.
      *
      * @tparam F type of function to run as a task. Must have operator()().
+     * @tparam Attr type of thread attribute (must be thread::attribute).
      * @param f Function to run as a task.
      * @param attr Thread attributes.
      *
      * @return a thread object managing the created thread.
      */
-    template <typename F>
-    managed<thread> make_thread(F&& f, const thread::attribute& attr) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_pool(m_pool, forward_work_unit,
-                                      reinterpret_cast<void*>(fp), attr);
-    }
+    template <typename F, typename Attr>
+    managed<thread> make_thread(F&& f, const Attr& attr);
 
-    template <typename F>
-    void make_thread(F&& f, const thread::attribute& attr, const anonymous& a) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        thread::create_on_pool(m_pool, forward_work_unit,
-                               reinterpret_cast<void*>(fp), attr, a);
-    }
+    template <typename F, typename Attr>
+    void make_thread(F&& f, const Attr& attr, const anonymous& a);
 };
 
 template <typename P, typename U, typename Palloc, typename Ualloc>
@@ -487,6 +539,66 @@ template <typename P, typename U, typename Palloc, typename Ualloc>
 Ualloc pool::pool_def<P, U, Palloc, Ualloc>::unit_allocator;
 
 } // namespace thallium
+
+#include <thallium/task.hpp>
+#include <thallium/thread.hpp>
+#include <thallium/scheduler.hpp>
+
+namespace thallium {
+
+inline void pool::add_sched(const scheduler& sched) {
+    int ret = ABT_pool_add_sched(m_pool, sched.native_handle());
+    if(ret != ABT_SUCCESS) {
+        throw pool_exception(
+            "ABT_pool_add_sched(m_pool, sched.native_handle()) returned ",
+            abt_error_get_name(ret), " (", abt_error_get_description(ret),
+            ") in ", __FILE__, ":", __LINE__);
+    }
+}
+
+template <typename F>
+managed<task> pool::make_task(F&& f) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    return task::create_on_pool(m_pool, forward_work_unit,
+            reinterpret_cast<void*>(fp));
+}
+
+template <typename F>
+void pool::make_task(F&& f, const anonymous& a) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    task::create_on_pool(m_pool, forward_work_unit,
+            reinterpret_cast<void*>(fp), a);
+}
+    
+template <typename F>
+managed<thread> pool::make_thread(F&& f) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    return thread::create_on_pool(m_pool, forward_work_unit,
+            reinterpret_cast<void*>(fp));
+}
+
+template <typename F>
+void pool::make_thread(F&& f, const anonymous& a) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    thread::create_on_pool(m_pool, forward_work_unit,
+            reinterpret_cast<void*>(fp), a);
+}
+
+template <typename F, typename Attr>
+managed<thread> pool::make_thread(F&& f, const Attr& attr) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    return thread::create_on_pool(m_pool, forward_work_unit,
+            reinterpret_cast<void*>(fp), attr);
+}
+
+template <typename F, typename Attr>
+void pool::make_thread(F&& f, const Attr& attr, const anonymous& a) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    thread::create_on_pool(m_pool, forward_work_unit,
+            reinterpret_cast<void*>(fp), attr, a);
+}
+
+}
 
 #undef TL_POOL_EXCEPTION
 #undef TL_POOL_ASSERT

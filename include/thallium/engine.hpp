@@ -14,10 +14,8 @@
 #include <margo.h>
 #include <string>
 #include <thallium/bulk_mode.hpp>
+#include <thallium/margo_exception.hpp>
 #include <thallium/config.hpp>
-#include <thallium/pool.hpp>
-#include <thallium/proc_object.hpp>
-#include <thallium/request.hpp>
 #include <thallium/tuple_util.hpp>
 #include <thallium/function_util.hpp>
 #include <unordered_map>
@@ -32,6 +30,8 @@ class bulk;
 class endpoint;
 class remote_bulk;
 class remote_procedure;
+class request;
+class pool;
 class proc_input_archive;
 class proc_output_archive;
 template <typename T> class provider;
@@ -150,33 +150,7 @@ class engine {
     }
 
     engine(const std::string& addr, int mode, const pool& progress_pool,
-           const pool& default_handler_pool)
-    :  m_impl(std::make_shared<detail::engine_impl>()) {
-        m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
-        m_impl->m_finalize_called = false;
-        m_impl->m_owns_mid        = true;
-
-        m_impl->m_hg_class = HG_Init(addr.c_str(), mode);
-        if(!m_impl->m_hg_class) {
-           throw exception("HG_Init failed in thallium::engine constructor"); 
-        }
-
-        m_impl->m_hg_context = HG_Context_create(m_impl->m_hg_class);
-        if(!m_impl->m_hg_context) {
-            throw exception("HG_Context_create failed in thallium::engine constructor");
-        }
-
-        m_impl->m_mid =
-            margo_init_pool(progress_pool.native_handle(),
-                            default_handler_pool.native_handle(),
-                            m_impl->m_hg_context);
-        if(!m_impl->m_mid)
-            MARGO_THROW(margo_init, "Could not initialize Margo");
-        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(m_impl.get()));
-        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(m_impl.get()));
-    }
+           const pool& default_handler_pool);
 
     /**
      * @brief Builds an engine around an existing margo instance.
@@ -316,25 +290,42 @@ class engine {
     remote_procedure
     define(const std::string&                                      name,
            const std::function<void(const request&, A1, Args...)>& fun,
-           uint16_t provider_id = 0, const pool& p = pool());
+           uint16_t provider_id, const pool& p);
+
+    template <typename A1, typename... Args>
+    remote_procedure
+    define(const std::string&                                      name,
+           const std::function<void(const request&, A1, Args...)>& fun,
+           uint16_t provider_id = 0);
 
     template <typename A1, typename... Args>
     remote_procedure
     define(const std::string&                                 name,
            std::function<void(const request&, A1, Args...)>&& fun,
-           uint16_t provider_id = 0, const pool& p = pool());
+           uint16_t provider_id, const pool& p);
 
-    template <typename Func>
-    typename std::enable_if<!is_std_function_object<typename std::decay<Func>::type>::value, remote_procedure>::type
-    define(const std::string& name, Func&& fun,
-           uint16_t provider_id = 0, const pool& p = pool()) {
+    template <typename A1, typename... Args>
+    remote_procedure
+    define(const std::string&                                 name,
+           std::function<void(const request&, A1, Args...)>&& fun,
+           uint16_t provider_id = 0);
+
+    template <typename Func, typename ... Extra>
+    typename std::enable_if<
+        !is_std_function_object<typename std::decay<Func>::type>::value
+        && !std::is_function<typename std::remove_pointer<typename std::decay<Func>::type>::type>::value, remote_procedure>::type
+    define(const std::string& name, Func&& fun, const Extra&... extra) {
         using function = typename std::function<typename function_signature<Func>::type>;
-        return define(name, function(std::forward<Func>(fun)), provider_id, p);
+        return define(name, function(std::forward<Func>(fun)), extra...);
     }
 
     remote_procedure define(const std::string&                         name,
                             const std::function<void(const request&)>& fun,
-                            uint16_t provider_id = 0, const pool& p = pool());
+                            uint16_t provider_id, const pool& p);
+
+    remote_procedure define(const std::string&                         name,
+                            const std::function<void(const request&)>& fun,
+                            uint16_t provider_id = 0);
 
     /**
      * @brief Defines an RPC with a name and a function pointer
@@ -351,7 +342,12 @@ class engine {
     template <typename... Args>
     remote_procedure define(const std::string& name,
                             void (*f)(const request&, Args...),
-                            uint16_t provider_id = 0, const pool& p = pool());
+                            uint16_t provider_id, const pool& p);
+
+    template <typename... Args>
+    remote_procedure define(const std::string& name,
+                            void (*f)(const request&, Args...),
+                            uint16_t provider_id = 0);
 
     /**
      * @brief Lookup an address and returns an endpoint object
@@ -612,7 +608,10 @@ class engine {
     /**
      * @brief Enables this engine to be shutdown remotely.
      */
-    void enable_remote_shutdown();
+    void enable_remote_shutdown() {
+        if(!m_impl) throw exception("Invalid engine");
+         margo_enable_remote_shutdown(m_impl->m_mid);
+    }
 
     /**
      * @brief Checks if the engine is listening for incoming RPCs.
@@ -629,25 +628,50 @@ class engine {
      *
      * @return The default pool used for RPC handlers.
      */
-    pool get_handler_pool() const {
-        if(!m_impl) {
-            throw exception("Invalid engine");
-        }
-        ABT_pool p = ABT_POOL_NULL;
-        margo_get_handler_pool(m_impl->m_mid, &p);
-        return pool(p);
-    }
+    pool get_handler_pool() const;
 };
 
 } // namespace thallium
 
+#include <thallium/bulk.hpp>
+#include <thallium/request.hpp>
 #include <thallium/proc_object.hpp>
+#include <thallium/pool.hpp>
 #include <thallium/remote_procedure.hpp>
 #include <thallium/serialization/proc_input_archive.hpp>
 #include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/stl/tuple.hpp>
 
 namespace thallium {
+
+inline engine::engine(const std::string& addr, int mode, const pool& progress_pool,
+                      const pool& default_handler_pool)
+:  m_impl(std::make_shared<detail::engine_impl>()) {
+    m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
+    m_impl->m_finalize_called = false;
+    m_impl->m_owns_mid        = true;
+
+    m_impl->m_hg_class = HG_Init(addr.c_str(), mode);
+    if(!m_impl->m_hg_class) {
+        throw exception("HG_Init failed in thallium::engine constructor"); 
+    }
+
+    m_impl->m_hg_context = HG_Context_create(m_impl->m_hg_class);
+    if(!m_impl->m_hg_context) {
+        throw exception("HG_Context_create failed in thallium::engine constructor");
+    }
+
+    m_impl->m_mid =
+        margo_init_pool(progress_pool.native_handle(),
+                default_handler_pool.native_handle(),
+                m_impl->m_hg_context);
+    if(!m_impl->m_mid)
+        MARGO_THROW(margo_init, "Could not initialize Margo");
+    margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
+            static_cast<void*>(m_impl.get()));
+    margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
+            static_cast<void*>(m_impl.get()));
+}
 
 template <typename T1, typename... Tn>
 remote_procedure
@@ -693,11 +717,28 @@ engine::define(const std::string&                               name,
 
 template <typename T1, typename... Tn>
 remote_procedure
+engine::define(const std::string&                               name,
+               std::function<void(const request&, T1, Tn...)>&& fun,
+               uint16_t provider_id) {
+    return define(name, std::move(fun), provider_id, pool());
+}
+
+template <typename T1, typename... Tn>
+remote_procedure
 engine::define(const std::string&                             name,
                const std::function<void(const request&, T1, Tn...)>& fun,
                uint16_t provider_id, const pool& p) {
     return define(name, std::function<void(const request&, T1, Tn...)>(fun),
                   provider_id, p);
+}
+
+template <typename T1, typename... Tn>
+remote_procedure
+engine::define(const std::string&                             name,
+               const std::function<void(const request&, T1, Tn...)>& fun,
+               uint16_t provider_id) {
+    return define(name, std::function<void(const request&, T1, Tn...)>(fun),
+                  provider_id, pool());
 }
 
 template <typename... Args>
@@ -707,6 +748,136 @@ remote_procedure engine::define(const std::string& name,
     return define(name, std::function<void(const request&, Args...)>(f),
                   provider_id, p);
 }
+
+template <typename... Args>
+remote_procedure engine::define(const std::string& name,
+                                void (*f)(const request&, Args...),
+                                uint16_t provider_id) {
+    return define(name, std::function<void(const request&, Args...)>(f),
+                  provider_id, pool());
+}
+
+inline remote_procedure engine::define(const std::string& name) {
+    return define(name.c_str());
+}
+
+inline remote_procedure engine::define(const char* name) {
+    hg_bool_t flag;
+    hg_id_t   id;
+    if(!m_impl) throw exception("Invalid engine");
+    margo_registered_name(m_impl->m_mid, name, &id, &flag);
+    if(flag == HG_FALSE) {
+        id = MARGO_REGISTER(m_impl->m_mid, name, meta_serialization, meta_serialization, NULL);
+    }
+    return remote_procedure(m_impl, id);
+}
+
+inline remote_procedure engine::define(const std::string&                         name,
+                                       const std::function<void(const request&)>& fun,
+                                       uint16_t provider_id, const pool& p) {
+    if(!m_impl) throw exception("Invalid engine");
+    hg_id_t id = MARGO_REGISTER_PROVIDER(
+        m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization,
+        thallium_generic_rpc, provider_id, p.native_handle());
+
+    auto* cb_data          = new rpc_callback_data;
+    cb_data->m_engine_impl = m_impl;
+    cb_data->m_function    = fun;
+
+    hg_return_t ret =
+        margo_register_data(m_impl->m_mid, id, (void*)cb_data, free_rpc_callback_data);
+    MARGO_ASSERT(ret, margo_register_data);
+
+    return remote_procedure(m_impl, id);
+}
+
+inline remote_procedure engine::define(const std::string&                         name,
+                                       const std::function<void(const request&)>& fun,
+                                       uint16_t provider_id) {
+    return define(name, fun, provider_id, pool());
+}
+
+inline endpoint engine::lookup(const std::string& address) const {
+    if(!m_impl) throw exception("Invalid engine");
+    hg_addr_t   addr;
+    hg_return_t ret = margo_addr_lookup(m_impl->m_mid, address.c_str(), &addr);
+    MARGO_ASSERT(ret, margo_addr_lookup);
+    return endpoint(const_cast<engine&>(*this), addr);
+}
+
+inline endpoint engine::self() const {
+    if(!m_impl) throw exception("Invalid engine");
+    hg_addr_t   self_addr;
+    hg_return_t ret = margo_addr_self(m_impl->m_mid, &self_addr);
+    MARGO_ASSERT(ret, margo_addr_self);
+    return endpoint(const_cast<engine&>(*this), self_addr);
+}
+
+inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
+                    bulk_mode                                    flag) {
+    if(!m_impl) throw exception("Invalid engine");
+    hg_bulk_t              handle;
+    hg_uint32_t            count = segments.size();
+    std::vector<void*>     buf_ptrs(count);
+    std::vector<hg_size_t> buf_sizes(count);
+    for(unsigned i = 0; i < segments.size(); i++) {
+        buf_ptrs[i]  = segments[i].first;
+        buf_sizes[i] = segments[i].second;
+    }
+    hg_return_t ret = margo_bulk_create(
+        m_impl->m_mid, count, &buf_ptrs[0], &buf_sizes[0],
+        static_cast<hg_uint32_t>(flag), &handle);
+    MARGO_ASSERT(ret, margo_bulk_create);
+    return bulk(m_impl, handle, true);
+}
+
+inline bulk engine::wrap(hg_bulk_t blk, bool is_local) {
+    if(!m_impl) throw exception("Invalid engine");
+    hg_return_t hret = margo_bulk_ref_incr(blk);
+    MARGO_ASSERT(hret, margo_bulk_ref_incr);
+    return bulk(m_impl, blk, is_local);
+}
+
+inline void engine::shutdown_remote_engine(const endpoint& ep) const {
+    if(!m_impl) throw exception("Invalid engine");
+    int         ret = margo_shutdown_remote_instance(m_impl->m_mid, ep.m_addr);
+    hg_return_t r   = ret == 0 ? HG_SUCCESS : HG_OTHER_ERROR;
+    MARGO_ASSERT(r, margo_shutdown_remote_instance);
+}
+
+inline pool engine::get_handler_pool() const {
+    if(!m_impl) {
+        throw exception("Invalid engine");
+    }
+    ABT_pool p = ABT_POOL_NULL;
+    margo_get_handler_pool(m_impl->m_mid, &p);
+    return pool(p);
+}
+
+inline hg_return_t thallium_generic_rpc(hg_handle_t handle) {
+    margo_instance_id mid = margo_hg_handle_get_instance(handle);
+    THALLIUM_ASSERT_CONDITION(mid != 0,
+            "margo_hg_handle_get_instance returned null");
+    const struct hg_info* info = margo_get_info(handle);
+    THALLIUM_ASSERT_CONDITION(info != nullptr,
+            "margo_get_info returned null");
+    void* data = margo_registered_data(mid, info->id);
+    THALLIUM_ASSERT_CONDITION(data != nullptr,
+            "margo_registered_data returned null");
+    auto    cb_data = static_cast<engine::rpc_callback_data*>(data);
+    auto&   rpc = cb_data->m_function;
+    if(!(cb_data->m_engine_impl.lock())) {
+        margo_destroy(handle);
+        return HG_OTHER_ERROR;
+    }
+    request req(cb_data->m_engine_impl, handle, false);
+    rpc(req);
+    margo_destroy(handle);
+    return HG_SUCCESS;
+}
+
+inline __MARGO_INTERNAL_RPC_WRAPPER(thallium_generic_rpc)
+inline __MARGO_INTERNAL_RPC_HANDLER(thallium_generic_rpc)
 
 } // namespace thallium
 

@@ -12,7 +12,6 @@
 #include <thallium/abt_errors.hpp>
 #include <thallium/exception.hpp>
 #include <thallium/managed.hpp>
-#include <thallium/pool.hpp>
 #include <vector>
 
 namespace thallium {
@@ -51,15 +50,25 @@ class scheduler {
     friend class managed<scheduler>;
 
   public:
+
     /**
      * @brief Predefined scheduler types:
      * default, basic, priority, random-work-stealing.
      */
     enum class predef : std::int32_t {
-        deflt  = ABT_SCHED_DEFAULT,
-        basic  = ABT_SCHED_BASIC,
-        prio   = ABT_SCHED_PRIO,
-        randws = ABT_SCHED_RANDWS
+        deflt      = ABT_SCHED_DEFAULT,    /* Default scheduler */
+        basic      = ABT_SCHED_BASIC,      /* Basic scheduler */
+        prio       = ABT_SCHED_PRIO,       /* Priority scheduler */
+        randws     = ABT_SCHED_RANDWS,     /* Random work-stealing scheduler */
+        basic_wait = ABT_SCHED_BASIC_WAIT, /* Basic scheduler with ability to wait for units */
+    };
+
+    /**
+     * @brief Scheduler type.
+     */
+    enum class type : std::int32_t {
+        ult  = ABT_SCHED_TYPE_ULT,  /* can yield */
+        task = ABT_SCHED_TYPE_TASK  /* cannot yield */
     };
 
   private:
@@ -72,8 +81,7 @@ class scheduler {
         static int init(ABT_sched s, ABT_sched_config) {
             auto ss =
                 std::allocator_traits<Salloc>::allocate(scheduler_allocator, 1);
-            std::allocator_traits<Salloc>::construct(scheduler_allocator, ss,
-                                                     s);
+            std::allocator_traits<Salloc>::construct(scheduler_allocator, ss, s);
             return ABT_sched_set_data(s, reinterpret_cast<void*>(ss));
         }
 
@@ -91,8 +99,7 @@ class scheduler {
                 return ret;
             S* impl = reinterpret_cast<S*>(data);
             std::allocator_traits<Salloc>::destroy(scheduler_allocator, impl);
-            std::allocator_traits<Salloc>::deallocate(scheduler_allocator, impl,
-                                                      1);
+            std::allocator_traits<Salloc>::deallocate(scheduler_allocator, impl, 1);
             return ret;
         }
 
@@ -112,11 +119,8 @@ class scheduler {
 
   private:
     void destroy() {
-        // XXX for now the "automatic" parameter in scheduler config
-        // is not implemented so if we free things here we end up with
-        // double-free corruptions
-        //        if(m_sched != ABT_SCHED_NULL)
-        //            ABT_sched_free(&m_sched);
+        if(m_sched != ABT_SCHED_NULL)
+            ABT_sched_free(&m_sched);
     }
 
   public:
@@ -142,23 +146,7 @@ class scheduler {
      * @return a managed<scheduler> object.
      */
     template <typename S, typename I>
-    static managed<scheduler> create(const I& begin, const I& end) {
-        std::vector<ABT_pool> pools;
-        unsigned              i = 0;
-        for(auto it = begin; it != end; it++, i++) {
-            pools.push_back(it->native_handle());
-        }
-        ABT_sched_def def;
-        def.type          = ABT_SCHED_TYPE_ULT;
-        def.init          = sched_def<S>::init;
-        def.run           = sched_def<S>::run;
-        def.free          = sched_def<S>::free;
-        def.get_migr_pool = sched_def<S>::get_migr_pool;
-        ABT_sched sched;
-        TL_SCHED_ASSERT(ABT_sched_create(&def, i, pools.data(),
-                                         ABT_SCHED_CONFIG_NULL, &sched));
-        return managed<scheduler>(sched);
-    }
+    static managed<scheduler> create(const I& begin, const I& end);
 
     /**
      * @brief Creates a scheduler based on a custom class S.
@@ -169,20 +157,7 @@ class scheduler {
      * @param end End iterator for the container of pools.
      * @return a managed<scheduler> object.
      */
-    template <typename S> static managed<scheduler> create(const pool& p) {
-        std::vector<ABT_pool> pools(1);
-        pools[0] = p.native_handle();
-        ABT_sched_def def;
-        def.type          = ABT_SCHED_TYPE_ULT;
-        def.init          = sched_def<S>::init;
-        def.run           = sched_def<S>::run;
-        def.free          = sched_def<S>::free;
-        def.get_migr_pool = sched_def<S>::get_migr_pool;
-        ABT_sched sched;
-        TL_SCHED_ASSERT(ABT_sched_create(&def, 1, pools.data(),
-                                         ABT_SCHED_CONFIG_NULL, &sched));
-        return managed<scheduler>(sched);
-    }
+    template <typename S> static managed<scheduler> create(const pool& p);
 
     /**
      * @brief Creates a scheduler based on a predefined scheduler type.
@@ -194,18 +169,7 @@ class scheduler {
      * @return a managed<scheduler> object.
      */
     template <typename I>
-    static managed<scheduler> create(predef spd, const I& begin, const I& end) {
-        std::vector<ABT_pool> pools;
-        unsigned              i = 0;
-        for(auto it = begin; it != end; it++, i++) {
-            pools.push_back(it->native_handle());
-        }
-        ABT_sched_predef predef = (ABT_sched_predef)spd;
-        ABT_sched        sched;
-        TL_SCHED_ASSERT(ABT_sched_create_basic(predef, i, &pools[0],
-                                               ABT_SCHED_CONFIG_NULL, &sched));
-        return managed<scheduler>(sched);
-    }
+    static managed<scheduler> create(predef spd, const I& begin, const I& end);
 
     /**
      * @brief Creates a scheduler based on a predefined scheduler type.
@@ -216,15 +180,7 @@ class scheduler {
      * @param end End iterator for the container of pools.
      * @return a managed<scheduler> object.
      */
-    static managed<scheduler> create(predef spd, const pool& p) {
-        std::vector<ABT_pool> pools(1);
-        pools[0]                = p.native_handle();
-        ABT_sched_predef predef = (ABT_sched_predef)spd;
-        ABT_sched        sched;
-        TL_SCHED_ASSERT(ABT_sched_create_basic(predef, 1, &pools[0],
-                                               ABT_SCHED_CONFIG_NULL, &sched));
-        return managed<scheduler>(sched);
-    }
+    static managed<scheduler> create(predef spd, const pool& p);
 
     /**
      * @brief Copy constructor is deleted.
@@ -338,5 +294,99 @@ class scheduler {
 };
 
 } // namespace thallium
+
+#include <thallium/pool.hpp>
+
+namespace thallium {
+
+    template <typename S, typename I>
+    managed<scheduler> scheduler::create(const I& begin, const I& end) {
+        std::vector<ABT_pool> pools;
+        unsigned              i = 0;
+        for(auto it = begin; it != end; it++, i++) {
+            pools.push_back(it->native_handle());
+        }
+        ABT_sched_def def;
+        def.type          = ABT_SCHED_TYPE_ULT;
+        def.init          = sched_def<S>::init;
+        def.run           = sched_def<S>::run;
+        def.free          = sched_def<S>::free;
+        def.get_migr_pool = sched_def<S>::get_migr_pool;
+        ABT_sched sched;
+        ABT_sched_config config;
+        TL_SCHED_ASSERT(ABT_sched_config_create(&config,
+                                ABT_sched_config_automatic, 0,
+                                ABT_sched_config_var_end));
+        TL_SCHED_ASSERT(ABT_sched_create(&def, i, pools.data(),
+                                         config, &sched));
+        TL_SCHED_ASSERT(ABT_sched_config_free(&config));
+        return managed<scheduler>(sched);
+    }
+
+    template <typename S>
+    managed<scheduler> scheduler::create(const pool& p) {
+        std::vector<ABT_pool> pools(1);
+        pools[0] = p.native_handle();
+        ABT_sched_def def;
+        def.type          = ABT_SCHED_TYPE_ULT;
+        def.init          = sched_def<S>::init;
+        def.run           = sched_def<S>::run;
+        def.free          = sched_def<S>::free;
+        def.get_migr_pool = sched_def<S>::get_migr_pool;
+        ABT_sched sched;
+        ABT_sched_config config;
+        TL_SCHED_ASSERT(ABT_sched_config_create(&config,
+                                ABT_sched_config_automatic, 0,
+                                ABT_sched_config_var_end));
+        TL_SCHED_ASSERT(ABT_sched_create(&def, 1, pools.data(),
+                                         ABT_SCHED_CONFIG_NULL, &sched));
+        TL_SCHED_ASSERT(ABT_sched_config_free(&config));
+        return managed<scheduler>(sched);
+    }
+
+    template <typename I>
+    managed<scheduler> scheduler::create(predef spd, const I& begin, const I& end) {
+        std::vector<ABT_pool> pools;
+        unsigned              i = 0;
+        for(auto it = begin; it != end; it++, i++) {
+            pools.push_back(it->native_handle());
+        }
+        ABT_sched_predef predef = (ABT_sched_predef)spd;
+        ABT_sched        sched;
+        ABT_sched_config config;
+        TL_SCHED_ASSERT(ABT_sched_config_create(&config,
+                                ABT_sched_config_automatic, 0,
+                                ABT_sched_config_var_end));
+        TL_SCHED_ASSERT(ABT_sched_create_basic(predef, i, &pools[0], config, &sched));
+        TL_SCHED_ASSERT(ABT_sched_config_free(&config));
+        return managed<scheduler>(sched);
+    }
+
+    inline managed<scheduler> scheduler::create(predef spd, const pool& p) {
+        std::vector<ABT_pool> pools(1);
+        pools[0]                = p.native_handle();
+        ABT_sched_predef predef = (ABT_sched_predef)spd;
+        ABT_sched        sched;
+        ABT_sched_config config;
+        TL_SCHED_ASSERT(ABT_sched_config_create(&config,
+                                ABT_sched_config_automatic, 0,
+                                ABT_sched_config_var_end));
+        TL_SCHED_ASSERT(ABT_sched_create_basic(predef, 1, &pools[0], config, &sched));
+        TL_SCHED_ASSERT(ABT_sched_config_free(&config));
+        return managed<scheduler>(sched);
+    }
+
+    inline pool scheduler::get_pool(int index) const {
+        ABT_pool p;
+        int      ret = ABT_sched_get_pools(m_sched, 1, index, &p);
+        if(ret != ABT_SUCCESS) {
+            throw scheduler_exception(
+                    "ABT_sched_get_pools(m_sched, 1, index, &p) returned ",
+                    abt_error_get_name(ret), " (", abt_error_get_description(ret),
+                    ") in ", __FILE__, ":", __LINE__);
+        }
+        return pool(p);
+    }
+}
 
 #endif /* end of include guard */

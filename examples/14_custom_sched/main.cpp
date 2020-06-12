@@ -56,6 +56,8 @@ class my_pool {
     std::deque<my_unit*> m_units;
         
     public:
+
+    static const tl::pool::access access_type = tl::pool::access::mpmc;
                 
     my_pool() {}
 
@@ -152,7 +154,7 @@ int main(int argc, char** argv) {
     // create pools
     std::vector<tl::managed<tl::pool>> pools;
     for(int i=0; i < NUM_XSTREAMS; i++) {
-        pools.push_back(tl::pool::create<tl::pool::access::mpmc, my_pool, my_unit>());
+        pools.push_back(tl::pool::create<my_pool, my_unit>());
     }
 
     // create schedulers
@@ -188,6 +190,10 @@ int main(int argc, char** argv) {
     for(int i=0; i < NUM_XSTREAMS; i++) {
         ess[i]->join();
     }
+
+    ess.clear();
+    scheds.clear();
+    pools.clear();
 
     return 0;
 }

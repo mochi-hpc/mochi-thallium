@@ -17,9 +17,10 @@
 #include <thallium/managed.hpp>
 #include <thallium/pool.hpp>
 #include <thallium/scheduler.hpp>
-#include <thallium/thread.hpp>
 
 namespace thallium {
+
+class thread;
 
 /**
  * Exception class thrown by the task class.
@@ -45,7 +46,7 @@ class xstream_exception : public exception {
     }
 
 /**
- * @brief The xstream_state enum represents
+ * @brief The state enum represents
  * the different states an ES can be in.
  */
 enum class xstream_state : std::int32_t {
@@ -77,6 +78,7 @@ class xstream {
     }
 
   public:
+
     /**
      * @brief Native handle type.
      */
@@ -432,17 +434,9 @@ class xstream {
      *
      * @return a managed<thread> object managing the created thread.
      */
-    template <typename F> managed<thread> make_thread(F&& f) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_xstream(m_xstream, forward_work_unit,
-                                         static_cast<void*>(fp));
-    }
+    template <typename F> managed<thread> make_thread(F&& f);
 
-    template <typename F> void make_thread(F&& f, const anonymous& a) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        thread::create_on_xstream(m_xstream, forward_work_unit,
-                                  static_cast<void*>(fp), a);
-    }
+    template <typename F> void make_thread(F&& f, const anonymous& a);
 
     /**
      * @brief Create a thread running the specified function and push it
@@ -454,19 +448,11 @@ class xstream {
      *
      * @return a managed<thread> object managing the created thread.
      */
-    template <typename F>
-    managed<thread> make_thread(F&& f, const thread::attribute& attr) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return thread::create_on_xstream(m_xstream, forward_work_unit,
-                                         static_cast<void*>(fp), attr);
-    }
+    template <typename F, typename Attr>
+    managed<thread> make_thread(F&& f, const Attr& attr);
 
-    template <typename F>
-    void make_thread(F&& f, const thread::attribute& attr, const anonymous& a) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        thread::create_on_xstream(m_xstream, forward_work_unit,
-                                  static_cast<void*>(fp), attr, a);
-    }
+    template <typename F, typename Attr>
+    void make_thread(F&& f, const Attr& attr, const anonymous& a);
 
     /**
      * @brief Create a task running the specified function and push it
@@ -477,17 +463,9 @@ class xstream {
      *
      * @return a managed<task> object managing the create task.
      */
-    template <typename F> managed<task> make_task(F&& f) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        return task::create_on_xstream(m_xstream, forward_work_unit,
-                                       static_cast<void*>(fp));
-    }
+    template <typename F> managed<task> make_task(F&& f);
 
-    template <typename F> void make_task(F&& f, const anonymous& a) {
-        auto fp = new std::function<void(void)>(std::forward<F>(f));
-        task::create_on_xstream(m_xstream, forward_work_unit,
-                                static_cast<void*>(fp), a);
-    }
+    template <typename F> void make_task(F&& f, const anonymous& a);
 
     /**
      * @brief Terminate the ES associated with the calling ULT.
@@ -540,9 +518,79 @@ class xstream {
     static void check_events(const scheduler& s) {
         TL_ES_ASSERT(ABT_xstream_check_events(s.native_handle()));
     }
+
+    /**
+     * @brief This function detaches any scheduler attached to the ES
+     * and makes the ES use a default scheduler with a default pool.
+     *
+     * This function should generally be used on the primary ES
+     * to detach a scheduler that has been installed by the user
+     * and that the user is managing using a managed<> construct,
+     * before such a managed scheduler goes out of scope.
+     */
+    void reset_scheduler_to_default() {
+        ABT_pool default_pool;
+        ABT_sched default_sched;
+
+        TL_ES_ASSERT(ABT_pool_create_basic(ABT_POOL_FIFO, ABT_POOL_ACCESS_MPMC,
+                                           ABT_TRUE, &default_pool));
+        TL_ES_ASSERT(ABT_sched_create_basic(ABT_SCHED_DEFAULT, 1, &default_pool,
+                                            ABT_SCHED_CONFIG_NULL, &default_sched));
+        TL_ES_ASSERT(ABT_xstream_set_main_sched(m_xstream, default_sched));
+    }
 };
 
 } // namespace thallium
+
+#include <thallium/thread.hpp>
+#include <thallium/task.hpp>
+
+namespace thallium {
+
+template <typename F>
+managed<thread> xstream::make_thread(F&& f) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    return thread::create_on_xstream(m_xstream, forward_work_unit,
+            static_cast<void*>(fp));
+}
+
+template <typename F>
+void xstream::make_thread(F&& f, const anonymous& a)
+{
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    thread::create_on_xstream(m_xstream, forward_work_unit,
+            static_cast<void*>(fp), a);
+}
+
+template <typename F, typename Attr>
+managed<thread> xstream::make_thread(F&& f, const Attr& attr) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    return thread::create_on_xstream(m_xstream, forward_work_unit,
+            static_cast<void*>(fp), attr);
+}
+
+template <typename F, typename Attr>
+void xstream::make_thread(F&& f, const Attr& attr, const anonymous& a) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    thread::create_on_xstream(m_xstream, forward_work_unit,
+            static_cast<void*>(fp), attr, a);
+}
+    
+template <typename F>
+managed<task> xstream::make_task(F&& f) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    return task::create_on_xstream(m_xstream, forward_work_unit,
+            static_cast<void*>(fp));
+}
+
+template <typename F>
+void xstream::make_task(F&& f, const anonymous& a) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    task::create_on_xstream(m_xstream, forward_work_unit,
+            static_cast<void*>(fp), a);
+}
+
+}
 
 #undef TL_ES_EXCEPTION
 #undef TL_ES_ASSERT

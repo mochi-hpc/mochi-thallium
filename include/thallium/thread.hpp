@@ -431,7 +431,7 @@ class thread {
      *
      * @param es ES to migrate to.
      */
-    void migrate_to(xstream& es);
+    void migrate_to(const xstream& es);
 
     /**
      * @brief Migrate a thread to a specific scheduler.
@@ -446,7 +446,7 @@ class thread {
      *
      * @param sched scheduler to migrate the thread to.
      */
-    void migrate_to(scheduler& sched);
+    void migrate_to(const scheduler& sched);
 
     /**
      * @brief Migrate a thread to a specific pool.
@@ -459,7 +459,7 @@ class thread {
      *
      * @param p pool to migrate the thread to.
      */
-    void migrate_to(pool& p);
+    void migrate_to(const pool& p);
 
     /**
      * @brief If the thread is not running, returns the pool where it is,
@@ -538,8 +538,39 @@ class thread {
      * @param eng engine that will check for timer expiration.
      * @param ms time to sleep in milliseconds.
      */
-    static void sleep(engine& eng, double ms);
+    static void sleep(const engine& eng, double ms);
 };
+
+} // namespace thallium
+
+#include <thallium/engine.hpp>
+#include <thallium/pool.hpp>
+#include <thallium/scheduler.hpp>
+#include <thallium/xstream.hpp>
+
+namespace thallium {
+
+inline void thread::migrate_to(const xstream& es) {
+    ABT_thread_migrate_to_xstream(m_thread, es.native_handle());
+}
+
+inline void thread::migrate_to(const scheduler& sched) {
+    ABT_thread_migrate_to_sched(m_thread, sched.native_handle());
+}
+
+inline void thread::migrate_to(const pool& p) {
+    ABT_thread_migrate_to_pool(m_thread, p.native_handle());
+}
+
+inline pool thread::get_last_pool() const {
+    ABT_pool p;
+    ABT_thread_get_last_pool(m_thread, &p);
+    return pool(p);
+}
+
+inline void thread::sleep(const engine& e, double ms) {
+    margo_thread_sleep(e.get_margo_instance(), ms);
+}
 
 } // namespace thallium
 

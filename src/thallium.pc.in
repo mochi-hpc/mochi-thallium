@@ -8,6 +8,6 @@ Description:  A C++14 library wrapping Margo, Mercury, and Argobots and providin
 Version: @THALLIUM_VERSION@
 
 Requires: margo
-Libs: -L${libdir} @PRIVATE_LIBS@
+Libs:
 Cflags: -I${includedir}
 

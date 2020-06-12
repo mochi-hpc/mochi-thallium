@@ -3,23 +3,6 @@
 # 13-Oct-2017  mdorier@anl.gov 
 #
 
-# list of source files
-set(thallium-src abt_errors.cpp
-		 async_response.cpp
-		 bulk.cpp
-		 callable_remote_procedure.cpp
-		 endpoint.cpp 
-                 engine.cpp 
-		 margo_exception.cpp
-		 pool.cpp
-                 remote_procedure.cpp 
-		 request.cpp
-		 remote_bulk.cpp
-		 scheduler.cpp
-		 serialization.cpp
-		 task.cpp
-		 thread.cpp)
-
 # load package helper for generating cmake CONFIG packages
 include (CMakePackageConfigHelpers)
 
@@ -30,23 +13,18 @@ set (thallium-pkg "share/cmake/thallium")
 # library version set here (e.g. for shared libs).
 #
 set (THALLIUM_VERSION_MAJOR 0)
-set (THALLIUM_VERSION_MINOR 7)
+set (THALLIUM_VERSION_MINOR 8)
 set (THALLIUM_VERSION_PATCH 0)
 set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
 set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
 
-add_library(thallium ${thallium-src})
-target_link_libraries (thallium mercury margo)
-target_include_directories (thallium PUBLIC $<INSTALL_INTERFACE:include>)
+add_library (thallium INTERFACE)
+target_link_libraries (thallium INTERFACE mercury margo)
+target_include_directories (thallium INTERFACE $<INSTALL_INTERFACE:include>)
 
 # local include's BEFORE, in case old incompatable .hpp files in prefix/include
-target_include_directories (thallium BEFORE PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>)
-
-# for shared libs, establish the lib version
-set_target_properties (thallium
-    PROPERTIES VERSION ${THALLIUM_VERSION}
-    SOVERSION ${THALLIUM_VERSION_MAJOR})
+target_include_directories (thallium INTERFACE
+   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>)
 
 #
 # installation stuff (packaging and install commands)
@@ -61,7 +39,6 @@ configure_file (thallium-config.cmake.in thallium-config.cmake @ONLY)
 
 # some bits for the pkg-config file
 set (DEST_DIR "${CMAKE_INSTALL_PREFIX}")
-set (PRIVATE_LIBS "-lthallium")
 CONFIGURE_FILE("thallium.pc.in" "thallium.pc" @ONLY)
 
 #

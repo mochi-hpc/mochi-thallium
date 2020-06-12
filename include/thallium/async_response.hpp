@@ -110,7 +110,17 @@ class async_response {
      *
      * @return a packed_response containing the response.
      */
-    packed_response wait();
+    packed_response wait() {
+        hg_return_t ret;
+        ret = margo_wait(m_request);
+        if(ret == HG_TIMEOUT) {
+            throw timeout();
+        }
+        MARGO_ASSERT(ret, margo_wait);
+        if(m_ignore_response)
+            return packed_response();
+        return packed_response(m_handle, m_engine_impl);
+    }
 
     /**
      * @brief Tests without blocking if the response has been received.

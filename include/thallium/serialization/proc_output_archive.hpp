@@ -148,4 +148,17 @@ public:
 }
 
 #endif
+
+#include <thallium/engine.hpp>
+
+namespace thallium {
+
+    inline engine proc_output_archive::get_engine() const {
+        auto engine_impl = m_engine_impl.lock();
+        if(!engine_impl) throw exception("Invalid engine");
+        return engine(engine_impl);
+    }
+
+}
+
 #endif

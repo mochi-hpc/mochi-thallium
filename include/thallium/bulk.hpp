@@ -7,15 +7,16 @@
 #define __THALLIUM_BULK_HPP
 
 #include <cstdint>
+#include <memory>
 #include <margo.h>
 #include <string>
-#include <thallium/endpoint.hpp>
 #include <thallium/margo_exception.hpp>
 #include <vector>
 
 namespace thallium {
 
 class engine;
+class endpoint;
 class remote_bulk;
 namespace detail {
     struct engine_impl;
@@ -347,6 +348,52 @@ class bulk {
         }
     }
 };
+
+} // namespace thallium
+
+#include <thallium/endpoint.hpp>
+#include <thallium/remote_bulk.hpp>
+
+namespace thallium {
+
+inline hg_bulk_t bulk::get_bulk(bool copy) const {
+    if(copy && m_bulk != HG_BULK_NULL)
+        margo_bulk_ref_incr(m_bulk);
+    return m_bulk;
+}
+
+inline bulk::bulk_segment bulk::select(std::size_t offset, std::size_t size) const {
+    return bulk_segment(*this, offset, size);
+}
+
+inline bulk::bulk_segment bulk::operator()(std::size_t offset,
+                                    std::size_t size) const {
+    return select(offset, size);
+}
+
+inline remote_bulk bulk::bulk_segment::on(const endpoint& ep) const {
+    return remote_bulk(*this, ep);
+}
+
+inline remote_bulk bulk::on(const endpoint& ep) const {
+    return remote_bulk(*this, ep);
+}
+
+inline std::size_t bulk::bulk_segment::operator>>(const remote_bulk& b) const {
+    return b << *this;
+}
+
+inline std::size_t bulk::bulk_segment::operator<<(const remote_bulk& b) const {
+    return b >> *this;
+}
+
+inline std::size_t bulk::operator>>(const remote_bulk& b) const {
+    return b << (this->select(0, size()));
+}
+
+inline std::size_t bulk::operator<<(const remote_bulk& b) const {
+    return b >> (this->select(0, size()));
+}
 
 } // namespace thallium
 

@@ -281,6 +281,38 @@ class task {
 
 } // namespace thallium
 
+#include <thallium/task.hpp>
+#include <thallium/pool.hpp>
+#include <thallium/xstream.hpp>
+
+namespace thallium {
+
+inline xstream task::get_xstream() const {
+    ABT_xstream es;
+    int         ret = ABT_task_get_xstream(m_task, &es);
+    if(ret != ABT_SUCCESS) {
+        throw task_exception("ABT_task_get_xstream(m_task, &es) returned ",
+                             abt_error_get_name(ret), " (",
+                             abt_error_get_description(ret), ") in ", __FILE__,
+                             ":", __LINE__);
+    }
+    return xstream(es);
+}
+
+inline pool task::get_last_pool() const {
+    ABT_pool p;
+    int      ret = ABT_task_get_last_pool(m_task, &p);
+    if(ret != ABT_SUCCESS) {
+        throw task_exception("ABT_task_get_xstream(m_task, &es) returned ",
+                             abt_error_get_name(ret), " (",
+                             abt_error_get_description(ret), ") in ", __FILE__,
+                             ":", __LINE__);
+    }
+    return pool(p);
+}
+
+} // namespace thallium
+
 #undef TL_TASK_EXCEPTION
 #undef TL_TASK_ASSERT
 
