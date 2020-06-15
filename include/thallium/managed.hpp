@@ -10,6 +10,11 @@
 
 namespace thallium {
 
+template <class T> class managed;
+
+template <typename T, typename... Args>
+managed<T> make_managed(Args&&... args);
+
 /**
  * @brief The manager<T> class is used to automatically free
  * a resource holder (e.g. thread, task, xstream, pool, scheduler)
@@ -21,21 +26,24 @@ namespace thallium {
 template <class T> class managed {
     friend T;
 
+    template <class X, typename... Args>
+    friend managed<X> make_managed(Args&&... args);
+
+    template<typename ... Args>
+    static managed<T> make(Args&&... args) {
+        return managed<T>(T(std::forward<Args>(args)...));
+    }
+
   private:
     T m_obj;
 
-    /**
-     * @brief Constructor, forwards any passed parameters
-     * to the constructor of the underlying resource type.
-     *
-     * @tparam Args Argument types
-     * @param args Arguments
-     */
-    template <typename... Args>
-    managed(Args&&... args)
-    : m_obj(std::forward<Args>(args)...) {}
+    managed(T&& obj)
+    : m_obj(std::move(obj)) {}
 
   public:
+
+    managed() = default;
+
     /**
      * @brief Deleted copy constructor.
      */
@@ -72,6 +80,18 @@ template <class T> class managed {
      */
     T* operator->() { return &m_obj; }
 };
+    
+/**
+ * @brief Make a managed object by forwarding any passed parameters
+ * to the constructor of the underlying resource type.
+ *
+ * @tparam Args Argument types
+ * @param args Arguments
+ */
+template <typename T, typename... Args>
+inline managed<T> make_managed(Args&&... args) {
+    return managed<T>::make(std::forward<Args>(args)...);
+}
 
 } // namespace thallium
 

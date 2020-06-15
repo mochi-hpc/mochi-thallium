@@ -66,14 +66,11 @@ class task {
 
     ABT_task m_task;
 
-    task(ABT_task t)
-    : m_task(t) {}
-
     static managed<task> create_on_xstream(ABT_xstream es, void (*f)(void*),
                                            void*       arg) {
         ABT_task t;
         TL_TASK_ASSERT(ABT_task_create_on_xstream(es, f, arg, &t));
-        return managed<task>(t);
+        return make_managed<task>(t);
     }
 
     static void create_on_xstream(ABT_xstream es, void (*f)(void*), void* arg,
@@ -85,7 +82,7 @@ class task {
                                         void*    arg) {
         ABT_task t;
         TL_TASK_ASSERT(ABT_task_create(p, f, arg, &t));
-        return managed<task>(t);
+        return make_managed<task>(t);
     }
 
     static void create_on_pool(ABT_pool p, void (*f)(void*), void* arg,
@@ -103,6 +100,14 @@ class task {
      * @brief Native handle type.
      */
     typedef ABT_task native_handle_type;
+
+    /**
+     * @brief Constructor from existing ABT_task handle.
+     *
+     * @param t ABT_task handle.
+     */
+    explicit task(ABT_task t)
+    : m_task(t) {}
 
     /**
      * @brief Default constructor.

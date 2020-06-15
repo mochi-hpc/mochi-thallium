@@ -184,15 +184,12 @@ class thread {
   private:
     ABT_thread m_thread;
 
-    thread(ABT_thread t)
-    : m_thread(t) {}
-
     static managed<thread> create_on_xstream(ABT_xstream es, void (*f)(void*),
                                              void*       arg) {
         ABT_thread t;
         TL_THREAD_ASSERT(
             ABT_thread_create_on_xstream(es, f, arg, ABT_THREAD_ATTR_NULL, &t));
-        return managed<thread>(t);
+        return make_managed<thread>(t);
     }
 
     static void create_on_xstream(ABT_xstream es, void (*f)(void*), void* arg,
@@ -206,7 +203,7 @@ class thread {
         ABT_thread t;
         TL_THREAD_ASSERT(
             ABT_thread_create(p, f, arg, ABT_THREAD_ATTR_NULL, &t));
-        return managed<thread>(t);
+        return make_managed<thread>(t);
     }
 
     static void create_on_pool(ABT_pool p, void (*f)(void*), void* arg,
@@ -220,7 +217,7 @@ class thread {
         ABT_thread t;
         TL_THREAD_ASSERT(
             ABT_thread_create_on_xstream(es, f, arg, attr.native_handle(), &t));
-        return managed<thread>(t);
+        return make_managed<thread>(t);
     }
 
     static void create_on_xstream(ABT_xstream es, void (*f)(void*), void* arg,
@@ -234,7 +231,7 @@ class thread {
         ABT_thread t;
         TL_THREAD_ASSERT(
             ABT_thread_create(p, f, arg, attr.native_handle(), &t));
-        return managed<thread>(t);
+        return make_managed<thread>(t);
     }
 
     static void create_on_pool(ABT_pool p, void (*f)(void*), void* arg,
@@ -259,6 +256,14 @@ class thread {
      */
     thread()
     : m_thread(ABT_THREAD_NULL) {}
+
+    /**
+     * @brief Constructor from an existing ABT_thread handle.
+     *
+     * @param t ABT_thread handle.
+     */
+    explicit thread(ABT_thread t)
+    : m_thread(t) {}
 
     /**
      * @brief Copy constructor.

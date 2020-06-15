@@ -320,7 +320,7 @@ namespace thallium {
         TL_SCHED_ASSERT(ABT_sched_create(&def, i, pools.data(),
                                          config, &sched));
         TL_SCHED_ASSERT(ABT_sched_config_free(&config));
-        return managed<scheduler>(sched);
+        return make_managed<scheduler>(sched);
     }
 
     template <typename S>
@@ -341,7 +341,7 @@ namespace thallium {
         TL_SCHED_ASSERT(ABT_sched_create(&def, 1, pools.data(),
                                          ABT_SCHED_CONFIG_NULL, &sched));
         TL_SCHED_ASSERT(ABT_sched_config_free(&config));
-        return managed<scheduler>(sched);
+        return make_managed<scheduler>(sched);
     }
 
     template <typename I>
@@ -359,7 +359,7 @@ namespace thallium {
                                 ABT_sched_config_var_end));
         TL_SCHED_ASSERT(ABT_sched_create_basic(predef, i, &pools[0], config, &sched));
         TL_SCHED_ASSERT(ABT_sched_config_free(&config));
-        return managed<scheduler>(sched);
+        return make_managed<scheduler>(sched);
     }
 
     inline managed<scheduler> scheduler::create(predef spd, const pool& p) {
@@ -373,7 +373,7 @@ namespace thallium {
                                 ABT_sched_config_var_end));
         TL_SCHED_ASSERT(ABT_sched_create_basic(predef, 1, &pools[0], config, &sched));
         TL_SCHED_ASSERT(ABT_sched_config_free(&config));
-        return managed<scheduler>(sched);
+        return make_managed<scheduler>(sched);
     }
 
     inline pool scheduler::get_pool(int index) const {

@@ -309,7 +309,7 @@ class pool {
         def.p_free               = D::p_free;
         ABT_pool p;
         TL_POOL_ASSERT(ABT_pool_create(&def, ABT_POOL_CONFIG_NULL, &p));
-        return managed<pool>(p);
+        return make_managed<pool>(p);
     }
 
     /**
@@ -328,7 +328,7 @@ class pool {
         ABT_pool p;
         TL_POOL_ASSERT(ABT_pool_create_basic((ABT_pool_kind)k, (ABT_pool_access)a,
                                              ABT_FALSE, &p));
-        return managed<pool>(p);
+        return make_managed<pool>(p);
     }
 
     /**

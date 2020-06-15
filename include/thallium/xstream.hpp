@@ -100,7 +100,7 @@ class xstream {
     static managed<xstream> create() {
         ABT_xstream es;
         TL_ES_ASSERT(ABT_xstream_create(ABT_SCHED_NULL, &es));
-        return managed<xstream>(es);
+        return make_managed<xstream>(es);
     }
 
     /**
@@ -118,7 +118,7 @@ class xstream {
         ABT_xstream      es;
         TL_ES_ASSERT(ABT_xstream_create_basic(predef, 1, &thePool,
                                               ABT_SCHED_CONFIG_NULL, &es));
-        return managed<xstream>(es);
+        return make_managed<xstream>(es);
     }
 
     /**
@@ -143,7 +143,7 @@ class xstream {
         ABT_xstream      es;
         TL_ES_ASSERT(ABT_xstream_create_basic(predef, i, &pools[0],
                                               ABT_SCHED_CONFIG_NULL, &es));
-        return managed<xstream>(es);
+        return make_managed<xstream>(es);
     }
 
     /**
@@ -156,7 +156,7 @@ class xstream {
     static managed<xstream> create(const scheduler& sched) {
         ABT_xstream es;
         TL_ES_ASSERT(ABT_xstream_create(sched.native_handle(), &es));
-        return managed<xstream>(es);
+        return make_managed<xstream>(es);
     }
 
     /**
@@ -172,7 +172,7 @@ class xstream {
         ABT_xstream es;
         TL_ES_ASSERT(
             ABT_xstream_create_with_rank(sched.native_handle(), rank, &es));
-        return managed<xstream>(es);
+        return make_managed<xstream>(es);
     }
 
     /**
