@@ -530,6 +530,28 @@ class pool {
 
     template <typename F, typename Attr>
     void make_thread(F&& f, const Attr& attr, const anonymous& a);
+
+    /**
+     * @brief Use an existing thread that has been joined to
+     * start working on a new function.
+     *
+     * @tparam F Function type
+     * @param t thread to revive
+     * @param fun Function
+     */
+    template <typename F>
+    void revive_thread(thread& t, F&& fun);
+
+    /**
+     * @brief Use an existing task that has been joined to
+     * start working on a new function.
+     *
+     * @tparam F Function type
+     * @param t task to revive
+     * @param fun Function
+     */
+    template <typename F>
+    void revive_task(task& t, F&& fun);
 };
 
 template <typename P, typename U, typename Palloc, typename Ualloc>
@@ -596,6 +618,20 @@ void pool::make_thread(F&& f, const Attr& attr, const anonymous& a) {
     auto fp = new std::function<void(void)>(std::forward<F>(f));
     thread::create_on_pool(m_pool, forward_work_unit,
             reinterpret_cast<void*>(fp), attr, a);
+}
+
+template <typename F>
+void pool::revive_thread(thread& t, F&& f) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    TL_POOL_ASSERT(ABT_thread_revive(m_pool, forward_work_unit,
+                      reinterpret_cast<void*>(fp), &(t.m_thread)));
+}
+
+template <typename F>
+void pool::revive_task(task& t, F&& f) {
+    auto fp = new std::function<void(void)>(std::forward<F>(f));
+    TL_POOL_ASSERT(ABT_task_revive(m_pool, forward_work_unit,
+                      reinterpret_cast<void*>(fp), &(t.m_task)));
 }
 
 }
