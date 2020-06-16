@@ -63,7 +63,11 @@ template <class T> class managed {
     /**
      * @brief Move-assignment operator.
      */
-    managed& operator=(managed&& other) { m_obj = std::move(other.m_obj); }
+    managed& operator=(managed&& other) {
+        m_obj.destroy();
+        m_obj = std::move(other.m_obj);
+        return *this;
+    }
 
     /**
      * @brief Destructor.
