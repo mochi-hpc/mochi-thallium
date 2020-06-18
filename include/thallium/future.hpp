@@ -110,7 +110,7 @@ template <typename T> class future {
     /**
      * @brief Move constructor.
      */
-    future(future&& other)
+    future(future&& other) noexcept
     : m_num_compartments(other.m_num_compartments)
     , m_future(other.m_future) {
         other.m_future = ABT_FUTURE_NULL;

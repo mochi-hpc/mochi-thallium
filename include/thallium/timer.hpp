@@ -82,7 +82,7 @@ class timer {
      *
      * @return the native handle.
      */
-    native_handle_type native_handle() const { return m_timer; }
+    native_handle_type native_handle() const noexcept { return m_timer; }
 
     /**
      * @brief Constructor.
@@ -107,7 +107,7 @@ class timer {
     /**
      * @brief Move constructor.
      */
-    timer(timer&& other)
+    timer(timer&& other) noexcept
     : m_timer(other.m_timer) {
         other.m_timer = ABT_TIMER_NULL;
     }

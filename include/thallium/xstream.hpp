@@ -89,7 +89,7 @@ class xstream {
      *
      * @return the native handle.
      */
-    native_handle_type native_handle() const { return m_xstream; }
+    native_handle_type native_handle() const noexcept { return m_xstream; }
 
     /**
      * @brief Creates a managed xstream object with a
@@ -178,19 +178,19 @@ class xstream {
     /**
      * @brief Default constructor. Does NOT create an ES, but a null handle.
      */
-    xstream()
+    xstream() noexcept
     : m_xstream(ABT_XSTREAM_NULL) {}
 
     /**
      * @brief Copy-constructor.
      */
-    xstream(const xstream& other) = default;
+    xstream(const xstream& other) noexcept = default;
 
     /**
      * @brief Move-constructor. Will invalidate
      * the moved-from xstream instance.
      */
-    xstream(xstream&& other)
+    xstream(xstream&& other) noexcept
     : m_xstream(other.m_xstream) {
         other.m_xstream = ABT_XSTREAM_NULL;
     }
@@ -203,7 +203,7 @@ class xstream {
     /**
      * @brief Move-assignment operator.
      */
-    xstream& operator=(xstream&& other) {
+    xstream& operator=(xstream&& other) noexcept {
         if(&other == this)
             return *this;
         m_xstream       = other.m_xstream;
@@ -345,14 +345,14 @@ class xstream {
      *
      * @return true if the ES is null.
      */
-    bool is_null() const { return m_xstream == ABT_XSTREAM_NULL; }
+    bool is_null() const noexcept { return m_xstream == ABT_XSTREAM_NULL; }
 
     /**
      * @brief Checks whether the ES is not null.
      *
      * @return true if the ES is not null, false otherwise.
      */
-    operator bool() const { return !is_null(); }
+    operator bool() const noexcept { return !is_null(); }
 
     /**
      * @brief Sets the scheduler that the ES should use.

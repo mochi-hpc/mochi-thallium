@@ -46,7 +46,7 @@ class bulk {
      * @param local Whether the bulk handle referes to memory that is
      * local to this process.
      */
-    bulk(std::weak_ptr<detail::engine_impl> e, hg_bulk_t b, bool local)
+    bulk(std::weak_ptr<detail::engine_impl> e, hg_bulk_t b, bool local) noexcept
     : m_engine_impl(std::move(e))
     , m_bulk(b)
     , m_is_local(local) {}
@@ -58,8 +58,8 @@ class bulk {
     class bulk_segment {
         friend class remote_bulk;
 
-        std::size_t m_offset;
-        std::size_t m_size;
+        const std::size_t m_offset;
+        const std::size_t m_size;
         const bulk& m_bulk;
 
       public:
@@ -70,7 +70,7 @@ class bulk {
          * @param b Reference to the bulk object from which the segment is
          * taken.
          */
-        bulk_segment(const bulk& b)
+        bulk_segment(const bulk& b) noexcept
         : m_offset(0)
         , m_size(b.size())
         , m_bulk(b) {}
@@ -83,7 +83,7 @@ class bulk {
          * @param offset Offset at which the segment starts.
          * @param size Size of the segment.
          */
-        bulk_segment(const bulk& b, std::size_t offset, std::size_t size)
+        bulk_segment(const bulk& b, std::size_t offset, std::size_t size) noexcept
         : m_offset(offset)
         , m_size(size)
         , m_bulk(b) {}
@@ -91,27 +91,27 @@ class bulk {
         /**
          * @brief Copy constructor is deleted.
          */
-        bulk_segment(const bulk_segment&) = default;
+        bulk_segment(const bulk_segment&) noexcept = default;
 
         /**
          * @brief Move constructor is default.
          */
-        bulk_segment(bulk_segment&&) = default;
+        bulk_segment(bulk_segment&&) noexcept = default;
 
         /**
          * @brief Copy assignment operator is default.
          */
-        bulk_segment& operator=(const bulk_segment&) = default;
+        bulk_segment& operator=(const bulk_segment&) noexcept = delete;
 
         /**
          * @brief Move assignment operator is default.
          */
-        bulk_segment& operator=(bulk_segment&&) = default;
+        bulk_segment& operator=(bulk_segment&&) noexcept = delete;
 
         /**
          * @brief Destructor is default.
          */
-        ~bulk_segment() = default;
+        ~bulk_segment() noexcept = default;
 
         /**
          * @brief Associates the bulk segment with an endpoint to represent
@@ -121,7 +121,7 @@ class bulk {
          *
          * @return a remote_bulk object.
          */
-        remote_bulk on(const endpoint& ep) const;
+        remote_bulk on(const endpoint& ep) const noexcept;
 
         /**
          * @brief Pushes data from the left operand (bulk_segment)
@@ -155,7 +155,7 @@ class bulk {
          *
          * @return a new bulk_segment object.
          */
-        bulk_segment select(std::size_t offset, std::size_t size) const {
+        bulk_segment select(std::size_t offset, std::size_t size) const noexcept {
             std::size_t effective_size =
                 offset + size > m_size ? m_size - offset : size;
             return bulk_segment(m_bulk, m_offset + offset, effective_size);
@@ -165,7 +165,7 @@ class bulk {
          * @see bulk_segment::select.
          */
         inline bulk_segment operator()(std::size_t offset,
-                                       std::size_t size) const {
+                                       std::size_t size) const noexcept {
             return select(offset, size);
         }
     };
@@ -175,7 +175,7 @@ class bulk {
      * @brief Default constructor, defined so that one can have a bulk
      * object as class member and associate it later with an actual bulk.
      */
-    bulk()
+    bulk() noexcept
     : m_engine_impl()
     , m_bulk(HG_BULK_NULL)
     , m_is_local(false) {}
@@ -196,7 +196,7 @@ class bulk {
     /**
      * @brief Move constructor.
      */
-    bulk(bulk&& other)
+    bulk(bulk&& other) noexcept
     : m_engine_impl(std::move(other.m_engine_impl))
     , m_bulk(other.m_bulk)
     , m_is_local(other.m_is_local) {
@@ -243,7 +243,7 @@ class bulk {
     /**
      * @brief Destructor.
      */
-    ~bulk() {
+    ~bulk() noexcept {
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_free(m_bulk);
             MARGO_ASSERT_TERMINATE(ret, margo_bulk_free, -1);
@@ -255,7 +255,7 @@ class bulk {
      *
      * @return size of data exposed by the bulk object.
      */
-    std::size_t size() const {
+    std::size_t size() const noexcept {
         if(m_bulk != HG_BULK_NULL)
             return margo_bulk_get_size(m_bulk);
         else
@@ -267,7 +267,7 @@ class bulk {
      *
      * @return true if the bulk handle is null, false otherwise.
      */
-    bool is_null() const { return m_bulk == HG_BULK_NULL; }
+    bool is_null() const noexcept { return m_bulk == HG_BULK_NULL; }
 
     /**
      * @brief Builds a remote_bulk object by associating it with an endpoint.
@@ -276,7 +276,7 @@ class bulk {
      *
      * @return a remote_bulk instance.
      */
-    remote_bulk on(const endpoint& ep) const;
+    remote_bulk on(const endpoint& ep) const noexcept;
 
     /**
      * @brief Creates a bulk_segment object by selecting a given portion
@@ -287,12 +287,12 @@ class bulk {
      *
      * @return a bulk_segment object.
      */
-    bulk_segment select(std::size_t offset, std::size_t size) const;
+    bulk_segment select(std::size_t offset, std::size_t size) const noexcept;
 
     /**
      * @see bulk::select
      */
-    bulk_segment operator()(std::size_t offset, std::size_t size) const;
+    bulk_segment operator()(std::size_t offset, std::size_t size) const noexcept;
 
     /**
      * @brief Pushes data from the left operand (entire bulk object)
@@ -327,7 +327,7 @@ class bulk {
      *
      * @return The underlying hg_bulk_t handle.
      */
-    hg_bulk_t get_bulk(bool copy = false) const;
+    hg_bulk_t get_bulk(bool copy = false) const noexcept;
 
     /**
      * @brief Function that serializes a bulk object into/from an archive.
@@ -356,26 +356,26 @@ class bulk {
 
 namespace thallium {
 
-inline hg_bulk_t bulk::get_bulk(bool copy) const {
+inline hg_bulk_t bulk::get_bulk(bool copy) const noexcept {
     if(copy && m_bulk != HG_BULK_NULL)
         margo_bulk_ref_incr(m_bulk);
     return m_bulk;
 }
 
-inline bulk::bulk_segment bulk::select(std::size_t offset, std::size_t size) const {
+inline bulk::bulk_segment bulk::select(std::size_t offset, std::size_t size) const noexcept {
     return bulk_segment(*this, offset, size);
 }
 
 inline bulk::bulk_segment bulk::operator()(std::size_t offset,
-                                    std::size_t size) const {
+                                    std::size_t size) const noexcept {
     return select(offset, size);
 }
 
-inline remote_bulk bulk::bulk_segment::on(const endpoint& ep) const {
+inline remote_bulk bulk::bulk_segment::on(const endpoint& ep) const noexcept {
     return remote_bulk(*this, ep);
 }
 
-inline remote_bulk bulk::on(const endpoint& ep) const {
+inline remote_bulk bulk::on(const endpoint& ep) const noexcept {
     return remote_bulk(*this, ep);
 }
 

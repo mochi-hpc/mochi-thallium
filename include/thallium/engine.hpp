@@ -91,17 +91,17 @@ class engine {
      *
      * @param data pointer to the data to free (instance of rpc_callback_data).
      */
-    static void free_rpc_callback_data(void* data) {
+    static void free_rpc_callback_data(void* data) noexcept {
         rpc_callback_data* cb_data = (rpc_callback_data*)data;
         delete cb_data;
     }
 
-    static void on_engine_finalize_cb(void* arg) {
+    static void on_engine_finalize_cb(void* arg) noexcept {
         auto e               = static_cast<detail::engine_impl*>(arg);
         e->m_finalize_called = true;
     }
 
-    static void on_engine_prefinalize_cb(void* arg) {
+    static void on_engine_prefinalize_cb(void* arg) noexcept {
         auto e = static_cast<detail::engine_impl*>(arg);
         (void)e; // This callback does nothing for now
     }
@@ -157,7 +157,7 @@ class engine {
      *
      * @param mid Margo instance.
      */
-    engine(margo_instance_id mid)
+    engine(margo_instance_id mid) noexcept
     : m_impl(std::make_shared<detail::engine_impl>()) {
         m_impl->m_mid       = mid;
         m_impl->m_owns_mid  = false;

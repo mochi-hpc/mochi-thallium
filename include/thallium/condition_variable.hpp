@@ -64,7 +64,7 @@ class condition_variable {
     /**
      * @brief Destructor.
      */
-    ~condition_variable() {
+    ~condition_variable() noexcept {
         if(m_cond != ABT_COND_NULL)
             ABT_cond_free(&m_cond);
     }
@@ -100,7 +100,7 @@ class condition_variable {
      * @brief Move constructor. This function will invalidate
      * the passed condition_variable.
      */
-    condition_variable(condition_variable&& other)
+    condition_variable(condition_variable&& other) noexcept
     : m_cond(other.m_cond) {
         other.m_cond = ABT_COND_NULL;
     }
@@ -133,7 +133,7 @@ class condition_variable {
     /**
      * @brief Notify one waiter.
      */
-    void notify_one() { ABT_cond_signal(m_cond); }
+    void notify_one() { TL_CV_ASSERT(ABT_cond_signal(m_cond)); }
 
     /**
      * @brief Notify all waiters.

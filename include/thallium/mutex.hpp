@@ -89,7 +89,7 @@ class mutex {
     /**
      * @brief Move constructor.
      */
-    mutex(mutex&& other) {
+    mutex(mutex&& other) noexcept {
         m_mutex       = other.m_mutex;
         other.m_mutex = ABT_MUTEX_NULL;
     }

@@ -66,7 +66,7 @@ class request {
     /**
      * @brief Move constructor.
      */
-    request(request&& other)
+    request(request&& other) noexcept
     : m_engine_impl(std::move(other.m_engine_impl))
     , m_handle(other.m_handle)
     , m_disable_response(other.m_disable_response) {
@@ -93,7 +93,7 @@ class request {
     /**
      * @brief Move-assignment operator.
      */
-    request& operator=(request&& other) {
+    request& operator=(request&& other) noexcept {
         if(m_handle == other.m_handle)
             return *this;
         margo_destroy(m_handle);

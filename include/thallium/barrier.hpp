@@ -92,7 +92,7 @@ class barrier {
      *
      * @param other barrier object to move from.
      */
-    barrier(barrier&& other)
+    barrier(barrier&& other) noexcept
     : m_barrier(other.m_barrier) {
         other.m_barrier = ABT_BARRIER_NULL;
     }
@@ -100,7 +100,7 @@ class barrier {
     /**
      * @brief Destructor.
      */
-    ~barrier() {
+    ~barrier() noexcept {
         if(m_barrier != ABT_BARRIER_NULL)
             ABT_barrier_free(&m_barrier);
     }

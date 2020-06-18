@@ -254,7 +254,7 @@ class thread {
     /**
      * @brief Default constructor.
      */
-    thread()
+    thread() noexcept
     : m_thread(ABT_THREAD_NULL) {}
 
     /**
@@ -262,7 +262,7 @@ class thread {
      *
      * @param t ABT_thread handle.
      */
-    explicit thread(ABT_thread t)
+    explicit thread(ABT_thread t) noexcept
     : m_thread(t) {}
 
     /**
@@ -280,7 +280,7 @@ class thread {
      * moved from will be invalidated if different from
      * the object moved to.
      */
-    thread& operator=(thread&& other) {
+    thread& operator=(thread&& other) noexcept {
         if(this == &other)
             return *this;
         m_thread       = other.m_thread;
@@ -292,7 +292,7 @@ class thread {
      * @brief Move constructor. The object moved from will
      * be invalidated.
      */
-    thread(thread&& other) {
+    thread(thread&& other) noexcept {
         m_thread       = other.m_thread;
         other.m_thread = ABT_THREAD_NULL;
     }
@@ -319,7 +319,7 @@ class thread {
      *
      * @return the native handle of this thread.
      */
-    ABT_thread native_handle() const { return m_thread; }
+    ABT_thread native_handle() const noexcept { return m_thread; }
 
     /**
      * @brief Get the id of this thread.

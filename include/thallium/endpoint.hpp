@@ -42,7 +42,7 @@ class endpoint {
     std::weak_ptr<detail::engine_impl> m_engine_impl;
     hg_addr_t m_addr;
 
-    endpoint(std::weak_ptr<detail::engine_impl> e, hg_addr_t addr)
+    endpoint(std::weak_ptr<detail::engine_impl> e, hg_addr_t addr) noexcept
     : m_engine_impl(std::move(e))
     , m_addr(addr) {}
 
@@ -60,7 +60,7 @@ class endpoint {
      * @brief Default constructor defined so that endpoints can
      * be member of other objects and assigned later.
      */
-    endpoint()
+    endpoint() noexcept
     : m_engine_impl()
     , m_addr(HG_ADDR_NULL) {}
 
@@ -72,7 +72,7 @@ class endpoint {
     /**
      * @brief Move constructor.
      */
-    endpoint(endpoint&& other)
+    endpoint(endpoint&& other) noexcept
     : m_engine_impl(other.m_engine_impl)
     , m_addr(other.m_addr) {
         other.m_engine_impl.reset();
@@ -106,7 +106,7 @@ class endpoint {
      *
      * @return true if the endpoint is a null address.
      */
-    bool is_null() const { return m_addr == HG_ADDR_NULL; }
+    bool is_null() const noexcept { return m_addr == HG_ADDR_NULL; }
 
     /**
      * @brief Returns the underlying Mercury address.
@@ -155,7 +155,8 @@ inline endpoint::endpoint(const engine& e, hg_addr_t addr, bool take_ownership)
     if(take_ownership) {
         m_addr = addr;
     } else {
-        margo_addr_dup(e.m_impl->m_mid, addr, &m_addr);
+        hg_return_t ret = margo_addr_dup(e.m_impl->m_mid, addr, &m_addr);
+        MARGO_ASSERT(ret, margo_addr_dup);
     }
 }
 

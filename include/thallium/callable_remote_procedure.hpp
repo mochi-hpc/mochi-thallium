@@ -192,7 +192,7 @@ class callable_remote_procedure {
     /**
      * @brief Move-constructor.
      */
-    callable_remote_procedure(callable_remote_procedure&& other) {
+    callable_remote_procedure(callable_remote_procedure&& other) noexcept {
         m_handle       = other.m_handle;
         other.m_handle = HG_HANDLE_NULL;
     }

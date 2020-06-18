@@ -45,7 +45,7 @@ class async_response {
      * @param ignore_resp whether response should be ignored.
      */
     async_response(margo_request req, std::weak_ptr<detail::engine_impl> e,
-                   hg_handle_t handle, bool ignore_resp)
+                   hg_handle_t handle, bool ignore_resp) noexcept
     : m_request(req)
     , m_engine_impl(std::move(e))
     , m_handle(handle)
@@ -64,7 +64,7 @@ class async_response {
      *
      * @param other async_response to move from.
      */
-    async_response(async_response&& other)
+    async_response(async_response&& other) noexcept
     : m_request(other.m_request)
     , m_engine_impl(std::move(other.m_engine_impl))
     , m_handle(other.m_handle)
@@ -82,7 +82,7 @@ class async_response {
      * @brief Move-assignment operator. Will invalidate
      * the moved-from object.
      */
-    async_response& operator=(async_response&& other) {
+    async_response& operator=(async_response&& other) noexcept {
         if(this == &other)
             return *this;
         if(m_handle != HG_HANDLE_NULL)
@@ -99,7 +99,7 @@ class async_response {
     /**
      * @brief Destructor.
      */
-    ~async_response() {
+    ~async_response() noexcept {
         if(m_handle != HG_HANDLE_NULL)
             margo_destroy(m_handle);
     }

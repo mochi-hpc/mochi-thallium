@@ -205,13 +205,13 @@ class pool {
      *
      * @param p existing ABT_pool handle. May be null.
      */
-    explicit pool(ABT_pool p)
+    explicit pool(ABT_pool p) noexcept
     : m_pool(p) {}
 
     /**
      * @brief Default constructor handles a null pool.
      */
-    pool()
+    pool() noexcept
     : m_pool(ABT_POOL_NULL) {}
 
     /**
@@ -339,7 +339,7 @@ class pool {
     /**
      * @brief Move constructor.
      */
-    pool(pool&& other)
+    pool(pool&& other) noexcept
     : m_pool(other.m_pool) {
         other.m_pool = ABT_POOL_NULL;
     }
@@ -352,7 +352,7 @@ class pool {
     /**
      * @brief Move assignment operator.
      */
-    pool& operator=(pool&& other) {
+    pool& operator=(pool&& other) noexcept {
         if(this == &other)
             return *this;
         m_pool       = other.m_pool;
@@ -370,12 +370,12 @@ class pool {
      *
      * @return true if the pool handle is null, false otherwise.
      */
-    bool is_null() const { return m_pool == ABT_POOL_NULL; }
+    bool is_null() const noexcept { return m_pool == ABT_POOL_NULL; }
 
     /**
      * @brief Returns true if the pool handle is not null.
      */
-    operator bool() const { return !is_null(); }
+    operator bool() const noexcept { return !is_null(); }
 
     /**
      * @brief Get the access type of the pool.

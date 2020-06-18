@@ -130,7 +130,7 @@ class task {
      * moved from will be invalidated if different from
      * the object moved to.
      */
-    task& operator=(task&& other) {
+    task& operator=(task&& other) noexcept {
         if(this == &other)
             return *this;
         m_task       = other.m_task;
@@ -142,7 +142,7 @@ class task {
      * @brief Move constructor. The object moved from will
      * be invalidated.
      */
-    task(task&& other)
+    task(task&& other) noexcept
     : m_task(other.m_task) {
         other.m_task = ABT_TASK_NULL;
     }

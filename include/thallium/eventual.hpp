@@ -207,7 +207,7 @@ template <> class eventual<void> {
     /**
      * @brief Move constructor.
      */
-    eventual(eventual&& other)
+    eventual(eventual&& other) noexcept
     : m_eventual(other.m_eventual) {
         other.m_eventual = ABT_EVENTUAL_NULL;
     }
