@@ -35,6 +35,16 @@ class margo_exception : public exception {
 };
 
 inline const char* translate_margo_error_code(hg_return_t ret) {
+#ifdef HG_RETURN_VALUES
+#define X(a) #a,
+    static const char* const error_codes[] = {
+        HG_RETURN_VALUES
+    };
+#undef X
+    if(ret < HG_RETURN_MAX) {
+        return error_codes[ret];
+    }
+#else
     switch(ret) {
     case HG_SUCCESS: /*!< operation succeeded */
         return "HG_SUCCESS";
@@ -59,6 +69,7 @@ inline const char* translate_margo_error_code(hg_return_t ret) {
     case HG_OTHER_ERROR: /*!< error from mercury_util or external to mercury */
         return "HG_OTHER_ERROR";
     }
+#endif
     return "Unknown error";
 }
 
