@@ -141,6 +141,15 @@ template <typename T> class eventual {
     }
 
     /**
+     * @brief Test the eventual.
+     */
+    bool test() {
+        int flag;
+        TL_EVENTUAL_ASSERT(ABT_eventual_test(m_eventual, nullptr, &flag));
+        return flag;
+    }
+
+    /**
      * @brief Reset the eventual.
      */
     void reset() { TL_EVENTUAL_ASSERT(ABT_eventual_reset(m_eventual)); }
@@ -223,6 +232,15 @@ template <> class eventual<void> {
      * @brief Wait on the eventual.
      */
     void wait() { TL_EVENTUAL_ASSERT(ABT_eventual_wait(m_eventual, nullptr)); }
+
+    /**
+     * @brief Test the eventual.
+     */
+    bool test() {
+        int flag;
+        TL_EVENTUAL_ASSERT(ABT_eventual_test(m_eventual, nullptr, &flag));
+        return flag;
+    }
 
     /**
      * @brief Reset the eventual.
