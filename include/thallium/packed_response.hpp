@@ -102,7 +102,7 @@ class packed_response {
                 "unpack data from an RPC that does not return any?");
         }
         std::tuple<typename std::decay<T1>::type, typename std::decay<T2>::type,
-                   typename std::decay_t<Tn>::type...>
+                   typename std::decay<Tn>::type...>
                      t;
         meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
             return proc_object(proc, t, m_engine_impl);
