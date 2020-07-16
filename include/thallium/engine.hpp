@@ -128,20 +128,21 @@ class engine {
      *
      * @param addr address of this instance.
      * @param mode THALLIUM_SERVER_MODE or THALLIUM_CLIENT_MODE.
+     * @param hg_opt options for initializing Mercury.
      * @param use_progress_thread whether to use a dedicated ES to drive
      * progress.
      * @param rpc_thread_count number of threads to use for servicing RPCs.
      * Use -1 to indicate that RPCs should be serviced in the progress ES.
      */
     engine(const std::string& addr, int mode, bool use_progress_thread = false,
-           std::int32_t rpc_thread_count = 0) 
+           std::int32_t rpc_thread_count = 0, const hg_init_info *hg_opt = nullptr) 
     : m_impl(std::make_shared<detail::engine_impl>()) {
         m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
         m_impl->m_finalize_called = false;
-        m_impl->m_mid = margo_init(addr.c_str(), mode, use_progress_thread ? 1 : 0,
-                           rpc_thread_count);
+        m_impl->m_mid = margo_init_opt(addr.c_str(), mode, hg_opt, 
+                use_progress_thread ? 1 : 0, rpc_thread_count);
         if(!m_impl->m_mid)
-            MARGO_THROW(margo_init, "Could not initialize Margo");
+            MARGO_THROW(margo_init_opt, "Could not initialize Margo");
         m_impl->m_owns_mid = true;
         margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
                                         static_cast<void*>(m_impl.get()));
