@@ -107,21 +107,9 @@ class pool {
             return (ABT_bool)(uu->is_in_pool());
         }
 
-        static ABT_unit u_create_from_thread(ABT_thread t) {
-            auto uu =
-                std::allocator_traits<Ualloc>::allocate(unit_allocator, 1);
-            std::allocator_traits<Ualloc>::construct(unit_allocator, uu,
-                                                     thread(t));
-            return reinterpret_cast<ABT_unit>(uu);
-        }
+        static ABT_unit u_create_from_thread(ABT_thread t);
 
-        static ABT_unit u_create_from_task(ABT_task t) {
-            auto uu =
-                std::allocator_traits<Ualloc>::allocate(unit_allocator, 1);
-            std::allocator_traits<Ualloc>::construct(unit_allocator, uu,
-                                                     task(t));
-            return reinterpret_cast<ABT_unit>(uu);
-        }
+        static ABT_unit u_create_from_task(ABT_task t);
 
         static void u_free(ABT_unit* u) {
             auto uu = reinterpret_cast<U*>(*u);
@@ -632,6 +620,24 @@ void pool::revive_task(task& t, F&& f) {
     auto fp = new std::function<void(void)>(std::forward<F>(f));
     TL_POOL_ASSERT(ABT_task_revive(m_pool, forward_work_unit,
                       reinterpret_cast<void*>(fp), &(t.m_task)));
+}
+
+template <typename P, typename U, typename Palloc, typename Ualloc>
+ABT_unit pool::pool_def<P,U,Palloc,Ualloc>::u_create_from_thread(ABT_thread t) {
+    auto uu =
+        std::allocator_traits<Ualloc>::allocate(unit_allocator, 1);
+    std::allocator_traits<Ualloc>::construct(unit_allocator, uu,
+            thread(t));
+    return reinterpret_cast<ABT_unit>(uu);
+}
+        
+template <typename P, typename U, typename Palloc, typename Ualloc>
+ABT_unit pool::pool_def<P,U,Palloc,Ualloc>::u_create_from_task(ABT_task t) {
+    auto uu =
+        std::allocator_traits<Ualloc>::allocate(unit_allocator, 1);
+    std::allocator_traits<Ualloc>::construct(unit_allocator, uu,
+            task(t));
+    return reinterpret_cast<ABT_unit>(uu);
 }
 
 }

@@ -74,14 +74,12 @@ class scheduler {
   private:
     template <typename S, typename Salloc = std::allocator<S>>
     struct sched_def {
-      private:
-        static Salloc scheduler_allocator;
 
       public:
         static int init(ABT_sched s, ABT_sched_config) {
-            auto ss =
-                std::allocator_traits<Salloc>::allocate(scheduler_allocator, 1);
-            std::allocator_traits<Salloc>::construct(scheduler_allocator, ss, s);
+            Salloc alloc;
+            S* ss = std::allocator_traits<Salloc>::allocate(alloc, 1);
+            std::allocator_traits<Salloc>::construct(alloc, ss, s);
             return ABT_sched_set_data(s, reinterpret_cast<void*>(ss));
         }
 
@@ -98,8 +96,9 @@ class scheduler {
             if(ret != ABT_SUCCESS)
                 return ret;
             S* impl = reinterpret_cast<S*>(data);
-            std::allocator_traits<Salloc>::destroy(scheduler_allocator, impl);
-            std::allocator_traits<Salloc>::deallocate(scheduler_allocator, impl, 1);
+            Salloc alloc;
+            std::allocator_traits<Salloc>::destroy(alloc, impl);
+            std::allocator_traits<Salloc>::deallocate(alloc, impl, 1);
             return ret;
         }
 
