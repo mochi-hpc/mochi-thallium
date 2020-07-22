@@ -27,7 +27,7 @@ class remote_procedure;
 class endpoint;
 
 namespace detail {
-    class engine_impl;
+    struct engine_impl;
 }
 
 /**
