@@ -21,10 +21,11 @@ namespace thallium {
  */
 class remote_bulk {
     friend class bulk;
+    friend class bulk_segment;
 
   private:
-    bulk::bulk_segment m_segment;
-    endpoint           m_endpoint;
+    bulk_segment m_segment;
+    endpoint     m_endpoint;
 
     /**
      * @brief Constructor. Made private since remote_bulk objects
@@ -34,7 +35,7 @@ class remote_bulk {
      * @param b bulk_segment that created the remote_bulk object.
      * @param ep endpoint on which the bulk_segment is.
      */
-    remote_bulk(bulk::bulk_segment b, endpoint ep)
+    remote_bulk(bulk_segment b, endpoint ep)
     : m_segment(std::move(b))
     , m_endpoint(std::move(ep)) {}
 
@@ -69,7 +70,7 @@ class remote_bulk {
      *
      * @return the size of data transfered.
      */
-    std::size_t operator>>(const bulk::bulk_segment& dest) const;
+    std::size_t operator>>(const bulk_segment& dest) const;
 
     /**
      * @brief Performs a push operation from the source bulk
@@ -81,7 +82,7 @@ class remote_bulk {
      *
      * @return the size of data transfered.
      */
-    std::size_t operator<<(const bulk::bulk_segment& src) const;
+    std::size_t operator<<(const bulk_segment& src) const;
 
     /**
      * @brief Creates a bulk_segment object by selecting a given portion
@@ -110,7 +111,7 @@ class remote_bulk {
 
 namespace thallium {
 
-inline std::size_t remote_bulk::operator>>(const bulk::bulk_segment& dest) const {
+inline std::size_t remote_bulk::operator>>(const bulk_segment& dest) const {
 
     auto engine_impl = m_segment.m_bulk.m_engine_impl.lock();
     if(!engine_impl) throw exception("Invalid engine");
@@ -134,7 +135,7 @@ inline std::size_t remote_bulk::operator>>(const bulk::bulk_segment& dest) const
     return size;
 }
 
-inline std::size_t remote_bulk::operator<<(const bulk::bulk_segment& src) const {
+inline std::size_t remote_bulk::operator<<(const bulk_segment& src) const {
 
     auto engine_impl = m_segment.m_bulk.m_engine_impl.lock();
     if(!engine_impl) throw exception("Invalid engine");

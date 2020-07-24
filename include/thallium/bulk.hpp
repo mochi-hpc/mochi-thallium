@@ -18,6 +18,7 @@ namespace thallium {
 class engine;
 class endpoint;
 class remote_bulk;
+class bulk_segment;
 namespace detail {
     struct engine_impl;
 }
@@ -50,125 +51,6 @@ class bulk {
     : m_engine_impl(std::move(e))
     , m_bulk(b)
     , m_is_local(local) {}
-
-    /**
-     * @brief The bulk_segment class represents a portion
-     * (represented by offset and size) of a bulk object.
-     */
-    class bulk_segment {
-        friend class remote_bulk;
-
-        const std::size_t m_offset;
-        const std::size_t m_size;
-        const bulk& m_bulk;
-
-      public:
-        /**
-         * @brief Constructor. By default the size of the segment will be
-         * that of the underlying bulk object, and the offset is 0.
-         *
-         * @param b Reference to the bulk object from which the segment is
-         * taken.
-         */
-        bulk_segment(const bulk& b) noexcept
-        : m_offset(0)
-        , m_size(b.size())
-        , m_bulk(b) {}
-
-        /**
-         * @brief Constructor.
-         *
-         * @param b Reference to the bulk object from which the segment is
-         * taken.
-         * @param offset Offset at which the segment starts.
-         * @param size Size of the segment.
-         */
-        bulk_segment(const bulk& b, std::size_t offset, std::size_t size) noexcept
-        : m_offset(offset)
-        , m_size(size)
-        , m_bulk(b) {}
-
-        /**
-         * @brief Copy constructor is deleted.
-         */
-        bulk_segment(const bulk_segment&) noexcept = default;
-
-        /**
-         * @brief Move constructor is default.
-         */
-        bulk_segment(bulk_segment&&) noexcept = default;
-
-        /**
-         * @brief Copy assignment operator is default.
-         */
-        bulk_segment& operator=(const bulk_segment&) noexcept = delete;
-
-        /**
-         * @brief Move assignment operator is default.
-         */
-        bulk_segment& operator=(bulk_segment&&) noexcept = delete;
-
-        /**
-         * @brief Destructor is default.
-         */
-        ~bulk_segment() noexcept = default;
-
-        /**
-         * @brief Associates the bulk segment with an endpoint to represent
-         * a remote_bulk object.
-         *
-         * @param ep Endpoint where the bulk object has bee created.
-         *
-         * @return a remote_bulk object.
-         */
-        remote_bulk on(const endpoint& ep) const noexcept;
-
-        /**
-         * @brief Pushes data from the left operand (bulk_segment)
-         * to the right operand (remote_bulk). If the size of the
-         * segments don't match, the smallest size is used.
-         *
-         * @param b remote_bulk object towards which to push data.
-         *
-         * @return the size of data transfered.
-         */
-        std::size_t operator>>(const remote_bulk& b) const;
-
-        /**
-         * @brief Pulls data from the right operand (remote_bulk)
-         * to the right operand (bulk_segment). If the size of the
-         * segments don't match, the smallest size is used.
-         *
-         * @param b remote_bulk object from which to pull data.
-         *
-         * @return the size of data transfered.
-         */
-        std::size_t operator<<(const remote_bulk& b) const;
-
-        /**
-         * @brief Selects a subsegment from this segment. If the size is too
-         * large, the maximum possible size is chosen.
-         *
-         * @param offset Offset of the subsegment relative to the current
-         * segment.
-         * @param size Size of the subsegment.
-         *
-         * @return a new bulk_segment object.
-         */
-        bulk_segment select(std::size_t offset, std::size_t size) const noexcept {
-            std::size_t effective_size =
-                offset + size > m_size ? m_size - offset : size;
-            return bulk_segment(m_bulk, m_offset + offset, effective_size);
-        }
-
-        /**
-         * @see bulk_segment::select.
-         */
-        inline bulk_segment operator()(std::size_t offset,
-                                       std::size_t size) const noexcept {
-            return select(offset, size);
-        }
-    };
 
   public:
     /**
@@ -348,6 +230,125 @@ class bulk {
         }
     }
 };
+    
+/**
+ * @brief The bulk_segment class represents a portion
+ * (represented by offset and size) of a bulk object.
+ */
+class bulk_segment {
+    friend class remote_bulk;
+
+    std::size_t m_offset;
+    std::size_t m_size;
+    bulk        m_bulk;
+
+    public:
+    /**
+     * @brief Constructor. By default the size of the segment will be
+     * that of the underlying bulk object, and the offset is 0.
+     *
+     * @param b Reference to the bulk object from which the segment is
+     * taken.
+     */
+    bulk_segment(const bulk& b) noexcept
+    : m_offset(0)
+    , m_size(b.size())
+    , m_bulk(b) {}
+
+    /**
+     * @brief Constructor.
+     *
+     * @param b Reference to the bulk object from which the segment is
+     * taken.
+     * @param offset Offset at which the segment starts.
+     * @param size Size of the segment.
+     */
+    bulk_segment(const bulk& b, std::size_t offset, std::size_t size) noexcept
+    : m_offset(offset)
+    , m_size(size)
+    , m_bulk(b) {}
+
+    /**
+     * @brief Copy constructor is deleted.
+     */
+    bulk_segment(const bulk_segment&) = default;
+
+    /**
+     * @brief Move constructor is default.
+     */
+    bulk_segment(bulk_segment&&) = default;
+
+    /**
+     * @brief Copy assignment operator is default.
+     */
+    bulk_segment& operator=(const bulk_segment&) = default;
+
+    /**
+     * @brief Move assignment operator is default.
+     */
+    bulk_segment& operator=(bulk_segment&&) = default;
+
+    /**
+     * @brief Destructor is default.
+     */
+    ~bulk_segment() = default;
+
+    /**
+     * @brief Associates the bulk segment with an endpoint to represent
+     * a remote_bulk object.
+     *
+     * @param ep Endpoint where the bulk object has bee created.
+     *
+     * @return a remote_bulk object.
+     */
+    remote_bulk on(const endpoint& ep) const noexcept;
+
+    /**
+     * @brief Pushes data from the left operand (bulk_segment)
+     * to the right operand (remote_bulk). If the size of the
+     * segments don't match, the smallest size is used.
+     *
+     * @param b remote_bulk object towards which to push data.
+     *
+     * @return the size of data transfered.
+     */
+    std::size_t operator>>(const remote_bulk& b) const;
+
+    /**
+     * @brief Pulls data from the right operand (remote_bulk)
+     * to the right operand (bulk_segment). If the size of the
+     * segments don't match, the smallest size is used.
+     *
+     * @param b remote_bulk object from which to pull data.
+     *
+     * @return the size of data transfered.
+     */
+    std::size_t operator<<(const remote_bulk& b) const;
+
+    /**
+     * @brief Selects a subsegment from this segment. If the size is too
+     * large, the maximum possible size is chosen.
+     *
+     * @param offset Offset of the subsegment relative to the current
+     * segment.
+     * @param size Size of the subsegment.
+     *
+     * @return a new bulk_segment object.
+     */
+    bulk_segment select(std::size_t offset, std::size_t size) const noexcept {
+        std::size_t effective_size =
+            offset + size > m_size ? m_size - offset : size;
+        return bulk_segment(m_bulk, m_offset + offset, effective_size);
+    }
+
+    /**
+     * @see bulk_segment::select.
+     */
+    inline bulk_segment operator()(std::size_t offset,
+            std::size_t size) const noexcept {
+        return select(offset, size);
+    }
+};
 
 } // namespace thallium
 
@@ -362,16 +363,16 @@ inline hg_bulk_t bulk::get_bulk(bool copy) const noexcept {
     return m_bulk;
 }
 
-inline bulk::bulk_segment bulk::select(std::size_t offset, std::size_t size) const noexcept {
+inline bulk_segment bulk::select(std::size_t offset, std::size_t size) const noexcept {
     return bulk_segment(*this, offset, size);
 }
 
-inline bulk::bulk_segment bulk::operator()(std::size_t offset,
+inline bulk_segment bulk::operator()(std::size_t offset,
                                     std::size_t size) const noexcept {
     return select(offset, size);
 }
 
-inline remote_bulk bulk::bulk_segment::on(const endpoint& ep) const noexcept {
+inline remote_bulk bulk_segment::on(const endpoint& ep) const noexcept {
     return remote_bulk(*this, ep);
 }
 
@@ -379,11 +380,11 @@ inline remote_bulk bulk::on(const endpoint& ep) const noexcept {
     return remote_bulk(*this, ep);
 }
 
-inline std::size_t bulk::bulk_segment::operator>>(const remote_bulk& b) const {
+inline std::size_t bulk_segment::operator>>(const remote_bulk& b) const {
     return b << *this;
 }
 
-inline std::size_t bulk::bulk_segment::operator<<(const remote_bulk& b) const {
+inline std::size_t bulk_segment::operator<<(const remote_bulk& b) const {
     return b >> *this;
 }
 
