@@ -10,7 +10,7 @@ void hello() {
         << tl::thread::self_id() << std::endl;
 }
 
-int main(int argc, char** argv) {
+int main() {
 
     tl::abt scope;
 

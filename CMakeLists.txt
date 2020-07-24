@@ -31,6 +31,8 @@ endmacro (use_cxx14)
 
 use_cxx14 ()
 
+add_definitions(-Wall -Wextra -Wpedantic)
+
 # add our cmake module directory to the path
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
      "${CMAKE_CURRENT_SOURCE_DIR}/cmake")

@@ -8,7 +8,7 @@ void sum(const tl::request& req, int x, int y) {
     req.respond(x+y);
 }
 
-int main(int argc, char** argv) {
+int main() {
 
     tl::abt scope;
 

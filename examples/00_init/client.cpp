@@ -2,7 +2,7 @@
 
 namespace tl = thallium;
 
-int main(int argc, char** argv) {
+int main() {
 
     tl::engine myEngine("tcp", THALLIUM_CLIENT_MODE);
 

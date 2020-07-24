@@ -4,7 +4,7 @@
 
 namespace tl = thallium;
 
-int main(int argc, char** argv) {
+int main() {
 
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
     std::cout << "Server running at address " << myEngine.self() << std::endl;

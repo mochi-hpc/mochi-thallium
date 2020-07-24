@@ -6,10 +6,11 @@
 namespace tl = thallium;
 
 void hello(const tl::request& req, const std::string& name) {
+    (void)req;
     std::cout << "Hello " << name << std::endl;
 }
 
-int main(int argc, char** argv) {
+int main() {
 
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
     std::cout << "Server running at address " << myEngine.self() << std::endl;

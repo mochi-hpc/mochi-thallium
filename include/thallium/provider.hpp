@@ -153,6 +153,7 @@ template <typename T> class provider {
         T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun =
             [self, func](const request& req, Args... args) {
+                (void)req;
                 (self->*func)(args...);
             };
         return get_engine().define(std::forward<S>(name), fun, m_provider_id, p)
@@ -234,6 +235,7 @@ template <typename T> class provider {
         T* self = static_cast<T*>(this);
         std::function<void(const request&, Args...)> fun =
             [self, func](const request& req, Args... args) {
+                (void)req;
                 (self->*func)(args...);
             };
         return get_engine().define(std::forward<S>(name), fun, m_provider_id, p)

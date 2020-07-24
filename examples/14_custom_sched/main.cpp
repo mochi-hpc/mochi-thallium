@@ -16,10 +16,10 @@ class my_sched;
 
 class my_unit {
        
-    tl::thread          m_thread;
-    tl::task            m_task;
+    tl::thread    m_thread;
+    tl::task      m_task;
     tl::unit_type m_type;
-    bool                m_in_pool;
+    bool          m_in_pool;
 
     friend class my_pool;
 
@@ -147,7 +147,7 @@ void hello() {
         << std::endl;
 }
 
-int main(int argc, char** argv) {
+int main() {
 
     tl::abt scope;
 
@@ -159,9 +159,9 @@ int main(int argc, char** argv) {
 
     // create schedulers
     std::vector<tl::managed<tl::scheduler>> scheds;
-    for(int i=0; i < NUM_XSTREAMS; i++) {
+    for(unsigned i=0; i < NUM_XSTREAMS; i++) {
         std::vector<tl::pool> pools_for_sched_i;
-        for(int j=0; j < pools.size(); j++) {
+        for(unsigned j=0; j < pools.size(); j++) {
             pools_for_sched_i.push_back(*pools[j+i % pools.size()]);
         }
         scheds.push_back(tl::scheduler::create<my_scheduler>(pools_for_sched_i.begin(), pools_for_sched_i.end()));

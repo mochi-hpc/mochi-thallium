@@ -115,6 +115,8 @@ struct serializer<A,T,true> {
 template<class A, typename T>
 struct serializer<A,T,false> {
     static inline void apply(A& ar, T&& t) {
+        (void)ar;
+        (void)t;
         static_assert(has_serialize_method<A,T>::value, 
                 "Undefined \"serialize\" member function");
     }

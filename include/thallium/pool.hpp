@@ -119,6 +119,7 @@ class pool {
         }
 
         static int p_init(ABT_pool p, ABT_pool_config cfg) {
+            (void)cfg;
             P* impl =
                 std::allocator_traits<Palloc>::allocate(pool_allocator, 1);
             std::allocator_traits<Palloc>::construct(pool_allocator, impl);
@@ -128,14 +129,14 @@ class pool {
 
         static size_t p_get_size(ABT_pool p) {
             void* data;
-            int   ret  = ABT_pool_get_data(p, &data);
+            TL_POOL_ASSERT(ABT_pool_get_data(p, &data));
             auto  impl = reinterpret_cast<P*>(data);
             return impl->get_size();
         }
 
         static void p_push(ABT_pool p, ABT_unit u) {
             void* data;
-            int   ret  = ABT_pool_get_data(p, &data);
+            TL_POOL_ASSERT(ABT_pool_get_data(p, &data));
             auto  impl = reinterpret_cast<P*>(data);
             impl->push(reinterpret_cast<U*>(u));
         }
@@ -143,14 +144,15 @@ class pool {
         static int p_remove(ABT_pool p, ABT_unit u) {
             void* data;
             int   ret  = ABT_pool_get_data(p, &data);
+            if(ret != ABT_SUCCESS) return ret;
             auto  impl = reinterpret_cast<P*>(data);
             impl->remove(reinterpret_cast<U*>(u));
-            return ret;
+            return ABT_SUCCESS;
         }
 
         static ABT_unit p_pop(ABT_pool p) {
             void* data;
-            int   ret  = ABT_pool_get_data(p, &data);
+            TL_POOL_ASSERT(ABT_pool_get_data(p, &data));
             auto  impl = reinterpret_cast<P*>(data);
             U*    u    = impl->pop();
             return reinterpret_cast<ABT_unit>(u);
@@ -164,7 +166,7 @@ class pool {
             auto impl = reinterpret_cast<P*>(data);
             std::allocator_traits<Palloc>::destroy(pool_allocator, impl);
             std::allocator_traits<Palloc>::deallocate(pool_allocator, impl, 1);
-            return ret;
+            return ABT_SUCCESS;
         }
     };
 

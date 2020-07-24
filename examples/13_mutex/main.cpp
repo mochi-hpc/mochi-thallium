@@ -17,7 +17,7 @@ void hello(tl::mutex& mtx) {
     mtx.unlock();
 }
 
-int main(int argc, char** argv) {
+int main() {
 
     tl::abt scope;
 

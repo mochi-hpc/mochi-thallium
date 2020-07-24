@@ -10,13 +10,14 @@ void hello() {
         << tl::task::self_id() << std::endl;
 }
 
-int main(int argc, char** argv) {
+int main() {
 
     tl::abt scope;
 
     std::vector<tl::managed<tl::xstream>> ess;
 
     tl::xstream primary = tl::xstream::self();
+    (void)primary;
 
     for(int i=0; i < 4; i++) {
         tl::managed<tl::xstream> es = tl::xstream::create();

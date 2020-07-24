@@ -4,19 +4,18 @@
 
 namespace tl = thallium;
 
-tl::engine* theEngine;
+tl::engine theEngine;
 
 void sum(const tl::request& req, int x, int y) {
     std::cout << "Computing " << x << "+" << y << std::endl;
     req.respond(x+y);
 }
 
-int main(int argc, char** argv) {
+int main() {
 
-    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
-    theEngine = &myEngine;
-    std::cout << "Server running at address " << myEngine.self() << std::endl;
-    myEngine.define("sum", sum);
+    theEngine = tl::engine("tcp", THALLIUM_SERVER_MODE);
+    std::cout << "Server running at address " << theEngine.self() << std::endl;
+    theEngine.define("sum", sum);
 
     return 0;
 }

@@ -42,7 +42,7 @@ class my_sum_provider : public tl::provider<my_sum_provider> {
     }
 };
 
-int main(int argc, char** argv) {
+int main() {
 
     uint16_t provider_id = 22;
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
