@@ -153,7 +153,7 @@ class engine {
 
         m_impl->m_mid = margo_init_ext(addr.c_str(), mode, &args);
         if(!m_impl->m_mid)
-            MARGO_THROW(margo_init_ext, 0, "Could not initialize Margo");
+            MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
         m_impl->m_owns_mid = true;
         margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
                                         static_cast<void*>(m_impl.get()));
@@ -683,7 +683,7 @@ inline engine::engine(const std::string& addr, int mode, const pool& progress_po
     m_impl->m_mid = margo_init_ext(NULL, mode, &args);
 
     if(!m_impl->m_mid)
-        MARGO_THROW(margo_init_ext, 0, "Could not initialize Margo");
+        MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
     margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
             static_cast<void*>(m_impl.get()));
     margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
