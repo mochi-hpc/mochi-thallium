@@ -36,7 +36,7 @@ class proc_input_archive;
 class proc_output_archive;
 template <typename T> class provider;
 
-DECLARE_MARGO_RPC_HANDLER(thallium_generic_rpc);
+DECLARE_MARGO_RPC_HANDLER(thallium_generic_rpc)
 hg_return_t thallium_generic_rpc(hg_handle_t handle);
 
 namespace detail {
@@ -139,10 +139,21 @@ class engine {
     : m_impl(std::make_shared<detail::engine_impl>()) {
         m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
         m_impl->m_finalize_called = false;
-        m_impl->m_mid = margo_init_opt(addr.c_str(), mode, hg_opt, 
-                use_progress_thread ? 1 : 0, rpc_thread_count);
+
+        std::string config = "{ \"use_progress_thread\" : ";
+        config += use_progress_thread ? "true" : "false";
+        config += ", \"rpc_thread_count\" : ";
+        config += std::to_string(rpc_thread_count);
+        config +=  "}";
+
+        margo_init_info args;
+        memset(&args, 0, sizeof(args));
+        args.json_config  = config.c_str();
+        args.hg_init_info = (hg_init_info*)hg_opt;
+
+        m_impl->m_mid = margo_init_ext(addr.c_str(), mode, &args);
         if(!m_impl->m_mid)
-            MARGO_THROW(margo_init_opt, "Could not initialize Margo");
+            MARGO_THROW(margo_init_ext, "Could not initialize Margo");
         m_impl->m_owns_mid = true;
         margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
                                         static_cast<void*>(m_impl.get()));
@@ -662,12 +673,17 @@ inline engine::engine(const std::string& addr, int mode, const pool& progress_po
         throw exception("HG_Context_create failed in thallium::engine constructor");
     }
 
-    m_impl->m_mid =
-        margo_init_pool(progress_pool.native_handle(),
-                default_handler_pool.native_handle(),
-                m_impl->m_hg_context);
+    margo_init_info args;
+    memset(&args, 0, sizeof(args));
+    args.hg_class       = m_impl->m_hg_class;
+    args.hg_context     = m_impl->m_hg_context;
+    args.progress_pool  = progress_pool.native_handle();
+    args.rpc_pool       = default_handler_pool.native_handle();
+
+    m_impl->m_mid = margo_init_ext(NULL, mode, &args);
+
     if(!m_impl->m_mid)
-        MARGO_THROW(margo_init, "Could not initialize Margo");
+        MARGO_THROW(margo_init_ext, "Could not initialize Margo");
     margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
             static_cast<void*>(m_impl.get()));
     margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,

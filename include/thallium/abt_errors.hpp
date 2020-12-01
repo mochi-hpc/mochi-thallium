@@ -122,7 +122,7 @@ inline const char* abt_error_get_description(int err) {
         "An ES or more did not join",
         "Feature not available"};
     return abt_error_descriptions[err];
-};
+}
 
 } // namespace thallium
 
