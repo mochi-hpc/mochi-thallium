@@ -20,6 +20,9 @@ namespace thallium {
  * @brief Exception class used when margo functions fail.
  */
 class margo_exception : public exception {
+
+    hg_return_t m_error_code;
+
   public:
     /**
      * @brief Constructor.
@@ -30,8 +33,14 @@ class margo_exception : public exception {
      * @param message Additional message.
      */
     margo_exception(const std::string& function, const std::string file,
-                    unsigned line, const std::string& message = std::string())
-    : exception("[", file, ":", line, "][", function, "] ", message) {}
+                    unsigned line, hg_return_t ret,
+                    const std::string& message = std::string())
+    : exception("[", file, ":", line, "][", function, "] ", message)
+    , m_error_code(ret) {}
+
+    hg_return_t error() const {
+        return m_error_code;
+    }
 };
 
 inline const char* translate_margo_error_code(hg_return_t ret) {
@@ -73,9 +82,9 @@ inline const char* translate_margo_error_code(hg_return_t ret) {
     return "Unknown error";
 }
 
-#define MARGO_THROW(__fun__, __msg__)                                          \
+#define MARGO_THROW(__fun__, __ret__, __msg__)                                 \
     do {                                                                       \
-        throw margo_exception(#__fun__, __FILE__, __LINE__, __msg__);          \
+        throw margo_exception(#__fun__, __FILE__, __LINE__, __ret__, __msg__); \
     } while(0)
 
 #define MARGO_ASSERT(__ret__, __fun__)                                         \
@@ -85,7 +94,7 @@ inline const char* translate_margo_error_code(hg_return_t ret) {
             msg << "Function returned ";                                       \
             msg << translate_margo_error_code(__ret__);                        \
             std::cerr << msg.str() << std::endl;                               \
-            MARGO_THROW(__fun__, msg.str());                                   \
+            MARGO_THROW(__fun__, __ret__, msg.str());                          \
         }                                                                      \
     } while(0)
 

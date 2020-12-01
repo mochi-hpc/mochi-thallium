@@ -112,10 +112,6 @@ class scheduler {
 
     ABT_sched m_sched;
 
-  protected:
-    explicit scheduler(ABT_sched s)
-    : m_sched(s) {}
-
   private:
     void destroy() {
         if(m_sched != ABT_SCHED_NULL)
@@ -123,6 +119,21 @@ class scheduler {
     }
 
   public:
+
+    /**
+     * @brief Constructor from an ABT_sched.
+     *
+     * @param s ABT_sched.
+     */
+    explicit scheduler(ABT_sched s)
+    : m_sched(s) {}
+
+    /**
+     * @brief Builds a null scheduler.
+     */
+    scheduler()
+    : m_sched(ABT_SCHED_NULL) {}
+
     /**
      * @brief Underlying native handle type.
      */
@@ -290,6 +301,18 @@ class scheduler {
      * when its pools will be empty.
      */
     void finish() { TL_SCHED_ASSERT(ABT_sched_finish(m_sched)); }
+
+    /**
+     * @brief Check if the underlying scheduler handle is null.
+     *
+     * @return true if the scheduler handle is null, false otherwise.
+     */
+    bool is_null() const noexcept { return m_sched == ABT_SCHED_NULL; }
+
+    /**
+     * @brief Returns true if the scheduler handle is not null.
+     */
+    operator bool() const noexcept { return !is_null(); }
 };
 
 } // namespace thallium
