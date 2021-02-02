@@ -30,7 +30,7 @@ class remote_procedure {
 
   private:
     std::weak_ptr<detail::engine_impl> m_engine_impl;
-    hg_id_t                            m_id;
+    hg_id_t                            m_id = 0;
     bool                               m_ignore_response;
 
     /**
@@ -46,6 +46,9 @@ class remote_procedure {
     , m_ignore_response(false) {}
 
   public:
+
+    remote_procedure() = default;
+
     /**
      * @brief Copy-constructor is default.
      */
@@ -117,32 +120,30 @@ class remote_procedure {
 
 namespace thallium {
 
-#if 0
-inline remote_procedure::remote_procedure(std::weak_ptr<detail::engine_impl> e, hg_id_t id)
-: m_engine_impl(std::move(e))
-, m_id(id)
-, m_ignore_response(false) {}
-#endif
 inline callable_remote_procedure remote_procedure::on(const endpoint& ep) const {
+    if(m_id == 0)
+        throw exception("remote_procedure object isn't initialized");
     return callable_remote_procedure(m_engine_impl, m_id, ep, m_ignore_response);
 }
 
 inline callable_remote_procedure
 remote_procedure::on(const provider_handle& ph) const {
+    if(m_id == 0)
+        throw exception("remote_procedure object isn't initialized");
     return callable_remote_procedure(m_engine_impl, m_id, ph, m_ignore_response,
                                      ph.provider_id());
 }
 
 inline void remote_procedure::deregister() {
     auto engine_impl = m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    margo_deregister(engine_impl->m_mid, m_id);
+    if(engine_impl)
+        margo_deregister(engine_impl->m_mid, m_id);
 }
 
 inline remote_procedure& remote_procedure::disable_response() {
     m_ignore_response = true;
     auto engine_impl = m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
+    if(!engine_impl) throw exception("remote_procedure object isn't initialized");
     margo_registered_disable_response(engine_impl->m_mid, m_id, HG_TRUE);
     return *this;
 }

@@ -15,7 +15,6 @@
 #include <thallium/packed_response.hpp>
 #include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/serialize.hpp>
-#include <thallium/serialization/stl/vector.hpp>
 #include <thallium/timeout.hpp>
 #include <tuple>
 #include <utility>
