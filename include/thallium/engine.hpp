@@ -128,14 +128,14 @@ class engine {
      *
      * @param addr address of this instance.
      * @param mode THALLIUM_SERVER_MODE or THALLIUM_CLIENT_MODE.
-     * @param hg_opt options for initializing Mercury.
      * @param use_progress_thread whether to use a dedicated ES to drive
      * progress.
      * @param rpc_thread_count number of threads to use for servicing RPCs.
      * Use -1 to indicate that RPCs should be serviced in the progress ES.
+     * @param hg_opt options for initializing Mercury.
      */
     engine(const std::string& addr, int mode, bool use_progress_thread = false,
-           std::int32_t rpc_thread_count = 0, const hg_init_info *hg_opt = nullptr) 
+           std::int32_t rpc_thread_count = 0, const hg_init_info *hg_opt = nullptr)
     : m_impl(std::make_shared<detail::engine_impl>()) {
         m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
         m_impl->m_finalize_called = false;
@@ -145,6 +145,36 @@ class engine {
         config += ", \"rpc_thread_count\" : ";
         config += std::to_string(rpc_thread_count);
         config +=  "}";
+
+        margo_init_info args;
+        memset(&args, 0, sizeof(args));
+        args.json_config  = config.c_str();
+        args.hg_init_info = (hg_init_info*)hg_opt;
+
+        m_impl->m_mid = margo_init_ext(addr.c_str(), mode, &args);
+        if(!m_impl->m_mid)
+            MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
+        m_impl->m_owns_mid = true;
+        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
+                                        static_cast<void*>(m_impl.get()));
+        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
+                                     static_cast<void*>(m_impl.get()));
+    }
+
+    /**
+     * @brief Constructor.
+     *
+     * @param addr address of this instance.
+     * @param mode THALLIUM_SERVER_MODE or THALLIUM_CLIENT_MODE.
+     * @param config JSON configuration.
+     * @param hg_opt options for initializing Mercury.
+     * Use -1 to indicate that RPCs should be serviced in the progress ES.
+     */
+    engine(const std::string& addr, int mode,
+           const std::string& config, const hg_init_info *hg_opt = nullptr)
+    : m_impl(std::make_shared<detail::engine_impl>()) {
+        m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
+        m_impl->m_finalize_called = false;
 
         margo_init_info args;
         memset(&args, 0, sizeof(args));
