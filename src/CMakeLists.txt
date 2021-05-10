@@ -1,6 +1,6 @@
 #
 # CMakeLists.txt  cmake file for thallium library
-# 13-Oct-2017  mdorier@anl.gov 
+# 13-Oct-2017  mdorier@anl.gov
 #
 
 # load package helper for generating cmake CONFIG packages
@@ -14,7 +14,7 @@ set (thallium-pkg "share/cmake/thallium")
 #
 set (THALLIUM_VERSION_MAJOR 0)
 set (THALLIUM_VERSION_MINOR 8)
-set (THALLIUM_VERSION_PATCH 0)
+set (THALLIUM_VERSION_PATCH 5)
 set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
 set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
 

@@ -45,7 +45,7 @@ set (CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 if (NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Release
          CACHE STRING "Choose the type of build." FORCE)
-    set_property (CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS 
+    set_property (CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
                   "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif ()
 option (ENABLE_CEREAL "Enable cereal serialization" OFF)
