@@ -128,6 +128,29 @@ class engine {
      *
      * @param addr address of this instance.
      * @param mode THALLIUM_SERVER_MODE or THALLIUM_CLIENT_MODE.
+     * @param args pointer to a margo_init_info structure to pass to margo.
+     */
+    engine(const std::string& addr, int mode,
+           const margo_init_info* args)
+    : m_impl(std::make_shared<detail::engine_impl>()) {
+        m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
+        m_impl->m_finalize_called = false;
+
+        m_impl->m_mid = margo_init_ext(addr.c_str(), mode, args);
+        if(!m_impl->m_mid)
+            MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
+        m_impl->m_owns_mid = true;
+        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
+                                        static_cast<void*>(m_impl.get()));
+        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
+                                     static_cast<void*>(m_impl.get()));
+    }
+
+    /**
+     * @brief Constructor.
+     *
+     * @param addr address of this instance.
+     * @param mode THALLIUM_SERVER_MODE or THALLIUM_CLIENT_MODE.
      * @param use_progress_thread whether to use a dedicated ES to drive
      * progress.
      * @param rpc_thread_count number of threads to use for servicing RPCs.
