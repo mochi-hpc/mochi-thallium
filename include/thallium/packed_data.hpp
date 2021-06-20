@@ -67,6 +67,20 @@ class packed_data {
     }
 
     /**
+     * @brief Create a new packed_data object but with a different
+     * serialization context.
+     *
+     * @tparam NewCtxArg Types of the serialization context.
+     * @param args Context.
+     */
+    template<typename ... NewCtxArg>
+    auto with_serialization_context(NewCtxArg&&... args) {
+        return packed_data<NewCtxArg...>(
+            m_unpack_fn, m_free_fn, m_handle, m_engine_impl,
+            std::make_tuple<NewCtxArg...>(std::forward<NewCtxArg>(args)...));
+    }
+
+    /**
      * @brief Converts the handle's content into the requested object.
      *
      * @tparam T Type into which to convert the content of the buffer.
