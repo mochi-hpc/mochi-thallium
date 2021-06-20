@@ -11,6 +11,7 @@
 #include <thallium/proc_object.hpp>
 #include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/serialize.hpp>
+#include <thallium/packed_data.hpp>
 
 namespace thallium {
 
@@ -110,6 +111,17 @@ class request {
     ~request() {
         hg_return_t ret = margo_destroy(m_handle);
         MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
+    }
+
+    /**
+     * @brief Get the input of the RPC as a packed_data object.
+     */
+    auto get_input() const {
+        return packed_data<>(
+            margo_get_input,
+            margo_free_input,
+            m_handle,
+            m_engine_impl);
     }
 
     /**
