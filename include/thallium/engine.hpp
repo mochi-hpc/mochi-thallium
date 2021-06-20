@@ -32,8 +32,8 @@ class remote_bulk;
 class remote_procedure;
 class request;
 class pool;
-class proc_input_archive;
-class proc_output_archive;
+template <typename ... CtxArg> class proc_input_archive;
+template <typename ... CtxArg> class proc_output_archive;
 template <typename T> class provider;
 
 DECLARE_MARGO_RPC_HANDLER(thallium_generic_rpc)
@@ -65,8 +65,8 @@ class engine {
     friend class remote_bulk;
     friend class remote_procedure;
     friend class callable_remote_procedure;
-    friend class proc_input_archive;
-    friend class proc_output_archive;
+    template <typename ... CtxArg> friend class proc_input_archive;
+    template <typename ... CtxArg> friend class proc_output_archive;
     template <typename T> friend class provider;
 
     friend hg_return_t thallium_generic_rpc(hg_handle_t handle);

@@ -61,7 +61,7 @@ hg_return_t proc_object(hg_proc_t proc, T& data,
                         std::tuple<CtxArg...>& ctx) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
-        proc_output_archive ar(proc, e);
+        proc_output_archive<CtxArg...> ar(proc, ctx, e);
 #ifdef THALLIUM_DEBUG_RPC_TYPES
         std::string type_name = get_type_name<T>();
         ar << type_name;
@@ -69,7 +69,7 @@ hg_return_t proc_object(hg_proc_t proc, T& data,
         ar << data;
     } break;
     case HG_DECODE: {
-        proc_input_archive ar(proc, e);
+        proc_input_archive<CtxArg...> ar(proc, ctx, e);
 #ifdef THALLIUM_DEBUG_RPC_TYPES
         std::string requested_type_name = get_type_name<T>();
         std::string received_type_name;
@@ -96,14 +96,14 @@ inline hg_return_t proc_void_object(hg_proc_t proc, std::tuple<CtxArg...>& ctx) 
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
 #ifdef THALLIUM_DEBUG_RPC_TYPES
-        proc_output_archive ar(proc);
+        proc_output_archive<CtxArg...> ar(proc, ctx);
         std::string         type_name = "void";
         ar << type_name;
 #endif
     } break;
     case HG_DECODE: {
 #ifdef THALLIUM_DEBUG_RPC_TYPES
-        proc_input_archive ar(proc);
+        proc_input_archive<CtxArg> ar(proc, ctx);
         std::string        requested_type_name = "void";
         std::string        received_type_name;
         ar >> received_type_name;
