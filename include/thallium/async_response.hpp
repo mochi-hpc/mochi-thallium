@@ -15,7 +15,9 @@
 
 namespace thallium {
 
-class callable_remote_procedure;
+
+template<typename ... CtxArg> class callable_remote_procedure_with_context;
+using callable_remote_procedure = callable_remote_procedure_with_context<>;
 
 namespace detail {
     struct engine_impl;
@@ -27,7 +29,7 @@ namespace detail {
  * the actual response.
  */
 class async_response {
-    friend class callable_remote_procedure;
+    template<typename ... CtxArg> friend class callable_remote_procedure_with_context;
 
   private:
     margo_request                      m_request;

@@ -65,7 +65,7 @@ class engine {
     friend class endpoint;
     friend class remote_bulk;
     friend class remote_procedure;
-    friend class callable_remote_procedure;
+    template <typename ... CtxArg> friend class callable_remote_procedure_with_context;
     template <typename ... CtxArg> friend class proc_input_archive;
     template <typename ... CtxArg> friend class proc_output_archive;
     template <typename T> friend class provider;

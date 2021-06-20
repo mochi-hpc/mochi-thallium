@@ -13,7 +13,8 @@ namespace thallium {
 class engine;
 class endpoint;
 class provider_handle;
-class callable_remote_procedure;
+template<typename ... CtxArg> class callable_remote_procedure_with_context;
+using callable_remote_procedure = callable_remote_procedure_with_context<>;
 namespace detail {
     struct engine_impl;
 }
@@ -123,7 +124,7 @@ namespace thallium {
 inline callable_remote_procedure remote_procedure::on(const endpoint& ep) const {
     if(m_id == 0)
         throw exception("remote_procedure object isn't initialized");
-    return callable_remote_procedure(m_engine_impl, m_id, ep, m_ignore_response);
+    return callable_remote_procedure(m_engine_impl, m_id, ep, m_ignore_response, 0);
 }
 
 inline callable_remote_procedure

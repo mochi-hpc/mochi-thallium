@@ -35,7 +35,7 @@ class remote_bulk;
 class endpoint {
     friend class engine;
     template<typename ... CtxArg> friend class request_with_context;
-    friend class callable_remote_procedure;
+    template<typename ... CtxArg> friend class callable_remote_procedure_with_context;
     friend class remote_bulk;
 
   private:

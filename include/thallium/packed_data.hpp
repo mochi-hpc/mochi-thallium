@@ -13,7 +13,7 @@
 
 namespace thallium {
 
-class callable_remote_procedure;
+template<typename ... CtxArg> class callable_remote_procedure_with_context;
 class async_response;
 template<typename ... CtxArg> class request_with_context;
 using request = request_with_context<>;
@@ -28,7 +28,7 @@ namespace detail {
  */
 template<typename ... CtxArg>
 class packed_data {
-    friend class callable_remote_procedure;
+    template<typename ... CtxArg2> friend class callable_remote_procedure_with_context;
     friend class async_response;
     template<typename ... CtxArg2> friend class request_with_context;
 
@@ -50,12 +50,12 @@ class packed_data {
                 hg_return_t (*free_fn)(hg_handle_t,void*),
                 hg_handle_t h,
                 std::weak_ptr<detail::engine_impl> e,
-                const std::tuple<CtxArg...>& ctx = std::tuple<CtxArg...>())
+                std::tuple<CtxArg...>&& ctx = std::tuple<CtxArg...>())
     : m_engine_impl(std::move(e))
     , m_handle(h)
     , m_unpack_fn(unpack_fn)
     , m_free_fn(free_fn)
-    , m_context(ctx) {
+    , m_context(std::move(ctx)) {
         hg_return_t ret = margo_ref_incr(h);
         MARGO_ASSERT(ret, margo_ref_incr);
     }

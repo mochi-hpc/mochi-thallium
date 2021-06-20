@@ -37,7 +37,7 @@ class request_with_context {
     std::weak_ptr<detail::engine_impl> m_engine_impl;
     hg_handle_t                        m_handle;
     bool                               m_disable_response;
-    std::tuple<CtxArg...>              m_context;
+    mutable std::tuple<CtxArg...>      m_context;
 
     /**
      * @brief Constructor. Made private since request_with_context are only created
@@ -50,11 +50,11 @@ class request_with_context {
     request_with_context(std::weak_ptr<detail::engine_impl> e,
                     hg_handle_t h,
                     bool disable_resp,
-                    const std::tuple<CtxArg...>& context = std::tuple<CtxArg...>())
+                    std::tuple<CtxArg...>&& context = std::tuple<CtxArg...>())
     : m_engine_impl(std::move(e))
     , m_handle(h)
     , m_disable_response(disable_resp)
-    , m_context(context) {
+    , m_context(std::move(context)) {
         margo_ref_incr(m_handle);
     }
 
@@ -167,8 +167,7 @@ class request_with_context {
         if(m_handle != HG_HANDLE_NULL) {
             auto args = std::make_tuple<const T1&, const T&...>(t1, t...);
             meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
-                auto ctx = std::tuple<>(); // TODO
-                return proc_object(proc, args, m_engine_impl, ctx);
+                return proc_object(proc, args, m_engine_impl, m_context);
             };
             hg_return_t ret = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);
@@ -184,8 +183,7 @@ class request_with_context {
         }
         if(m_handle != HG_HANDLE_NULL) {
             meta_proc_fn mproc = [this](hg_proc_t proc) {
-                auto ctx = std::tuple<>(); // TODO
-                return proc_void_object(proc, ctx);
+                return proc_void_object(proc, m_context);
             };
             hg_return_t  ret   = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);
