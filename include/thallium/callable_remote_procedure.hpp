@@ -12,7 +12,7 @@
 #include <thallium/async_response.hpp>
 #include <thallium/config.hpp>
 #include <thallium/margo_exception.hpp>
-#include <thallium/packed_response.hpp>
+#include <thallium/packed_data.hpp>
 #include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/serialize.hpp>
 #include <thallium/timeout.hpp>
@@ -66,11 +66,11 @@ class callable_remote_procedure {
      * @param timeout_ms Timeout in milliseconds. After this timeout, a timeout
      * exception is thrown.
      *
-     * @return a packed_response object from which the returned value can be
+     * @return a packed_data object from which the returned value can be
      * deserialized.
      */
     template <typename... T>
-    packed_response forward(const std::tuple<T...>& args,
+    packed_data<> forward(const std::tuple<T...>& args,
                             double                  timeout_ms = -1.0) {
         hg_return_t  ret;
         meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
@@ -92,11 +92,11 @@ class callable_remote_procedure {
             MARGO_ASSERT(ret, margo_provider_forward);
         }
         if(m_ignore_response)
-            return packed_response();
-        return packed_response(m_handle, m_engine_impl);
+            return packed_data<>();
+        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_engine_impl);
     }
 
-    packed_response forward(double timeout_ms = -1.0) const {
+    packed_data<> forward(double timeout_ms = -1.0) const {
         hg_return_t  ret;
         meta_proc_fn mproc = proc_void_object;
         if(timeout_ms > 0.0) {
@@ -114,8 +114,8 @@ class callable_remote_procedure {
             MARGO_ASSERT(ret, margo_provider_forward);
         }
         if(m_ignore_response)
-            return packed_response();
-        return packed_response(m_handle, m_engine_impl);
+            return packed_data<>();
+        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_engine_impl);
     }
 
     /**
@@ -246,9 +246,9 @@ class callable_remote_procedure {
      * @tparam T Types of the parameters.
      * @param t Parameters of the RPC.
      *
-     * @return a packed_response object containing the returned value.
+     * @return a packed_data object containing the returned value.
      */
-    template <typename... T> packed_response operator()(const T&... args) {
+    template <typename... T> packed_data<> operator()(const T&... args) {
         return forward(std::make_tuple<const T&...>(args...));
     }
 
@@ -264,10 +264,10 @@ class callable_remote_procedure {
      * @param t Timeout.
      * @param args Parameters of the RPC.
      *
-     * @return a packed_response object containing the returned value.
+     * @return a packed_data object containing the returned value.
      */
     template <typename R, typename P, typename... T>
-    packed_response timed(const std::chrono::duration<R, P>& t,
+    packed_data<> timed(const std::chrono::duration<R, P>& t,
                           const T&... args) {
         std::chrono::duration<double, std::milli> fp_ms      = t;
         double                                    timeout_ms = fp_ms.count();
@@ -277,9 +277,9 @@ class callable_remote_procedure {
     /**
      * @brief Operator to call the RPC without any argument.
      *
-     * @return a packed_response object containing the returned value.
+     * @return a packed_data object containing the returned value.
      */
-    packed_response operator()() const { return forward(); }
+    packed_data<> operator()() const { return forward(); }
 
     /**
      * @brief Same as operator() with only a timeout value.
@@ -288,10 +288,10 @@ class callable_remote_procedure {
      * @tparam P
      * @param t Timeout.
      *
-     * @return a packed_response object containing the returned value.
+     * @return a packed_data object containing the returned value.
      */
     template <typename R, typename P>
-    packed_response timed(const std::chrono::duration<R, P>& t) {
+    packed_data<> timed(const std::chrono::duration<R, P>& t) {
         std::chrono::duration<double, std::milli> fp_ms      = t;
         double                                    timeout_ms = fp_ms.count();
         return forward(timeout_ms);

@@ -7,7 +7,7 @@
 #define __THALLIUM_ASYNC_RESPONSE_HPP
 
 #include <thallium/margo_exception.hpp>
-#include <thallium/packed_response.hpp>
+#include <thallium/packed_data.hpp>
 #include <thallium/proc_object.hpp>
 #include <thallium/timeout.hpp>
 #include <utility>
@@ -106,11 +106,11 @@ class async_response {
 
     /**
      * @brief Waits for the async_response to be ready and returns
-     * a packed_response when the response has been received.
+     * a packed_data when the response has been received.
      *
-     * @return a packed_response containing the response.
+     * @return a packed_data containing the response.
      */
-    packed_response wait() {
+    packed_data<> wait() {
         hg_return_t ret;
         ret = margo_wait(m_request);
         if(ret == HG_TIMEOUT) {
@@ -118,8 +118,8 @@ class async_response {
         }
         MARGO_ASSERT(ret, margo_wait);
         if(m_ignore_response)
-            return packed_response();
-        return packed_response(m_handle, m_engine_impl);
+            return packed_data<>();
+        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_engine_impl);
     }
 
     /**
@@ -137,7 +137,7 @@ class async_response {
 
     /**
      * @brief Waits for any of the provided async_response to complete,
-     * and return a packed_response. The completed iterator will be set to point
+     * and return a packed_data. The completed iterator will be set to point
      * to the async_response that completed. This method may throw a timeout if
      * any of the requests timed out, or other exceptions if an error happens.
      * Even if an exception is thrown, the completed iterator will be correctly
@@ -148,10 +148,10 @@ class async_response {
      * @param begin Begin iterator
      * @param end End iterator
      *
-     * @return a packed_response.
+     * @return a packed_data.
      */
     template <typename Iterator>
-    static packed_response wait_any(const Iterator& begin, const Iterator& end,
+    static packed_data<> wait_any(const Iterator& begin, const Iterator& end,
                                     Iterator& completed) {
         std::vector<margo_request> reqs;
         size_t                     count = std::distance(begin, end);
@@ -168,9 +168,10 @@ class async_response {
         }
         MARGO_ASSERT(ret, margo_wait_any);
         if(completed->m_ignore_response) {
-            return packed_response();
+            return packed_data<>();
         }
-        return packed_response(completed->m_handle, completed->m_engine_impl);
+        return packed_data<>(margo_get_output, margo_free_output,
+                completed->m_handle, completed->m_engine_impl);
     }
 };
 
