@@ -1,13 +1,14 @@
 #
 # thallium-config.cmake.in
 #
-
-# adjust module path to make it easy to pick up files from the config directory
-set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}")
-
+set (THALLIUM_VERSION @THALLIUM_VERSION@)
 include (CMakeFindDependencyMacro)
-include (xpkg-import)
-find_dependency (mercury)
-xpkg_import_module (margo REQUIRED margo)
+
+@PACKAGE_INIT@
+
+find_dependency (cereal)
+find_dependency (PkgConfig)
+pkg_check_modules (margo REQUIRED IMPORTED_TARGET margo)
 
 include ("${CMAKE_CURRENT_LIST_DIR}/thallium-targets.cmake")
+check_required_components (thallium)

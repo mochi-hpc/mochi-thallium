@@ -1,0 +1,7 @@
+spack:
+  specs:
+  - mochi-margo
+  - cmake
+  - cereal
+  - pkgconfig
+  concretization: together

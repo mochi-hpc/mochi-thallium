@@ -9,5 +9,5 @@ Version: @THALLIUM_VERSION@
 
 Requires: margo
 Libs:
-Cflags: -I${includedir}
+Cflags: -I${includedir} -I@CEREAL_INC@
 

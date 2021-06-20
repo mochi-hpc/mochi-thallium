@@ -14,12 +14,12 @@ set (thallium-pkg "share/cmake/thallium")
 #
 set (THALLIUM_VERSION_MAJOR 0)
 set (THALLIUM_VERSION_MINOR 8)
-set (THALLIUM_VERSION_PATCH 5)
+set (THALLIUM_VERSION_PATCH 6)
 set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
 set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
 
 add_library (thallium INTERFACE)
-target_link_libraries (thallium INTERFACE mercury margo)
+target_link_libraries (thallium INTERFACE PkgConfig::margo ${CEREAL_TARGET})
 target_include_directories (thallium INTERFACE $<INSTALL_INTERFACE:include>)
 
 # local include's BEFORE, in case old incompatable .hpp files in prefix/include
@@ -29,13 +29,17 @@ target_include_directories (thallium INTERFACE
 #
 # installation stuff (packaging and install commands)
 #
+set (INCLUDE_INSTALL_DIR include/)
+set (LIB_INSTALL_DIR lib/)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(thallium-config.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/thallium-config.cmake
+  INSTALL_DESTINATION ${LIB_INSTALL_DIR}/thallium/cmake
+  PATH_VARS INCLUDE_INSTALL_DIR)
 write_basic_package_version_file(
     "thallium-config-version.cmake"
     VERSION ${THALLIUM_VERSION}
     COMPATIBILITY AnyNewerVersion)
-
-# generate our config file for find_package()
-configure_file (thallium-config.cmake.in thallium-config.cmake @ONLY)
 
 # some bits for the pkg-config file
 set (DEST_DIR "${CMAKE_INSTALL_PREFIX}")
@@ -52,7 +56,6 @@ install (EXPORT thallium-targets
          FILE "thallium-targets.cmake")
 install (FILES "${CMAKE_CURRENT_BINARY_DIR}/thallium-config.cmake"
                "${CMAKE_CURRENT_BINARY_DIR}/thallium-config-version.cmake"
-               "../cmake/xpkg-import.cmake"
          DESTINATION ${thallium-pkg} )
 install (FILES "${CMAKE_CURRENT_BINARY_DIR}/thallium.pc"
 	DESTINATION "lib/pkgconfig/")
