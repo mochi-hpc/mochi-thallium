@@ -46,7 +46,8 @@ template <typename T> std::string get_type_name() {
 #endif
 
 class engine;
-class request;
+template<typename ... CtxArg> class request_with_context;
+using request = request_with_context<>;
 
 typedef std::function<hg_return_t(hg_proc_t)> meta_proc_fn;
 

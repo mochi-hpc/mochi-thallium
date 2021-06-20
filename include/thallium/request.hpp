@@ -22,13 +22,14 @@ namespace detail {
 }
 
 /**
- * @brief A request object is created whenever a server
+ * @brief A request_with_context object is created whenever a server
  * receives an RPC. The object is passed as first argument to
- * the function associated with the RPC. The request allows
+ * the function associated with the RPC. The request_with_context allows
  * one to get information from the caller and to respond to
  * the RPC.
  */
-class request {
+template<typename... CtxArg>
+class request_with_context {
     friend class engine;
     friend hg_return_t thallium_generic_rpc(hg_handle_t handle);
 
@@ -36,19 +37,24 @@ class request {
     std::weak_ptr<detail::engine_impl> m_engine_impl;
     hg_handle_t                        m_handle;
     bool                               m_disable_response;
+    std::tuple<CtxArg...>              m_context;
 
     /**
-     * @brief Constructor. Made private since request are only created
+     * @brief Constructor. Made private since request_with_context are only created
      * by the engine within RPC callbacks.
      *
-     * @param e engine object that created the request.
+     * @param e engine object that created the request_with_context.
      * @param h handle of the RPC that was received.
      * @param disable_resp whether responses are disabled.
      */
-    request(std::weak_ptr<detail::engine_impl> e, hg_handle_t h, bool disable_resp)
+    request_with_context(std::weak_ptr<detail::engine_impl> e,
+                    hg_handle_t h,
+                    bool disable_resp,
+                    const std::tuple<CtxArg...>& context = std::tuple<CtxArg...>())
     : m_engine_impl(std::move(e))
     , m_handle(h)
-    , m_disable_response(disable_resp) {
+    , m_disable_response(disable_resp)
+    , m_context(context) {
         margo_ref_incr(m_handle);
     }
 
@@ -56,10 +62,11 @@ class request {
     /**
      * @brief Copy constructor.
      */
-    request(const request& other)
+    request_with_context(const request_with_context& other)
     : m_engine_impl(other.m_engine_impl)
     , m_handle(other.m_handle)
-    , m_disable_response(other.m_disable_response) {
+    , m_disable_response(other.m_disable_response)
+    , m_context(other.context) {
         hg_return_t ret = margo_ref_incr(m_handle);
         MARGO_ASSERT(ret, margo_ref_incr);
     }
@@ -67,17 +74,18 @@ class request {
     /**
      * @brief Move constructor.
      */
-    request(request&& other) noexcept
+    request_with_context(request_with_context&& other) noexcept
     : m_engine_impl(std::move(other.m_engine_impl))
     , m_handle(other.m_handle)
-    , m_disable_response(other.m_disable_response) {
+    , m_disable_response(other.m_disable_response)
+    , m_context(std::move(other.m_context)) {
         other.m_handle = HG_HANDLE_NULL;
     }
 
     /**
      * @brief Copy-assignment operator.
      */
-    request& operator=(const request& other) {
+    request_with_context& operator=(const request_with_context& other) {
         if(m_handle == other.m_handle)
             return *this;
         hg_return_t ret;
@@ -86,6 +94,7 @@ class request {
         m_engine_impl      = other.m_engine_impl;
         m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
+        m_context          = other.m_context;
         ret                = margo_ref_incr(m_handle);
         MARGO_ASSERT(ret, margo_ref_incr);
         return *this;
@@ -94,13 +103,14 @@ class request {
     /**
      * @brief Move-assignment operator.
      */
-    request& operator=(request&& other) noexcept {
+    request_with_context& operator=(request_with_context&& other) noexcept {
         if(m_handle == other.m_handle)
             return *this;
         margo_destroy(m_handle);
         m_engine_impl      = other.m_engine_impl;
         m_handle           = other.m_handle;
         m_disable_response = other.m_disable_response;
+        m_context          = std::move(other.m_context);
         other.m_handle     = HG_HANDLE_NULL;
         return *this;
     }
@@ -108,7 +118,7 @@ class request {
     /**
      * @brief Destructor.
      */
-    ~request() {
+    ~request_with_context() {
         hg_return_t ret = margo_destroy(m_handle);
         MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
     }
@@ -122,6 +132,22 @@ class request {
             margo_free_input,
             m_handle,
             m_engine_impl);
+    }
+
+    /**
+     * @brief Create a new request_with_context object with a new
+     * context bound to it for response serialization.
+     *
+     * @tparam NewCtxArg
+     * @param args New context.
+     */
+    template<typename ... NewCtxArg>
+    auto with_serialization_context(NewCtxArg&&... args) const {
+        return request_with_context<NewCtxArg...>(
+                m_engine_impl,
+                m_handle,
+                m_disable_response,
+                std::make_tuple<NewCtxArg...>(std::forward<NewCtxArg>(args)...));
     }
 
     /**
@@ -147,7 +173,7 @@ class request {
             hg_return_t ret = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);
         } else {
-            throw exception("In request::respond : null internal hg_handle_t");
+            throw exception("In request_with_context::respond : null internal hg_handle_t");
         }
     }
 
@@ -164,7 +190,7 @@ class request {
             hg_return_t  ret   = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);
         } else {
-            throw exception("In request::respond : null internal hg_handle_t");
+            throw exception("In request_with_context::respond : null internal hg_handle_t");
         }
     }
 
@@ -176,6 +202,8 @@ class request {
     endpoint get_endpoint() const;
 };
 
+using request = request_with_context<>;
+
 } // namespace thallium
 
 #include <thallium/endpoint.hpp>
@@ -183,7 +211,8 @@ class request {
 
 namespace thallium {
 
-inline endpoint request::get_endpoint() const {
+template<typename ... CtxArg>
+inline endpoint request_with_context<CtxArg...>::get_endpoint() const {
     const struct hg_info* info = margo_get_info(m_handle);
     hg_addr_t             addr;
     auto engine_impl = m_engine_impl.lock();

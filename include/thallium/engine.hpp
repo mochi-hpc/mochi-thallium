@@ -30,8 +30,9 @@ class bulk;
 class endpoint;
 class remote_bulk;
 class remote_procedure;
-class request;
 class pool;
+template <typename ... CtxArg> class request_with_context;
+using request = request_with_context<>;
 template <typename ... CtxArg> class proc_input_archive;
 template <typename ... CtxArg> class proc_output_archive;
 template <typename T> class provider;
@@ -59,7 +60,7 @@ namespace detail {
  * and allow users to declare RPCs and bulk objects.
  */
 class engine {
-    friend class request;
+    template<typename ... CtxArg> friend class request_with_context;
     friend class bulk;
     friend class endpoint;
     friend class remote_bulk;

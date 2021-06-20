@@ -15,7 +15,8 @@ namespace thallium {
 
 class callable_remote_procedure;
 class async_response;
-class request;
+template<typename ... CtxArg> class request_with_context;
+using request = request_with_context<>;
 
 namespace detail {
     struct engine_impl;
@@ -29,7 +30,7 @@ template<typename ... CtxArg>
 class packed_data {
     friend class callable_remote_procedure;
     friend class async_response;
-    friend class request;
+    template<typename ... CtxArg2> friend class request_with_context;
 
   private:
     std::weak_ptr<detail::engine_impl> m_engine_impl;
