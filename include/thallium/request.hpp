@@ -129,7 +129,8 @@ class request {
         if(m_handle != HG_HANDLE_NULL) {
             auto args = std::make_tuple<const T1&, const T&...>(t1, t...);
             meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
-                return proc_object(proc, args, m_engine_impl);
+                auto ctx = std::tuple<>(); // TODO
+                return proc_object(proc, args, m_engine_impl, ctx);
             };
             hg_return_t ret = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);
@@ -144,7 +145,10 @@ class request {
                 "Calling respond from an RPC that has disabled responses");
         }
         if(m_handle != HG_HANDLE_NULL) {
-            meta_proc_fn mproc = proc_void_object;
+            meta_proc_fn mproc = [this](hg_proc_t proc) {
+                auto ctx = std::tuple<>(); // TODO
+                return proc_void_object(proc, ctx);
+            };
             hg_return_t  ret   = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);
         } else {

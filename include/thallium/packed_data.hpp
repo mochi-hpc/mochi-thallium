@@ -34,7 +34,7 @@ class packed_data {
     hg_handle_t m_handle = HG_HANDLE_NULL;
     hg_return_t (*m_unpack_fn)(hg_handle_t,void*) = nullptr;
     hg_return_t (*m_free_fn)(hg_handle_t,void*) = nullptr;
-    std::tuple<CtxArg...> m_context;
+    mutable std::tuple<CtxArg...> m_context;
 
     /**
      * @brief Constructor. Made private since packed_data
@@ -81,7 +81,7 @@ class packed_data {
         }
         std::tuple<T> t;
         meta_proc_fn  mproc = [this, &t](hg_proc_t proc) {
-            return proc_object(proc, t, m_engine_impl);
+            return proc_object(proc, t, m_engine_impl, m_context);
         };
         hg_return_t ret = m_unpack_fn(m_handle, &mproc);
         MARGO_ASSERT(ret, m_unpack_fn);
@@ -115,7 +115,7 @@ class packed_data {
                    typename std::decay<Tn>::type...>
                      t;
         meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
-            return proc_object(proc, t, m_engine_impl);
+            return proc_object(proc, t, m_engine_impl, m_context);
         };
         hg_return_t ret = m_unpack_fn(m_handle, &mproc);
         MARGO_ASSERT(ret, m_unpack_fn);

@@ -766,7 +766,8 @@ engine::define(const std::string&                               name,
                 std::tuple<typename std::decay<T1>::type,
                    typename std::decay<Tn>::type...> iargs;
             meta_proc_fn mproc = [w_impl, &iargs](hg_proc_t proc) {
-                return proc_object(proc, iargs, w_impl);
+                auto ctx = std::tuple<>(); // TODO make this context available as argument
+                return proc_object(proc, iargs, w_impl, ctx);
             };
             hg_return_t ret = margo_get_input(r.m_handle, &mproc);
             if(ret != HG_SUCCESS)

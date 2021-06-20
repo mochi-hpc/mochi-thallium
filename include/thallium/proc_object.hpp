@@ -55,8 +55,10 @@ inline hg_return_t hg_proc_meta_serialization(hg_proc_t proc, void* data) {
     return (*fun)(proc);
 }
 
-template <typename T>
-hg_return_t proc_object(hg_proc_t proc, T& data, const std::weak_ptr<detail::engine_impl>& e) {
+template <typename T, typename ... CtxArg>
+hg_return_t proc_object(hg_proc_t proc, T& data,
+                        const std::weak_ptr<detail::engine_impl>& e,
+                        std::tuple<CtxArg...>& ctx) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
         proc_output_archive ar(proc, e);
@@ -89,7 +91,8 @@ hg_return_t proc_object(hg_proc_t proc, T& data, const std::weak_ptr<detail::eng
     return HG_SUCCESS;
 }
 
-inline hg_return_t proc_void_object(hg_proc_t proc) {
+template <typename ... CtxArg>
+inline hg_return_t proc_void_object(hg_proc_t proc, std::tuple<CtxArg...>& ctx) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
 #ifdef THALLIUM_DEBUG_RPC_TYPES

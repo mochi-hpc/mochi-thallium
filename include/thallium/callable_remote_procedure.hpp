@@ -74,8 +74,10 @@ class callable_remote_procedure {
                             double                  timeout_ms = -1.0) {
         hg_return_t  ret;
         meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
+            auto ctx = std::tuple<>(); // TODO this should be a member of the remote_procedure
+            // and of the callable_remote_procedure
             return proc_object(proc, const_cast<std::tuple<T...>&>(args),
-                               m_engine_impl);
+                               m_engine_impl, ctx);
         };
         if(timeout_ms > 0.0) {
             ret = margo_provider_forward_timed(
@@ -98,7 +100,11 @@ class callable_remote_procedure {
 
     packed_data<> forward(double timeout_ms = -1.0) const {
         hg_return_t  ret;
-        meta_proc_fn mproc = proc_void_object;
+        meta_proc_fn mproc = [this](hg_proc_t proc) {
+            auto ctx = std::tuple<>(); // TODO this should be a member of the remote_procedure
+            // and of the callable_remote_procedure
+            return proc_void_object(proc, ctx);
+        };
         if(timeout_ms > 0.0) {
             ret = margo_provider_forward_timed(
                 m_provider_id, m_handle,
@@ -138,8 +144,9 @@ class callable_remote_procedure {
         hg_return_t   ret;
         margo_request req;
         meta_proc_fn  mproc = [this, &args](hg_proc_t proc) {
+            auto ctx = std::tuple<>(); // TODO
             return proc_object(proc, const_cast<std::tuple<T...>&>(args),
-                               m_engine_impl);
+                               m_engine_impl, ctx);
         };
         if(timeout_ms > 0.0) {
             ret = margo_provider_iforward_timed(
@@ -159,7 +166,10 @@ class callable_remote_procedure {
     async_response iforward(double timeout_ms = -1.0) const {
         hg_return_t   ret;
         margo_request req;
-        meta_proc_fn  mproc = proc_void_object;
+        meta_proc_fn  mproc = [this](hg_proc_t proc) {
+            auto ctx = std::tuple<>(); // TODO
+            return proc_void_object(proc, ctx);
+        };
         if(timeout_ms > 0.0) {
             ret = margo_provider_iforward_timed(
                 m_provider_id, m_handle,
