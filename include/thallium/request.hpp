@@ -32,6 +32,7 @@ template<typename... CtxArg>
 class request_with_context {
     friend class engine;
     friend hg_return_t thallium_generic_rpc(hg_handle_t handle);
+    template<typename ... CtxArg2> friend class request_with_context;
 
   private:
     std::weak_ptr<detail::engine_impl> m_engine_impl;
@@ -143,7 +144,7 @@ class request_with_context {
      */
     template<typename ... NewCtxArg>
     auto with_serialization_context(NewCtxArg&&... args) const {
-        return request_with_context<NewCtxArg...>(
+        return request_with_context<unwrap_decay_t<NewCtxArg>...>(
                 m_engine_impl,
                 m_handle,
                 m_disable_response,

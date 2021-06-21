@@ -150,9 +150,8 @@ public:
     /**
      * Retrieve context objects bound with the archive.
      */
-    template<std::size_t I>
-    auto& get_context() const {
-        return std::get<I>(m_context);
+    auto& get_context() {
+        return m_context;
     }
 };
 

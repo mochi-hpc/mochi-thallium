@@ -16,6 +16,7 @@
 #include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/serialize.hpp>
 #include <thallium/timeout.hpp>
+#include <thallium/reference_util.hpp>
 #include <tuple>
 #include <utility>
 
@@ -39,6 +40,7 @@ template<typename ... CtxArg>
 class callable_remote_procedure_with_context {
     friend class remote_procedure;
     friend class async_response;
+    template<typename ... CtxArg2> friend class callable_remote_procedure_with_context;
 
   private:
     std::weak_ptr<detail::engine_impl> m_engine_impl;
@@ -75,23 +77,6 @@ class callable_remote_procedure_with_context {
                               bool ignore_resp, uint16_t provider_id,
                               const std::tuple<CtxArg...>& context
                               = std::tuple<CtxArg...>());
-
-    /**
-     * @brief Create a new callable_remote_procedure_with_context with
-     * a new context bound to it.
-     *
-     * @tparam NewCtxArg
-     * @param args New context
-     */
-    template <typename ... NewCtxArg>
-    auto with_serialization_context(NewCtxArg&&... args) const {
-        return callable_remote_procedure_with_context<NewCtxArg...>(
-                m_engine_impl,
-                m_handle,
-                m_ignore_response,
-                m_provider_id,
-                std::make_tuple<NewCtxArg...>(std::forward<NewCtxArg>(args)...));
-    }
 
     /**
      * @brief Sends the RPC to the endpoint (calls margo_forward), passing a
@@ -296,6 +281,25 @@ class callable_remote_procedure_with_context {
             MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
         }
     }
+
+    /**
+     * @brief Create a new callable_remote_procedure_with_context with
+     * a new context bound to it.
+     *
+     * @tparam NewCtxArg
+     * @param args New context
+     */
+    template <typename ... NewCtxArg>
+    auto with_serialization_context(NewCtxArg&&... args) const {
+        return callable_remote_procedure_with_context
+            <unwrap_decay_t<NewCtxArg>...>(
+                m_engine_impl,
+                m_handle,
+                m_ignore_response,
+                m_provider_id,
+                std::make_tuple<NewCtxArg...>(std::forward<NewCtxArg>(args)...));
+    }
+
 
     /**
      * @brief Operator to call the RPC. Will serialize the arguments

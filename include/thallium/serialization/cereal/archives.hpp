@@ -63,12 +63,8 @@ namespace thallium {
             return m_proc;
         }
 
-        /**
-         * Retrieve context objects bound with the archive.
-         */
-        template<std::size_t I>
-        auto& get_context() const {
-            return std::get<I>(m_context);
+        auto& get_context() {
+            return m_context;
         }
 
     private:
@@ -122,12 +118,8 @@ namespace thallium {
             return m_proc;
         }
 
-        /**
-         * Retrieve context objects bound with the archive.
-         */
-        template<std::size_t I>
-        auto& get_context() const {
-            return std::get<I>(m_context);
+        auto& get_context() {
+            return m_context;
         }
 
     private:
@@ -151,16 +143,26 @@ namespace thallium {
         ar.read(std::addressof(t), sizeof(t));
     }
 
-    template <class Archive, class T, class... CtxArg> inline
-    CEREAL_ARCHIVE_RESTRICT(proc_input_archive<CtxArg...>, proc_output_archive<CtxArg...>)
-    CEREAL_SERIALIZE_FUNCTION_NAME(Archive& ar, cereal::NameValuePair<T>& t)
+    template <class T, class... CtxArg> inline
+    void CEREAL_SERIALIZE_FUNCTION_NAME(proc_output_archive<CtxArg...>& ar, cereal::NameValuePair<T>& t)
     {
         ar(t.value);
     }
 
-    template <class Archive, class T, class... CtxArg> inline
-    CEREAL_ARCHIVE_RESTRICT(proc_input_archive<CtxArg...>, proc_output_archive<CtxArg...>)
-    CEREAL_SERIALIZE_FUNCTION_NAME(Archive& ar, cereal::SizeTag<T>& t)
+    template <class T, class... CtxArg> inline
+    void CEREAL_SERIALIZE_FUNCTION_NAME(proc_input_archive<CtxArg...>& ar, cereal::NameValuePair<T>& t)
+    {
+        ar(t.value);
+    }
+
+    template <class T, class... CtxArg> inline
+    void CEREAL_SERIALIZE_FUNCTION_NAME(proc_output_archive<CtxArg...>& ar, cereal::SizeTag<T>& t)
+    {
+        ar(t.size);
+    }
+
+    template <class T, class... CtxArg> inline
+    void CEREAL_SERIALIZE_FUNCTION_NAME(proc_input_archive<CtxArg...>& ar, cereal::SizeTag<T>& t)
     {
         ar(t.size);
     }

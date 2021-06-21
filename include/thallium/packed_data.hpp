@@ -10,6 +10,7 @@
 #include <thallium/proc_object.hpp>
 #include <thallium/serialization/proc_input_archive.hpp>
 #include <thallium/serialization/serialize.hpp>
+#include <thallium/reference_util.hpp>
 
 namespace thallium {
 
@@ -28,9 +29,10 @@ namespace detail {
  */
 template<typename ... CtxArg>
 class packed_data {
-    template<typename ... CtxArg2> friend class callable_remote_procedure_with_context;
     friend class async_response;
+    template<typename ... CtxArg2> friend class callable_remote_procedure_with_context;
     template<typename ... CtxArg2> friend class request_with_context;
+    template<typename ... CtxArg2> friend class packed_data;;
 
   private:
     std::weak_ptr<detail::engine_impl> m_engine_impl;
@@ -78,7 +80,7 @@ class packed_data {
      */
     template<typename ... NewCtxArg>
     auto with_serialization_context(NewCtxArg&&... args) {
-        return packed_data<NewCtxArg...>(
+        return packed_data<unwrap_decay_t<NewCtxArg>...>(
             m_unpack_fn, m_free_fn, m_handle, m_engine_impl,
             std::make_tuple<NewCtxArg...>(std::forward<NewCtxArg>(args)...));
     }
