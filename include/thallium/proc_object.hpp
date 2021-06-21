@@ -46,7 +46,8 @@ template <typename T> std::string get_type_name() {
 #endif
 
 class engine;
-class request;
+template<typename ... CtxArg> class request_with_context;
+using request = request_with_context<>;
 
 typedef std::function<hg_return_t(hg_proc_t)> meta_proc_fn;
 
@@ -55,11 +56,13 @@ inline hg_return_t hg_proc_meta_serialization(hg_proc_t proc, void* data) {
     return (*fun)(proc);
 }
 
-template <typename T>
-hg_return_t proc_object(hg_proc_t proc, T& data, const std::weak_ptr<detail::engine_impl>& e) {
+template <typename T, typename ... CtxArg>
+hg_return_t proc_object(hg_proc_t proc, T& data,
+                        const std::weak_ptr<detail::engine_impl>& e,
+                        std::tuple<CtxArg...>& ctx) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
-        proc_output_archive ar(proc, e);
+        proc_output_archive<CtxArg...> ar(proc, ctx, e);
 #ifdef THALLIUM_DEBUG_RPC_TYPES
         std::string type_name = get_type_name<T>();
         ar << type_name;
@@ -67,7 +70,7 @@ hg_return_t proc_object(hg_proc_t proc, T& data, const std::weak_ptr<detail::eng
         ar << data;
     } break;
     case HG_DECODE: {
-        proc_input_archive ar(proc, e);
+        proc_input_archive<CtxArg...> ar(proc, ctx, e);
 #ifdef THALLIUM_DEBUG_RPC_TYPES
         std::string requested_type_name = get_type_name<T>();
         std::string received_type_name;
@@ -89,18 +92,19 @@ hg_return_t proc_object(hg_proc_t proc, T& data, const std::weak_ptr<detail::eng
     return HG_SUCCESS;
 }
 
-inline hg_return_t proc_void_object(hg_proc_t proc) {
+template <typename ... CtxArg>
+inline hg_return_t proc_void_object(hg_proc_t proc, std::tuple<CtxArg...>& ctx) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
 #ifdef THALLIUM_DEBUG_RPC_TYPES
-        proc_output_archive ar(proc);
+        proc_output_archive<CtxArg...> ar(proc, ctx);
         std::string         type_name = "void";
         ar << type_name;
 #endif
     } break;
     case HG_DECODE: {
 #ifdef THALLIUM_DEBUG_RPC_TYPES
-        proc_input_archive ar(proc);
+        proc_input_archive<CtxArg> ar(proc, ctx);
         std::string        requested_type_name = "void";
         std::string        received_type_name;
         ar >> received_type_name;

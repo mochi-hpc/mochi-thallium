@@ -20,20 +20,27 @@ namespace thallium {
         struct engine_impl;
     }
 
-    class proc_output_archive : public cereal::OutputArchive<proc_output_archive, cereal::AllowEmptyClassElision>
+    template<typename ... CtxArg>
+    class proc_output_archive :
+        public cereal::OutputArchive<
+            proc_output_archive<CtxArg...>,
+            cereal::AllowEmptyClassElision>
     {
-    
+
     public:
 
-        proc_output_archive(hg_proc_t p, std::weak_ptr<detail::engine_impl> e)
+        proc_output_archive(hg_proc_t p, std::tuple<CtxArg...>& context,
+                            std::weak_ptr<detail::engine_impl> e)
         : cereal::OutputArchive<proc_output_archive, cereal::AllowEmptyClassElision>(this)
         , m_proc(p)
+        , m_context(context)
         , m_engine_impl(std::move(e))
         {}
 
-        proc_output_archive(hg_proc_t p)
+        proc_output_archive(hg_proc_t p, std::tuple<CtxArg...>& context)
         : cereal::OutputArchive<proc_output_archive, cereal::AllowEmptyClassElision>(this)
         , m_proc(p)
+        , m_context(context)
         , m_engine_impl()
         {}
 
@@ -56,27 +63,39 @@ namespace thallium {
             return m_proc;
         }
 
+        auto& get_context() {
+            return m_context;
+        }
+
     private:
 
-        hg_proc_t m_proc;
+        hg_proc_t                          m_proc;
+        std::tuple<CtxArg...>&             m_context;
         std::weak_ptr<detail::engine_impl> m_engine_impl;
 
     };
 
-    class proc_input_archive : public cereal::InputArchive<proc_input_archive, cereal::AllowEmptyClassElision>
+    template<typename ... CtxArg>
+    class proc_input_archive :
+        public cereal::InputArchive<
+            proc_input_archive<CtxArg...>,
+            cereal::AllowEmptyClassElision>
     {
-    
+
     public:
 
-        proc_input_archive(hg_proc_t p, std::weak_ptr<detail::engine_impl> e)
-        : cereal::InputArchive<proc_input_archive, cereal::AllowEmptyClassElision>(this)
+        proc_input_archive(hg_proc_t p, std::tuple<CtxArg...>& context,
+                           std::weak_ptr<detail::engine_impl> e)
+        : cereal::InputArchive<proc_input_archive<CtxArg...>, cereal::AllowEmptyClassElision>(this)
         , m_proc(p)
+        , m_context(context)
         , m_engine_impl(std::move(e))
         {}
 
-        proc_input_archive(hg_proc_t p)
-        : cereal::InputArchive<proc_input_archive, cereal::AllowEmptyClassElision>(this)
+        proc_input_archive(hg_proc_t p, std::tuple<CtxArg...>& context)
+        : cereal::InputArchive<proc_input_archive<CtxArg...>, cereal::AllowEmptyClassElision>(this)
         , m_proc(p)
+        , m_context(context)
         , m_engine_impl()
         {}
 
@@ -99,58 +118,73 @@ namespace thallium {
             return m_proc;
         }
 
+        auto& get_context() {
+            return m_context;
+        }
+
     private:
 
-        hg_proc_t m_proc;
+        hg_proc_t                          m_proc;
+        std::tuple<CtxArg...>&             m_context;
         std::weak_ptr<detail::engine_impl> m_engine_impl;
     };
 
-    template<class T> inline
+    template<class T, class... CtxArg> inline
     typename std::enable_if<std::is_arithmetic<T>::value, void>::type
-    CEREAL_SAVE_FUNCTION_NAME(proc_output_archive & ar, T const & t)
+    CEREAL_SAVE_FUNCTION_NAME(proc_output_archive<CtxArg...> & ar, T const & t)
     {
         ar.write(std::addressof(t), sizeof(t));
     }
 
-    template<class T> inline
+    template<class T, class... CtxArg> inline
     typename std::enable_if<std::is_arithmetic<T>::value, void>::type
-    CEREAL_LOAD_FUNCTION_NAME(proc_input_archive & ar, T & t)
+    CEREAL_LOAD_FUNCTION_NAME(proc_input_archive<CtxArg...>& ar, T & t)
     {
         ar.read(std::addressof(t), sizeof(t));
     }
 
-    template <class Archive, class T> inline
-    CEREAL_ARCHIVE_RESTRICT(proc_input_archive, proc_output_archive)
-    CEREAL_SERIALIZE_FUNCTION_NAME(Archive& ar, cereal::NameValuePair<T>& t)
+    template <class T, class... CtxArg> inline
+    void CEREAL_SERIALIZE_FUNCTION_NAME(proc_output_archive<CtxArg...>& ar, cereal::NameValuePair<T>& t)
     {
         ar(t.value);
     }
 
-    template <class Archive, class T> inline
-    CEREAL_ARCHIVE_RESTRICT(proc_input_archive, proc_output_archive)
-    CEREAL_SERIALIZE_FUNCTION_NAME(Archive& ar, cereal::SizeTag<T>& t)
+    template <class T, class... CtxArg> inline
+    void CEREAL_SERIALIZE_FUNCTION_NAME(proc_input_archive<CtxArg...>& ar, cereal::NameValuePair<T>& t)
+    {
+        ar(t.value);
+    }
+
+    template <class T, class... CtxArg> inline
+    void CEREAL_SERIALIZE_FUNCTION_NAME(proc_output_archive<CtxArg...>& ar, cereal::SizeTag<T>& t)
     {
         ar(t.size);
     }
 
-    template <class T> inline
-    void CEREAL_SAVE_FUNCTION_NAME(proc_output_archive& ar, cereal::BinaryData<T> const & bd)
+    template <class T, class... CtxArg> inline
+    void CEREAL_SERIALIZE_FUNCTION_NAME(proc_input_archive<CtxArg...>& ar, cereal::SizeTag<T>& t)
+    {
+        ar(t.size);
+    }
+
+    template <class T, class... CtxArg> inline
+    void CEREAL_SAVE_FUNCTION_NAME(proc_output_archive<CtxArg...>& ar, cereal::BinaryData<T> const & bd)
     {
         ar.write(bd.data, static_cast<std::size_t>(bd.size));
     }
 
-    template <class T> inline
-    void CEREAL_LOAD_FUNCTION_NAME(proc_input_archive & ar, cereal::BinaryData<T> & bd)
+    template <class T, class... CtxArg> inline
+    void CEREAL_LOAD_FUNCTION_NAME(proc_input_archive<CtxArg...> & ar, cereal::BinaryData<T> & bd)
     {
         ar.read(bd.data, static_cast<std::size_t>(bd.size));
     }
 }
 
 // register archives for polymorphic support
-CEREAL_REGISTER_ARCHIVE(thallium::proc_output_archive)
-CEREAL_REGISTER_ARCHIVE(thallium::proc_input_archive)
+CEREAL_REGISTER_ARCHIVE(thallium::proc_output_archive<>)
+CEREAL_REGISTER_ARCHIVE(thallium::proc_input_archive<>)
 
 // tie input and output archives together
-CEREAL_SETUP_ARCHIVE_TRAITS(thallium::proc_input_archive, thallium::proc_output_archive)
+CEREAL_SETUP_ARCHIVE_TRAITS(thallium::proc_input_archive<>, thallium::proc_output_archive<>)
 
 #endif

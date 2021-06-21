@@ -25,7 +25,7 @@ namespace detail {
 }
 
 class engine;
-class request;
+template<typename ... CtxArg> class request_with_context;
 class remote_bulk;
 
 /**
@@ -34,8 +34,8 @@ class remote_bulk;
  */
 class endpoint {
     friend class engine;
-    friend class request;
-    friend class callable_remote_procedure;
+    template<typename ... CtxArg> friend class request_with_context;
+    template<typename ... CtxArg> friend class callable_remote_procedure_with_context;
     friend class remote_bulk;
 
   private:

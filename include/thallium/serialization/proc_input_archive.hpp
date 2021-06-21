@@ -1,6 +1,6 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_BUFFER_INPUT_ARCHIVE_HPP
@@ -39,11 +39,13 @@ namespace detail {
  * trait so that serialization methods know they have to
  * take data out of the buffer and into C++ objects.
  */
+template<typename ... CtxArg>
 class proc_input_archive : public input_archive {
 
 private:
 
-    hg_proc_t                 m_proc;
+    hg_proc_t                           m_proc;
+    std::tuple<CtxArg...>&              m_context;
     std::weak_ptr<detail::engine_impl>  m_engine_impl;
 
     template<typename T, bool b>
@@ -64,11 +66,12 @@ public:
      * \param p : hg_proc_t from which to read.
      * \param engine : thallium engine.
      */
-    proc_input_archive(hg_proc_t p, const std::weak_ptr<detail::engine_impl>& e)
-    : m_proc(p), m_engine_impl(e) {}
+    proc_input_archive(hg_proc_t p, std::tuple<CtxArg...>& context,
+                       const std::weak_ptr<detail::engine_impl>& e)
+    : m_proc(p), m_context(context), m_engine_impl(e) {}
 
-    proc_input_archive(hg_proc_t p)
-    : m_proc(p), m_engine_impl() {}
+    proc_input_archive(hg_proc_t p, std::tuple<CtxArg...>& context)
+    : m_proc(p), m_context(context), m_engine_impl() {}
 
     /**
      * Operator to get C++ objects of type T from the archive.
@@ -151,6 +154,13 @@ public:
     hg_proc_t get_proc() const {
         return m_proc;
     }
+
+    /**
+     * Retrieve context objects bound with the archive.
+     */
+    auto& get_context() {
+        return m_context;
+    }
 };
 
 }
@@ -160,7 +170,8 @@ public:
 
 namespace thallium {
 
-    inline engine proc_input_archive::get_engine() const {
+    template<typename... CtxArg>
+    inline engine proc_input_archive<CtxArg...>::get_engine() const {
         auto engine_impl = m_engine_impl.lock();
         if(!engine_impl) throw exception("Invalid engine");
         return engine(engine_impl);

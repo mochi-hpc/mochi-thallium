@@ -10,50 +10,79 @@
 #include <thallium/proc_object.hpp>
 #include <thallium/serialization/proc_input_archive.hpp>
 #include <thallium/serialization/serialize.hpp>
+#include <thallium/reference_util.hpp>
 
 namespace thallium {
 
-class callable_remote_procedure;
+template<typename ... CtxArg> class callable_remote_procedure_with_context;
 class async_response;
+template<typename ... CtxArg> class request_with_context;
+using request = request_with_context<>;
 
 namespace detail {
     struct engine_impl;
 }
 
 /**
- * @brief packed_response objects are created as a reponse to
- * an RPC. They can be used to extract the response from the
- * RPC if the RPC sent one.
+ * @brief packed_data objects encapsulate data serialized
+ * into an hg_handle_t, whether it is input or output data.
  */
-class packed_response {
-    friend class callable_remote_procedure;
+template<typename ... CtxArg>
+class packed_data {
     friend class async_response;
+    template<typename ... CtxArg2> friend class callable_remote_procedure_with_context;
+    template<typename ... CtxArg2> friend class request_with_context;
+    template<typename ... CtxArg2> friend class packed_data;;
 
   private:
     std::weak_ptr<detail::engine_impl> m_engine_impl;
     hg_handle_t m_handle = HG_HANDLE_NULL;
+    hg_return_t (*m_unpack_fn)(hg_handle_t,void*) = nullptr;
+    hg_return_t (*m_free_fn)(hg_handle_t,void*) = nullptr;
+    mutable std::tuple<CtxArg...> m_context;
 
     /**
-     * @brief Constructor. Made private since packed_response
+     * @brief Constructor. Made private since packed_data
      * objects are created by callable_remote_procedure only.
      *
      * @param h Handle containing the result of an RPC.
      * @param e Engine associated with the RPC.
      */
-    packed_response(hg_handle_t h, std::weak_ptr<detail::engine_impl> e)
+    packed_data(hg_return_t (*unpack_fn)(hg_handle_t,void*),
+                hg_return_t (*free_fn)(hg_handle_t,void*),
+                hg_handle_t h,
+                std::weak_ptr<detail::engine_impl> e,
+                std::tuple<CtxArg...>&& ctx = std::tuple<CtxArg...>())
     : m_engine_impl(std::move(e))
-    , m_handle(h) {
+    , m_handle(h)
+    , m_unpack_fn(unpack_fn)
+    , m_free_fn(free_fn)
+    , m_context(std::move(ctx)) {
         hg_return_t ret = margo_ref_incr(h);
         MARGO_ASSERT(ret, margo_ref_incr);
     }
 
-    packed_response() = default;
+    packed_data() = default;
 
   public:
-    ~packed_response() {
+    ~packed_data() {
         if(m_handle != HG_HANDLE_NULL) {
             margo_destroy(m_handle);
         }
+    }
+
+    /**
+     * @brief Create a new packed_data object but with a different
+     * serialization context.
+     *
+     * @tparam NewCtxArg Types of the serialization context.
+     * @param args Context.
+     */
+    template<typename ... NewCtxArg>
+    auto with_serialization_context(NewCtxArg&&... args) {
+        return packed_data<unwrap_decay_t<NewCtxArg>...>(
+            m_unpack_fn, m_free_fn, m_handle, m_engine_impl,
+            std::make_tuple<NewCtxArg...>(std::forward<NewCtxArg>(args)...));
     }
 
     /**
@@ -71,12 +100,12 @@ class packed_response {
         }
         std::tuple<T> t;
         meta_proc_fn  mproc = [this, &t](hg_proc_t proc) {
-            return proc_object(proc, t, m_engine_impl);
+            return proc_object(proc, t, m_engine_impl, m_context);
         };
-        hg_return_t ret = margo_get_output(m_handle, &mproc);
-        MARGO_ASSERT(ret, margo_get_output);
+        hg_return_t ret = m_unpack_fn(m_handle, &mproc);
+        MARGO_ASSERT(ret, m_unpack_fn);
         ret = margo_free_output(m_handle, &mproc);
-        MARGO_ASSERT(ret, margo_free_output);
+        MARGO_ASSERT(ret, m_free_fn);
         return std::get<0>(t);
     }
 
@@ -105,18 +134,18 @@ class packed_response {
                    typename std::decay<Tn>::type...>
                      t;
         meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
-            return proc_object(proc, t, m_engine_impl);
+            return proc_object(proc, t, m_engine_impl, m_context);
         };
-        hg_return_t ret = margo_get_output(m_handle, &mproc);
-        MARGO_ASSERT(ret, margo_get_output);
-        ret = margo_free_output(m_handle, &mproc);
-        MARGO_ASSERT(ret, margo_free_output);
+        hg_return_t ret = m_unpack_fn(m_handle, &mproc);
+        MARGO_ASSERT(ret, m_unpack_fn);
+        ret = m_free_fn(m_handle, &mproc);
+        MARGO_ASSERT(ret, m_free_fn);
         return t;
     }
 
     /**
-     * @brief Converts the content of the packed_response into
-     * the desired object type. Allows to cast the packed_response
+     * @brief Converts the content of the packed_data into
+     * the desired object type. Allows to cast the packed_data
      * into the desired object type.
      *
      * @tparam T Type into which to convert the response.

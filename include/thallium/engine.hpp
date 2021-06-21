@@ -30,10 +30,11 @@ class bulk;
 class endpoint;
 class remote_bulk;
 class remote_procedure;
-class request;
 class pool;
-class proc_input_archive;
-class proc_output_archive;
+template <typename ... CtxArg> class request_with_context;
+using request = request_with_context<>;
+template <typename ... CtxArg> class proc_input_archive;
+template <typename ... CtxArg> class proc_output_archive;
 template <typename T> class provider;
 
 DECLARE_MARGO_RPC_HANDLER(thallium_generic_rpc)
@@ -59,14 +60,14 @@ namespace detail {
  * and allow users to declare RPCs and bulk objects.
  */
 class engine {
-    friend class request;
+    template<typename ... CtxArg> friend class request_with_context;
     friend class bulk;
     friend class endpoint;
     friend class remote_bulk;
     friend class remote_procedure;
-    friend class callable_remote_procedure;
-    friend class proc_input_archive;
-    friend class proc_output_archive;
+    template <typename ... CtxArg> friend class callable_remote_procedure_with_context;
+    template <typename ... CtxArg> friend class proc_input_archive;
+    template <typename ... CtxArg> friend class proc_output_archive;
     template <typename T> friend class provider;
 
     friend hg_return_t thallium_generic_rpc(hg_handle_t handle);
@@ -766,7 +767,8 @@ engine::define(const std::string&                               name,
                 std::tuple<typename std::decay<T1>::type,
                    typename std::decay<Tn>::type...> iargs;
             meta_proc_fn mproc = [w_impl, &iargs](hg_proc_t proc) {
-                return proc_object(proc, iargs, w_impl);
+                auto ctx = std::tuple<>(); // TODO make this context available as argument
+                return proc_object(proc, iargs, w_impl, ctx);
             };
             hg_return_t ret = margo_get_input(r.m_handle, &mproc);
             if(ret != HG_SUCCESS)

@@ -1,6 +1,6 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef __THALLIUM_BUFFER_OUTPUT_ARCHIVE_HPP
@@ -32,11 +32,13 @@ using namespace std::string_literals;
  * proc_output_archive wraps an hg_proc_t object and
  * offers the functionalities to serialize C++ objects into it.
  */
+template<typename ... CtxArg>
 class proc_output_archive : public output_archive {
 
 private:
 
-    hg_proc_t   m_proc;
+    hg_proc_t                          m_proc;
+    std::tuple<CtxArg...>&             m_context;
     std::weak_ptr<detail::engine_impl> m_engine_impl;
 
     template<typename T, bool b>
@@ -53,15 +55,16 @@ public:
 
     /**
      * Constructor.
-     * 
+     *
      * \param p : reference to an hg_proc_t object.
      * \param e : thallium engine.
      */
-    proc_output_archive(hg_proc_t p, std::weak_ptr<detail::engine_impl> e)
-    : m_proc(p), m_engine_impl(std::move(e)) {}
+    proc_output_archive(hg_proc_t p, std::tuple<CtxArg...>& context,
+                        std::weak_ptr<detail::engine_impl> e)
+    : m_proc(p), m_context(context), m_engine_impl(std::move(e)) {}
 
-    proc_output_archive(hg_proc_t p)
-    : m_proc(p), m_engine_impl() {}
+    proc_output_archive(hg_proc_t p, std::tuple<CtxArg...>& context)
+    : m_proc(p), m_context(context), m_engine_impl() {}
 
     /**
      * Operator to add a C++ object of type T into the archive.
@@ -143,6 +146,13 @@ public:
     hg_proc_t get_proc() const {
         return m_proc;
     }
+
+    /**
+     * Retrieve context objects bound with the archive.
+     */
+    auto& get_context() {
+        return m_context;
+    }
 };
 
 }
@@ -153,7 +163,8 @@ public:
 
 namespace thallium {
 
-    inline engine proc_output_archive::get_engine() const {
+    template<typename ... CtxArg>
+    inline engine proc_output_archive<CtxArg...>::get_engine() const {
         auto engine_impl = m_engine_impl.lock();
         if(!engine_impl) throw exception("Invalid engine");
         return engine(engine_impl);
