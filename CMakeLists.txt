@@ -35,6 +35,7 @@ if (ENABLE_CEREAL)
     find_package (cereal CONFIG REQUIRED)
     set (CEREAL_TARGET cereal)
     get_target_property(CEREAL_INC cereal INTERFACE_INCLUDE_DIRECTORIES)
+    message (STATUS "Found cereal library")
 endif (ENABLE_CEREAL)
 
 find_package (PkgConfig REQUIRED)
