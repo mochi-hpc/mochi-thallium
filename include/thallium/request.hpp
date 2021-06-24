@@ -166,9 +166,9 @@ class request_with_context {
                 "Calling respond from an RPC that has disabled responses");
         }
         if(m_handle != HG_HANDLE_NULL) {
-            auto args = std::make_tuple<const T1&, const T&...>(t1, t...);
+            auto args = std::make_tuple(std::cref(t1), std::cref(t)...);
             meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
-                return proc_object(proc, args, m_engine_impl, m_context);
+                return proc_object_encode(proc, args, m_engine_impl, m_context);
             };
             hg_return_t ret = margo_respond(m_handle, &mproc);
             MARGO_ASSERT(ret, margo_respond);

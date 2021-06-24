@@ -100,13 +100,13 @@ class packed_data {
         }
         std::tuple<T> t;
         meta_proc_fn  mproc = [this, &t](hg_proc_t proc) {
-            return proc_object(proc, t, m_engine_impl, m_context);
+            return proc_object_decode(proc, t, m_engine_impl, m_context);
         };
         hg_return_t ret = m_unpack_fn(m_handle, &mproc);
         MARGO_ASSERT(ret, m_unpack_fn);
         ret = margo_free_output(m_handle, &mproc);
         MARGO_ASSERT(ret, m_free_fn);
-        return std::get<0>(t);
+        return std::get<0>(std::move(t));
     }
 
     /**
@@ -134,7 +134,7 @@ class packed_data {
                    typename std::decay<Tn>::type...>
                      t;
         meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
-            return proc_object(proc, t, m_engine_impl, m_context);
+            return proc_object_decode(proc, t, m_engine_impl, m_context);
         };
         hg_return_t ret = m_unpack_fn(m_handle, &mproc);
         MARGO_ASSERT(ret, m_unpack_fn);

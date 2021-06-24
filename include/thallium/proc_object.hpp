@@ -57,9 +57,9 @@ inline hg_return_t hg_proc_meta_serialization(hg_proc_t proc, void* data) {
 }
 
 template <typename T, typename ... CtxArg>
-hg_return_t proc_object(hg_proc_t proc, T& data,
-                        const std::weak_ptr<detail::engine_impl>& e,
-                        std::tuple<CtxArg...>& ctx) {
+hg_return_t proc_object_encode(hg_proc_t proc, T& data,
+                               const std::weak_ptr<detail::engine_impl>& e,
+                               std::tuple<CtxArg...>& ctx) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
         proc_output_archive<CtxArg...> ar(proc, ctx, e);
@@ -69,6 +69,22 @@ hg_return_t proc_object(hg_proc_t proc, T& data,
 #endif
         ar << data;
     } break;
+    case HG_DECODE:
+        return HG_INVALID_ARG; // not supposed to happen
+    case HG_FREE:
+    default:
+        break;
+    }
+    return HG_SUCCESS;
+}
+
+template <typename T, typename ... CtxArg>
+hg_return_t proc_object_decode(hg_proc_t proc, T& data,
+                           const std::weak_ptr<detail::engine_impl>& e,
+                           std::tuple<CtxArg...>& ctx) {
+    switch(hg_proc_get_op(proc)) {
+    case HG_ENCODE:
+        return HG_INVALID_ARG; // not supposed to happen
     case HG_DECODE: {
         proc_input_archive<CtxArg...> ar(proc, ctx, e);
 #ifdef THALLIUM_DEBUG_RPC_TYPES

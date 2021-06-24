@@ -94,7 +94,7 @@ class callable_remote_procedure_with_context {
                             double                timeout_ms = -1.0) {
         hg_return_t  ret;
         meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
-            return proc_object(proc, const_cast<std::tuple<T...>&>(args),
+            return proc_object_encode(proc, const_cast<std::tuple<T...>&>(args),
                                m_engine_impl, m_context);
         };
         if(timeout_ms > 0.0) {
@@ -160,8 +160,8 @@ class callable_remote_procedure_with_context {
         hg_return_t   ret;
         margo_request req;
         meta_proc_fn  mproc = [this, &args](hg_proc_t proc) {
-            return proc_object(proc, const_cast<std::tuple<T...>&>(args),
-                               m_engine_impl, m_context);
+            return proc_object_encode(proc, const_cast<std::tuple<T...>&>(args),
+                                      m_engine_impl, m_context);
         };
         if(timeout_ms > 0.0) {
             ret = margo_provider_iforward_timed(
@@ -311,7 +311,7 @@ class callable_remote_procedure_with_context {
      * @return a packed_data object containing the returned value.
      */
     template <typename... T> packed_data<> operator()(const T&... args) {
-        return forward(std::make_tuple<const T&...>(args...));
+        return forward(std::make_tuple(std::cref(args)...));
     }
 
     /**
