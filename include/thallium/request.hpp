@@ -67,7 +67,7 @@ class request_with_context {
     : m_engine_impl(other.m_engine_impl)
     , m_handle(other.m_handle)
     , m_disable_response(other.m_disable_response)
-    , m_context(other.context) {
+    , m_context(other.m_context) {
         hg_return_t ret = margo_ref_incr(m_handle);
         MARGO_ASSERT(ret, margo_ref_incr);
     }
