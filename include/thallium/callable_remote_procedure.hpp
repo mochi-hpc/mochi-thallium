@@ -59,7 +59,12 @@ class callable_remote_procedure_with_context {
     , m_handle(handle)
     , m_ignore_response(ignore_response)
     , m_provider_id(provider_id)
-    , m_context(std::move(context)) {}
+    , m_context(std::move(context)) {
+        if(m_handle != HG_HANDLE_NULL) {
+            auto ret = margo_ref_incr(m_handle);
+            MARGO_ASSERT(ret, margo_ref_incr);
+        }
+    }
 
     /**
      * @brief Constructor. Made private since callable_remote_procedure_with_context can only
