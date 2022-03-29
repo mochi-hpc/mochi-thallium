@@ -145,6 +145,16 @@ class bulk {
     }
 
     /**
+     * @brief Get total number of segments abstracted by bulk handle.
+     */
+    std::uint32_t segment_count() const noexcept {
+        if(m_bulk != HG_BULK_NULL)
+            return margo_bulk_get_segment_count(m_bulk);
+        else
+            return 0;
+    }
+
+    /**
      * @brief Indicates whether the bulk handle is null.
      *
      * @return true if the bulk handle is null, false otherwise.

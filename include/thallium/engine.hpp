@@ -43,12 +43,12 @@ hg_return_t thallium_generic_rpc(hg_handle_t handle);
 namespace detail {
 
     struct engine_impl {
-        margo_instance_id                  m_mid;
-        bool                               m_is_server;
-        bool                               m_owns_mid;
-        std::atomic<bool>                  m_finalize_called;
-        hg_context_t*                      m_hg_context = nullptr;
-        hg_class_t*                        m_hg_class   = nullptr;
+        margo_instance_id m_mid;
+        bool              m_is_server;
+        bool              m_owns_mid;
+        std::atomic<bool> m_finalize_called;
+        hg_context_t*     m_hg_context = nullptr;
+        hg_class_t*       m_hg_class   = nullptr;
     };
 
 }
@@ -195,14 +195,14 @@ class engine {
      * Use -1 to indicate that RPCs should be serviced in the progress ES.
      */
     engine(const std::string& addr, int mode,
-           const std::string& config, const hg_init_info *hg_opt = nullptr)
+           const char* config, const hg_init_info *hg_opt = nullptr)
     : m_impl(std::make_shared<detail::engine_impl>()) {
         m_impl->m_is_server       = (mode == THALLIUM_SERVER_MODE);
         m_impl->m_finalize_called = false;
 
         margo_init_info args;
         memset(&args, 0, sizeof(args));
-        args.json_config  = config.c_str();
+        args.json_config  = config;
         args.hg_init_info = (hg_init_info*)hg_opt;
 
         m_impl->m_mid = margo_init_ext(addr.c_str(), mode, &args);
@@ -214,6 +214,10 @@ class engine {
         margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
                                      static_cast<void*>(m_impl.get()));
     }
+
+    engine(const std::string& addr, int mode,
+           const std::string& config, const hg_init_info *hg_opt = nullptr)
+    : engine(addr, mode, config.c_str(), hg_opt) {}
 
     engine(const std::string& addr, int mode, const pool& progress_pool,
            const pool& default_handler_pool);
@@ -510,7 +514,7 @@ class engine {
             &cb,
             &uargs);
         if(ret == 0) return std::function<void(void)>();
-        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
+        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs);
         return *f;
     }
 

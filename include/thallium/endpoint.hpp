@@ -120,6 +120,23 @@ class endpoint {
      */
     hg_addr_t get_addr(bool copy = false) const;
 
+    /**
+     * @brief Compares two addresses for equality.
+     */
+    bool operator==(const endpoint& other) const;
+
+    bool operator!=(const endpoint& other) const {
+        return !(*this == other);
+    }
+
+    /**
+     * Hint that the address is no longer valid. This may happen if
+     * the peer is no longer responding. This can be used to force removal of
+     * the peer address from the list of the peers, before freeing it and
+     * reclaim resources.
+     */
+    void set_remove();
+
     template <typename S> friend S& ::operator<<(S& s, const endpoint& e);
 };
 
@@ -247,6 +264,22 @@ inline hg_addr_t endpoint::get_addr(bool copy) const {
         margo_addr_dup(engine_impl->m_mid, m_addr, &new_addr);
     MARGO_ASSERT(ret, margo_addr_dup);
     return new_addr;
+}
+
+bool endpoint::operator==(const endpoint& other) const {
+    if(is_null() && other.is_null()) return true;
+    if(is_null() || other.is_null()) return false;
+    auto engine_impl = m_engine_impl.lock();
+    if(!engine_impl) throw exception("Invalid engine");
+    return margo_addr_cmp(engine_impl->m_mid, m_addr, other.m_addr) == HG_TRUE;
+}
+
+void endpoint::set_remove() {
+    if(is_null()) return;
+    auto engine_impl = m_engine_impl.lock();
+    if(!engine_impl) throw exception("Invalid engine");
+    auto ret = margo_addr_set_remove(engine_impl->m_mid, m_addr);
+    MARGO_ASSERT(ret, margo_addr_set_remove);
 }
 
 } // namespace thallium
