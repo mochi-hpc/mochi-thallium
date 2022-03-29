@@ -1,0 +1,2 @@
+add_executable(19_logging_server server.cpp)
+target_link_libraries(19_logging_server thallium)

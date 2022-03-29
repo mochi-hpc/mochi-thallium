@@ -30,5 +30,6 @@
 #include <thallium/future.hpp>
 #include <thallium/xstream_barrier.hpp>
 #include <thallium/self.hpp>
+#include <thallium/logger.hpp>
 
 #endif

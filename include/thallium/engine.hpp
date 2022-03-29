@@ -18,6 +18,7 @@
 #include <thallium/config.hpp>
 #include <thallium/tuple_util.hpp>
 #include <thallium/function_util.hpp>
+#include <thallium/logger.hpp>
 #include <unordered_map>
 #include <vector>
 
@@ -866,6 +867,33 @@ class engine {
             &margo_get_pool_name,
             &margo_get_pool_index,
             &margo_get_num_pools};
+    }
+
+    void set_logger(logger* l) {
+        if(!m_impl) {
+            throw exception("Invalid engine");
+        }
+        margo_logger ml = {
+            static_cast<void*>(l),
+            &logger::log_trace,
+            &logger::log_debug,
+            &logger::log_info,
+            &logger::log_warning,
+            &logger::log_error,
+            &logger::log_critical
+        };
+        if(0 != margo_set_logger(m_impl->m_mid, &ml)) {
+            throw exception("Cannot set engine logger");
+        }
+    }
+
+    void set_log_level(logger::level l) {
+        if(!m_impl) {
+            throw exception("Invalid engine");
+        }
+        if(0 != margo_set_log_level(m_impl->m_mid, static_cast<margo_log_level>(l))) {
+            throw exception("Cannot set engine log level");
+        }
     }
 };
 
