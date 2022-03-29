@@ -266,7 +266,7 @@ inline hg_addr_t endpoint::get_addr(bool copy) const {
     return new_addr;
 }
 
-bool endpoint::operator==(const endpoint& other) const {
+inline bool endpoint::operator==(const endpoint& other) const {
     if(is_null() && other.is_null()) return true;
     if(is_null() || other.is_null()) return false;
     auto engine_impl = m_engine_impl.lock();
@@ -274,7 +274,7 @@ bool endpoint::operator==(const endpoint& other) const {
     return margo_addr_cmp(engine_impl->m_mid, m_addr, other.m_addr) == HG_TRUE;
 }
 
-void endpoint::set_remove() {
+inline void endpoint::set_remove() {
     if(is_null()) return;
     auto engine_impl = m_engine_impl.lock();
     if(!engine_impl) throw exception("Invalid engine");
