@@ -1,0 +1,2 @@
+add_executable(18_config_server server.cpp)
+target_link_libraries(18_config_server thallium)

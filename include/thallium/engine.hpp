@@ -36,6 +36,8 @@ using request = request_with_context<>;
 template <typename ... CtxArg> class proc_input_archive;
 template <typename ... CtxArg> class proc_output_archive;
 template <typename T> class provider;
+class xstream;
+class pool;
 
 DECLARE_MARGO_RPC_HANDLER(thallium_generic_rpc)
 hg_return_t thallium_generic_rpc(hg_handle_t handle);
@@ -660,7 +662,7 @@ class engine {
             &cb,
             &uargs);
         if(ret == 0) return std::function<void(void)>();
-        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
+        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs);
         finalize_callback_t f_copy = *f;
         delete f;
         margo_provider_pop_finalize_callback(m_impl->m_mid, owner);
@@ -699,6 +701,172 @@ class engine {
      * @return The default pool used for RPC handlers.
      */
     pool get_handler_pool() const;
+
+    /**
+     * @brief Get the JSON configuration of the internal
+     * Margo instance.
+     */
+    std::string get_config() const {
+        if(!m_impl) throw exception("Invalid engine");
+        char* cfg = margo_get_config(m_impl->m_mid);
+        if(cfg) {
+            auto result = std::string(cfg);
+            free(cfg);
+            return result;
+        }
+        else return std::string();
+    }
+
+    template<typename T>
+    struct named_object_proxy : public T {
+
+        named_object_proxy(T&& obj, std::string name, unsigned index)
+        : T(std::move(obj))
+        , m_name(std::move(name))
+        , m_index(index) {}
+
+        named_object_proxy(const named_object_proxy&) = default;
+        named_object_proxy(named_object_proxy&&) = default;
+        named_object_proxy& operator=(const named_object_proxy&) = default;
+        named_object_proxy& operator=(named_object_proxy&&) = default;
+        ~named_object_proxy() = default;
+
+        const auto& name() const {
+            return m_name;
+        }
+
+        const auto& index() const {
+            return m_index;
+        }
+
+        private:
+
+        std::string m_name;
+        unsigned m_index;
+    };
+
+    /**
+     * @brief The list_proxy template class is used to return
+     * a proxy list to the internal list of either xstreams or pools.
+     *
+     * @tparam T tl::xstream or tl::pool
+     * @tparam Native ABT_xstream or ABT_pool
+     */
+    template<typename T, typename Native>
+    struct list_proxy {
+
+        ~list_proxy() = default;
+
+        /**
+         * @brief Lookup the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto operator[](const char* name) const {
+            Native handle;
+            int ret = m_get_by_name(m_mid, name, &handle);
+            if(ret != 0) throw std::out_of_range("unknown object name in list_proxy");
+            int index = m_get_index(m_mid, name);
+            return named_object_proxy<T>(T(handle), std::string(name), index);
+        }
+
+        /**
+         * @brief Lookup the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto operator[](const std::string& name) const {
+            return (*this)[name.c_str()];
+        }
+
+        /**
+         * @brief Lookup the object by its index.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        template<typename I,
+                 std::enable_if_t<std::is_integral<I>::value, bool> = true>
+        auto operator[](I index) const {
+            Native handle;
+            int ret = m_get_by_index(m_mid, index, &handle);
+            if(ret != 0) throw std::out_of_range("index out of range in list_proxy");
+            const char* name = m_get_name(m_mid, index);
+            return named_object_proxy<T>(T(handle), std::string(name), index);
+        }
+
+        /**
+         * @brief Return the number of elements this proxy can access.
+         */
+        std::size_t size() const {
+            return m_get_num(m_mid);
+        }
+
+        private:
+
+        friend class engine;
+
+        typedef int (*get_by_name_f)(margo_instance_id, const char*, Native*);
+        typedef int (*get_by_index_f)(margo_instance_id, unsigned, Native*);
+        typedef const char* (*get_name_f)(margo_instance_id, unsigned);
+        typedef int (*get_index_f)(margo_instance_id, const char*);
+        typedef size_t (*get_num_f)(margo_instance_id);
+
+        margo_instance_id m_mid;
+        get_by_name_f     m_get_by_name;
+        get_by_index_f    m_get_by_index;
+        get_name_f        m_get_name;
+        get_index_f       m_get_index;
+        get_num_f         m_get_num;
+
+        list_proxy(margo_instance_id mid,
+                   get_by_name_f get_by_name,
+                   get_by_index_f get_by_index,
+                   get_name_f get_name,
+                   get_index_f get_index,
+                   get_num_f get_num)
+        : m_mid(mid)
+        , m_get_by_name(get_by_name)
+        , m_get_by_index(get_by_index)
+        , m_get_name(get_name)
+        , m_get_index(get_index)
+        , m_get_num(get_num) {}
+
+        list_proxy(const list_proxy&) = default;
+        list_proxy(list_proxy&&) = default;
+        list_proxy& operator=(const list_proxy&) = default;
+        list_proxy& operator=(list_proxy&&) = default;
+    };
+
+    /**
+     * @brief Returns a proxy object that can be used to access
+     * the internal list of xstreams in the underlying margo instance.
+     */
+    auto xstreams() const {
+        if(!m_impl) {
+            throw exception("Invalid engine");
+        }
+        return list_proxy<xstream, ABT_xstream>{
+            m_impl->m_mid,
+            &margo_get_xstream_by_name,
+            &margo_get_xstream_by_index,
+            &margo_get_xstream_name,
+            &margo_get_xstream_index,
+            &margo_get_num_xstreams};
+    }
+
+    /**
+     * @brief Returns a proxy object that can be used to access
+     * the internal list of pools in the underlying margo instance.
+     */
+    auto pools() const {
+        if(!m_impl) {
+            throw exception("Invalid engine");
+        }
+        return list_proxy<pool, ABT_pool>{
+            m_impl->m_mid,
+            &margo_get_pool_by_name,
+            &margo_get_pool_by_index,
+            &margo_get_pool_name,
+            &margo_get_pool_index,
+            &margo_get_num_pools};
+    }
 };
 
 } // namespace thallium

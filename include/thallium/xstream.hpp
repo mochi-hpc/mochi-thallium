@@ -63,9 +63,6 @@ class xstream {
 
     ABT_xstream m_xstream;
 
-    xstream(ABT_xstream es)
-    : m_xstream(es) {}
-
     static void forward_work_unit(void* fp) {
         auto f = static_cast<std::function<void(void)>*>(fp);
         (*f)();
@@ -78,6 +75,12 @@ class xstream {
     }
 
   public:
+
+    /**
+     * @brief Constructor from a native handle.
+     */
+    explicit xstream(ABT_xstream es)
+    : m_xstream(es) {}
 
     /**
      * @brief Native handle type.
