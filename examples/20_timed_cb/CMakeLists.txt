@@ -1,0 +1,2 @@
+add_executable(20_timed_cb_server server.cpp)
+target_link_libraries(20_timed_cb_server thallium)

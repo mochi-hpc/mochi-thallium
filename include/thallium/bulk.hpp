@@ -240,7 +240,7 @@ class bulk {
         }
     }
 };
-    
+
 /**
  * @brief The bulk_segment class represents a portion
  * (represented by offset and size) of a bulk object.

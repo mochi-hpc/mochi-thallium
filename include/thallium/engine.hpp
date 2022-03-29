@@ -31,6 +31,7 @@ class bulk;
 class endpoint;
 class remote_bulk;
 class remote_procedure;
+class timed_callback;
 class pool;
 template <typename ... CtxArg> class request_with_context;
 using request = request_with_context<>;
@@ -72,6 +73,7 @@ class engine {
     template <typename ... CtxArg> friend class proc_input_archive;
     template <typename ... CtxArg> friend class proc_output_archive;
     template <typename T> friend class provider;
+    friend class timed_callback;
 
     friend hg_return_t thallium_generic_rpc(hg_handle_t handle);
 
@@ -704,6 +706,17 @@ class engine {
     pool get_handler_pool() const;
 
     /**
+     * @brief Create a timed_callback object linked to the engine.
+     *
+     * @tparam F Callback type.
+     * @param cb Callback
+     *
+     * @return a timed_callback object.
+     */
+    template<typename F>
+    timed_callback create_timed_callback(F&& cb) const;
+
+    /**
      * @brief Get the JSON configuration of the internal
      * Margo instance.
      */
@@ -904,6 +917,7 @@ class engine {
 #include <thallium/proc_object.hpp>
 #include <thallium/pool.hpp>
 #include <thallium/remote_procedure.hpp>
+#include <thallium/timed_callback.hpp>
 #include <thallium/serialization/proc_input_archive.hpp>
 #include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/stl/tuple.hpp>
@@ -1124,6 +1138,14 @@ inline pool engine::get_handler_pool() const {
     ABT_pool p = ABT_POOL_NULL;
     margo_get_handler_pool(m_impl->m_mid, &p);
     return pool(p);
+}
+
+template<typename F>
+inline timed_callback engine::create_timed_callback(F&& cb) const {
+    if(!m_impl) {
+        throw exception("Invalid engine");
+    }
+    return timed_callback(*this, std::forward<F>(cb));
 }
 
 inline hg_return_t thallium_generic_rpc(hg_handle_t handle) {
