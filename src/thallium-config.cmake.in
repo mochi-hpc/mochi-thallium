@@ -6,7 +6,8 @@ include (CMakeFindDependencyMacro)
 
 @PACKAGE_INIT@
 
-if (@ENABLE_CEREAL@)
+set (THALLIUM_USES_CEREAL @ENABLE_CEREAL@)
+if (THALLIUM_USES_CEREAL)
 find_dependency (cereal)
 endif ()
 find_dependency (PkgConfig)
