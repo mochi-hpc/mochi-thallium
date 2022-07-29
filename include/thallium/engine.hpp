@@ -760,10 +760,11 @@ class engine {
     };
 
     /**
+     * @private
      * @brief The list_proxy template class is used to return
      * a proxy list to the internal list of either xstreams or pools.
      *
-     * @tparam T tl::xstream or tl::pool
+     * @tparam T thallium::xstream or thallium::pool
      * @tparam Native ABT_xstream or ABT_pool
      */
     template<typename T, typename Native>

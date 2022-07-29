@@ -12,6 +12,9 @@ namespace thallium {
 
 namespace detail {
 
+/**
+ * @private
+ */
 template <size_t N> struct apply_f_to_t_impl {
     template <typename R, typename... ArgsF, typename... ArgsT,
               typename... Args>
@@ -22,6 +25,9 @@ template <size_t N> struct apply_f_to_t_impl {
     }
 };
 
+/**
+ * @private
+ */
 template <> struct apply_f_to_t_impl<0> {
     template <typename R, typename... ArgsF, typename... ArgsT,
               typename... Args>
