@@ -706,6 +706,13 @@ class engine {
     pool get_handler_pool() const;
 
     /**
+     * @brief Get the progress pool.
+     *
+     * @return The pool used for network progress.
+     */
+    pool get_progress_pool() const;
+
+    /**
      * @brief Create a timed_callback object linked to the engine.
      *
      * @tparam F Callback type.
@@ -1138,6 +1145,15 @@ inline pool engine::get_handler_pool() const {
     }
     ABT_pool p = ABT_POOL_NULL;
     margo_get_handler_pool(m_impl->m_mid, &p);
+    return pool(p);
+}
+
+inline pool engine::get_progress_pool() const {
+    if(!m_impl) {
+        throw exception("Invalid engine");
+    }
+    ABT_pool p = ABT_POOL_NULL;
+    margo_get_progress_pool(m_impl->m_mid, &p);
     return pool(p);
 }
 
