@@ -4,4 +4,5 @@ spack:
   - cmake
   - cereal
   - pkgconfig
-  concretization: together
+  concretizer:
+    unify: true
