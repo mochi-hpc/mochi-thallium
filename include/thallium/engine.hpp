@@ -47,9 +47,8 @@ hg_return_t thallium_generic_rpc(hg_handle_t handle);
 namespace detail {
 
     struct engine_impl {
-        margo_instance_id m_mid;
-        bool              m_owns_mid;
-        std::atomic<bool> m_finalize_called;
+        std::atomic<margo_instance_id> m_mid;
+        bool                           m_owns_mid;
     };
 
 }
@@ -101,7 +100,7 @@ class engine {
 
     static void on_engine_finalize_cb(void* arg) noexcept {
         auto e               = static_cast<detail::engine_impl*>(arg);
-        e->m_finalize_called = true;
+        e->m_mid.store(MARGO_INSTANCE_NULL);
     }
 
     static void on_engine_prefinalize_cb(void* arg) noexcept {
@@ -136,8 +135,6 @@ class engine {
     engine(const std::string& addr, int mode,
            const margo_init_info* args)
     : m_impl(std::make_shared<detail::engine_impl>()) {
-        m_impl->m_finalize_called = false;
-
         m_impl->m_mid = margo_init_ext(addr.c_str(), mode, args);
         if(!m_impl->m_mid)
             MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
@@ -162,7 +159,6 @@ class engine {
     engine(const std::string& addr, int mode, bool use_progress_thread = false,
            std::int32_t rpc_thread_count = 0, const hg_init_info *hg_opt = nullptr)
     : m_impl(std::make_shared<detail::engine_impl>()) {
-        m_impl->m_finalize_called = false;
 
         std::string config = "{ \"use_progress_thread\" : ";
         config += use_progress_thread ? "true" : "false";
@@ -197,7 +193,6 @@ class engine {
     engine(const std::string& addr, int mode,
            const char* config, const hg_init_info *hg_opt = nullptr)
     : m_impl(std::make_shared<detail::engine_impl>()) {
-        m_impl->m_finalize_called = false;
 
         margo_init_info args;
         memset(&args, 0, sizeof(args));
@@ -279,12 +274,13 @@ class engine {
     ~engine() {
         if(!m_impl) return;
         if(m_impl.use_count() > 1) return;
+        margo_instance_id mid = m_impl->m_mid;
+        if(mid == MARGO_INSTANCE_NULL) return;
         if(m_impl->m_owns_mid) {
-            if(margo_is_listening(m_impl->m_mid)) {
+            if(margo_is_listening(mid)) {
                 wait_for_finalize();
             } else {
-                if(!m_impl->m_finalize_called)
-                    finalize();
+                finalize();
             }
         }
     }
@@ -316,8 +312,9 @@ class engine {
      */
     void wait_for_finalize() {
         if(!m_impl) throw exception("Invalid engine");
-        if(!m_impl->m_finalize_called)
-            margo_wait_for_finalize(m_impl->m_mid);
+        margo_instance_id mid = m_impl->m_mid;
+        if(mid != MARGO_INSTANCE_NULL)
+            margo_wait_for_finalize(mid);
     }
 
     /**
@@ -924,7 +921,6 @@ namespace thallium {
 inline engine::engine(const std::string& addr, int mode, const pool& progress_pool,
                       const pool& default_handler_pool)
 :  m_impl(std::make_shared<detail::engine_impl>()) {
-    m_impl->m_finalize_called = false;
     m_impl->m_owns_mid        = true;
 
     margo_init_info args;
