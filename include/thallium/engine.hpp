@@ -432,6 +432,19 @@ class engine {
     bulk expose(const std::vector<std::pair<void*, size_t>>& segments,
                 bulk_mode                                    flag);
 
+#if (HG_VERSION_MAJOR > 2) || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR > 1) \
+    || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR == 1                        \
+        && HG_VERSION_PATCH > 0)
+
+    /**
+     * @brief Version of the expose function that also takes an hg_bulk_attr.
+     */
+    bulk expose(const std::vector<std::pair<void*, size_t>>& segments,
+                bulk_mode                                    flag,
+                const hg_bulk_attr&                          attr);
+
+#endif
+
     /**
      * @brief Creates a bulk object from an hg_bulk_t handle. The user
      * is still responsible for calling margo_bulk_free or HG_Bulk_free
@@ -1096,6 +1109,31 @@ inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments
     MARGO_ASSERT(ret, margo_bulk_create);
     return bulk(m_impl, handle, true);
 }
+
+#if (HG_VERSION_MAJOR > 2) || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR > 1) \
+    || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR == 1                        \
+        && HG_VERSION_PATCH > 0)
+
+inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
+                           bulk_mode                                    flag,
+                           const hg_bulk_attr&                          attr) {
+    if(!m_impl) throw exception("Invalid engine");
+    hg_bulk_t              handle;
+    hg_uint32_t            count = segments.size();
+    std::vector<void*>     buf_ptrs(count);
+    std::vector<hg_size_t> buf_sizes(count);
+    for(unsigned i = 0; i < segments.size(); i++) {
+        buf_ptrs[i]  = segments[i].first;
+        buf_sizes[i] = segments[i].second;
+    }
+    hg_return_t ret = margo_bulk_create_attr(
+        m_impl->m_mid, count, &buf_ptrs[0], &buf_sizes[0],
+        static_cast<hg_uint32_t>(flag), &attr, &handle);
+    MARGO_ASSERT(ret, margo_bulk_create);
+    return bulk(m_impl, handle, true);
+}
+
+#endif
 
 inline bulk engine::wrap(hg_bulk_t blk, bool is_local) {
     if(!m_impl) throw exception("Invalid engine");
