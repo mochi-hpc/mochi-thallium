@@ -62,6 +62,8 @@ class packed_data {
         MARGO_ASSERT(ret, margo_ref_incr);
     }
 
+  public:
+    packed_data() = default;
     packed_data(const packed_data&)            = delete;
     packed_data& operator=(const packed_data&) = delete;
 
@@ -97,9 +99,6 @@ class packed_data {
         rhs.m_free_fn   = nullptr;
     }
 
-    packed_data() = default;
-
-  public:
     ~packed_data() {
         if(m_handle != HG_HANDLE_NULL) {
             margo_destroy(m_handle);
