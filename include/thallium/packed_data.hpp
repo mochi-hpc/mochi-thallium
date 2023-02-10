@@ -62,6 +62,41 @@ class packed_data {
         MARGO_ASSERT(ret, margo_ref_incr);
     }
 
+    packed_data(const packed_data&)            = delete;
+    packed_data& operator=(const packed_data&) = delete;
+
+    packed_data(packed_data&& rhs)
+    : m_engine_impl(std::move(rhs.m_engine_impl)),
+      m_context(std::move(rhs.m_context)) {
+        m_handle        = rhs.m_handle;
+        rhs.m_handle    = HG_HANDLE_NULL;
+        m_unpack_fn     = rhs.m_unpack_fn;
+        rhs.m_unpack_fn = nullptr;
+        m_free_fn       = rhs.m_free_fn;
+        rhs.m_free_fn   = nullptr;
+    }
+
+    packed_data& operator=(packed_data&& rhs) {
+
+        if(&rhs == this) {
+            return *this;
+        }
+
+        // the original members m_handle, m_context, and m_handle are being
+        // replaced here by the ones from rhs. It may be necessary to release
+        // their resources if `packed_data` has claimed ownership over them,
+        // otherwise we would be leaking
+        m_engine_impl = std::move(rhs.m_engine_impl);
+        m_context = std::move(rhs.m_context);
+
+        m_handle        = rhs.m_handle;
+        rhs.m_handle    = HG_HANDLE_NULL;
+        m_unpack_fn     = rhs.m_unpack_fn;
+        rhs.m_unpack_fn = nullptr;
+        m_free_fn       = rhs.m_free_fn;
+        rhs.m_free_fn   = nullptr;
+    }
+
     packed_data() = default;
 
   public:
