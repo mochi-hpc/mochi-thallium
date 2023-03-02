@@ -13,7 +13,7 @@ set (thallium-pkg "share/cmake/thallium")
 # library version set here (e.g. for shared libs).
 #
 set (THALLIUM_VERSION_MAJOR 0)
-set (THALLIUM_VERSION_MINOR 10)
+set (THALLIUM_VERSION_MINOR 11)
 set (THALLIUM_VERSION_PATCH 0)
 set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
 set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
@@ -31,19 +31,19 @@ target_include_directories (thallium INTERFACE
 #
 set (INCLUDE_INSTALL_DIR include/)
 set (LIB_INSTALL_DIR lib/)
-include(CMakePackageConfigHelpers)
-configure_package_config_file(thallium-config.cmake.in
+include (CMakePackageConfigHelpers)
+configure_package_config_file (thallium-config.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/thallium-config.cmake
   INSTALL_DESTINATION ${LIB_INSTALL_DIR}/thallium/cmake
   PATH_VARS INCLUDE_INSTALL_DIR)
-write_basic_package_version_file(
+write_basic_package_version_file (
     "thallium-config-version.cmake"
     VERSION ${THALLIUM_VERSION}
     COMPATIBILITY AnyNewerVersion)
 
 # some bits for the pkg-config file
 set (DEST_DIR "${CMAKE_INSTALL_PREFIX}")
-CONFIGURE_FILE("thallium.pc.in" "thallium.pc" @ONLY)
+CONFIGURE_FILE ("thallium.pc.in" "thallium.pc" @ONLY)
 
 #
 # "make install" rules
@@ -58,11 +58,11 @@ install (FILES "${CMAKE_CURRENT_BINARY_DIR}/thallium-config.cmake"
                "${CMAKE_CURRENT_BINARY_DIR}/thallium-config-version.cmake"
          DESTINATION ${thallium-pkg} )
 install (FILES "${CMAKE_CURRENT_BINARY_DIR}/thallium.pc"
-	DESTINATION "lib/pkgconfig/")
+         DESTINATION "lib/pkgconfig/")
 install (DIRECTORY ../include/thallium
          DESTINATION include
          FILES_MATCHING PATTERN "*.hpp")
 install (FILES ../include/thallium.hpp
-	 DESTINATION include)
+         DESTINATION include)
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/../include/thallium/config.hpp
-	DESTINATION include/thallium)
+         DESTINATION include/thallium)
