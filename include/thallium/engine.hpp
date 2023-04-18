@@ -941,7 +941,7 @@ inline engine::engine(const std::string& addr, int mode, const pool& progress_po
     args.progress_pool  = progress_pool.native_handle();
     args.rpc_pool       = default_handler_pool.native_handle();
 
-    m_impl->m_mid = margo_init_ext(NULL, mode, &args);
+    m_impl->m_mid = margo_init_ext(addr.c_str(), mode, &args);
 
     if(!m_impl->m_mid)
         MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
