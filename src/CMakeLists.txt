@@ -14,7 +14,7 @@ set (thallium-pkg "share/cmake/thallium")
 #
 set (THALLIUM_VERSION_MAJOR 0)
 set (THALLIUM_VERSION_MINOR 11)
-set (THALLIUM_VERSION_PATCH 0)
+set (THALLIUM_VERSION_PATCH 1)
 set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
 set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
 
