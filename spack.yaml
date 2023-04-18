@@ -1,8 +1,7 @@
 spack:
   specs:
-  - mochi-margo
+  - mochi-margo ^mercury~boostsys~checksum ^libfabric fabrics=tcp,rxm
   - cmake
   - cereal
-  - pkgconfig
   concretizer:
     unify: true
