@@ -1,6 +1,6 @@
 /*
  * (C) 2017 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #ifndef SERIALIZE_H
@@ -55,7 +55,7 @@ struct has_serialize_method {
  * appropriate for an archive of type A.
  */
 template <typename A, typename T>
-struct has_serialize_method<A, T, 
+struct has_serialize_method<A, T,
     void_t<decltype(std::declval<T&>().serialize(std::declval<A&>()))>> {
         constexpr static bool value = true;
 };
@@ -117,7 +117,7 @@ struct serializer<A,T,false> {
     static inline void apply(A& ar, T&& t) {
         (void)ar;
         (void)t;
-        static_assert(has_serialize_method<A,T>::value, 
+        static_assert(has_serialize_method<A,T>::value,
                 "Undefined \"serialize\" member function");
     }
 };
