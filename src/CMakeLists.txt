@@ -45,10 +45,14 @@ write_basic_package_version_file (
 set (DEST_DIR "${CMAKE_INSTALL_PREFIX}")
 CONFIGURE_FILE ("thallium.pc.in" "thallium.pc" @ONLY)
 
+# Interface library that adds -DTHALLIUM_DEBUG_RPC_TYPES
+add_library (thallium_check_types INTERFACE)
+target_compile_definitions (thallium_check_types INTERFACE THALLIUM_DEBUG_RPC_TYPES)
+
 #
 # "make install" rules
 #
-install (TARGETS thallium EXPORT thallium-targets
+install (TARGETS thallium thallium_check_types EXPORT thallium-targets
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib)
 install (EXPORT thallium-targets
