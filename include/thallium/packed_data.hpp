@@ -106,6 +106,13 @@ class packed_data {
     }
 
     /**
+     * @brief Return the request's underlying hg_handle_t.
+     */
+    hg_handle_t native_handle() const {
+        return m_handle;
+    }
+
+    /**
      * @brief Create a new packed_data object but with a different
      * serialization context.
      *

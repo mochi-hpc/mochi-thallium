@@ -125,6 +125,13 @@ class request_with_context {
     }
 
     /**
+     * @brief Return the request's underlying hg_handle_t.
+     */
+    hg_handle_t native_handle() const {
+        return m_handle;
+    }
+
+    /**
      * @brief Get the input of the RPC as a packed_data object.
      */
     auto get_input() const {
