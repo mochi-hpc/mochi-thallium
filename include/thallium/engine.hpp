@@ -1220,7 +1220,7 @@ inline engine::list_proxy<xstream, ABT_xstream> engine::xstreams() const {
 }
 
 
-engine::list_proxy<pool, ABT_pool> engine::pools() const {
+inline engine::list_proxy<pool, ABT_pool> engine::pools() const {
     if(!m_impl) {
         throw exception("Invalid engine");
     }
