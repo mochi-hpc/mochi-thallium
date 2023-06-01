@@ -740,8 +740,16 @@ class engine {
     template<typename T>
     struct named_object_proxy : public T {
 
+        /*
         named_object_proxy(T&& obj, std::string name, unsigned index)
         : T(std::move(obj))
+        , m_name(std::move(name))
+        , m_index(index) {}
+        */
+
+        template<typename Handle>
+        named_object_proxy(Handle&& handle, std::string name, unsigned index)
+        : T(std::move(handle))
         , m_name(std::move(name))
         , m_index(index) {}
 
@@ -762,7 +770,7 @@ class engine {
         private:
 
         std::string m_name;
-        unsigned m_index;
+        unsigned    m_index;
     };
 
     /**
@@ -783,11 +791,13 @@ class engine {
          * Throws std::out_of_range if the name is unknown.
          */
         auto operator[](const char* name) const {
-            Native handle;
+#if 0
             int ret = m_get_by_name(m_mid, name, &handle);
             if(ret != 0) throw std::out_of_range("unknown object name in list_proxy");
             int index = m_get_index(m_mid, name);
             return named_object_proxy<T>(T(handle), std::string(name), index);
+#endif
+            return m_find_by_name(m_mid, name);
         }
 
         /**
@@ -805,11 +815,20 @@ class engine {
         template<typename I,
                  std::enable_if_t<std::is_integral<I>::value, bool> = true>
         auto operator[](I index) const {
+#if 0
             Native handle;
             int ret = m_get_by_index(m_mid, index, &handle);
             if(ret != 0) throw std::out_of_range("index out of range in list_proxy");
             const char* name = m_get_name(m_mid, index);
             return named_object_proxy<T>(T(handle), std::string(name), index);
+#endif
+            return m_find_by_index(m_mid, index);
+        }
+
+        template<typename N,
+                 std::enable_if_t<std::is_same<std::remove_cv_t<std::remove_reference_t<N>>, Native>::value, bool> = true>
+        auto operator[](N handle) const {
+            return m_find_by_handle(m_mid, handle);
         }
 
         /**
@@ -823,6 +842,12 @@ class engine {
 
         friend class engine;
 
+        typedef named_object_proxy<T> (*find_by_handle_f)(margo_instance_id, Native);
+        typedef named_object_proxy<T> (*find_by_name_f)(margo_instance_id, const char*);
+        typedef named_object_proxy<T> (*find_by_index_f)(margo_instance_id, uint32_t);
+        typedef size_t (*get_num_f)(margo_instance_id);
+
+#if 0
         typedef int (*get_by_name_f)(margo_instance_id, const char*, Native*);
         typedef int (*get_by_index_f)(margo_instance_id, unsigned, Native*);
         typedef const char* (*get_name_f)(margo_instance_id, unsigned);
@@ -835,18 +860,35 @@ class engine {
         get_name_f        m_get_name;
         get_index_f       m_get_index;
         get_num_f         m_get_num;
+#endif
+
+        margo_instance_id m_mid;
+        find_by_handle_f  m_find_by_handle;
+        find_by_name_f    m_find_by_name;
+        find_by_index_f   m_find_by_index;
+        get_num_f         m_get_num;
 
         list_proxy(margo_instance_id mid,
+#if 0
                    get_by_name_f get_by_name,
                    get_by_index_f get_by_index,
                    get_name_f get_name,
                    get_index_f get_index,
+#endif
+                   find_by_handle_f find_by_handle,
+                   find_by_name_f find_by_name,
+                   find_by_index_f find_by_index,
                    get_num_f get_num)
         : m_mid(mid)
+#if 0
         , m_get_by_name(get_by_name)
         , m_get_by_index(get_by_index)
         , m_get_name(get_name)
         , m_get_index(get_index)
+#endif
+        , m_find_by_handle(find_by_handle)
+        , m_find_by_name(find_by_name)
+        , m_find_by_index(find_by_index)
         , m_get_num(get_num) {}
 
         list_proxy(const list_proxy&) = default;
@@ -859,35 +901,13 @@ class engine {
      * @brief Returns a proxy object that can be used to access
      * the internal list of xstreams in the underlying margo instance.
      */
-    auto xstreams() const {
-        if(!m_impl) {
-            throw exception("Invalid engine");
-        }
-        return list_proxy<xstream, ABT_xstream>{
-            m_impl->m_mid,
-            &margo_get_xstream_by_name,
-            &margo_get_xstream_by_index,
-            &margo_get_xstream_name,
-            &margo_get_xstream_index,
-            &margo_get_num_xstreams};
-    }
+    list_proxy<xstream, ABT_xstream> xstreams() const;
 
     /**
      * @brief Returns a proxy object that can be used to access
      * the internal list of pools in the underlying margo instance.
      */
-    auto pools() const {
-        if(!m_impl) {
-            throw exception("Invalid engine");
-        }
-        return list_proxy<pool, ABT_pool>{
-            m_impl->m_mid,
-            &margo_get_pool_by_name,
-            &margo_get_pool_by_index,
-            &margo_get_pool_name,
-            &margo_get_pool_index,
-            &margo_get_num_pools};
-    }
+    list_proxy<pool, ABT_pool> pools() const;
 
     void set_logger(logger* l) {
         if(!m_impl) {
@@ -923,6 +943,7 @@ class engine {
 #include <thallium/request.hpp>
 #include <thallium/proc_object.hpp>
 #include <thallium/pool.hpp>
+#include <thallium/xstream.hpp>
 #include <thallium/remote_procedure.hpp>
 #include <thallium/timed_callback.hpp>
 #include <thallium/serialization/proc_input_archive.hpp>
@@ -1166,6 +1187,69 @@ inline pool engine::get_progress_pool() const {
     margo_get_progress_pool(m_impl->m_mid, &p);
     return pool(p);
 }
+
+
+inline engine::list_proxy<xstream, ABT_xstream> engine::xstreams() const {
+    if(!m_impl) {
+        throw exception("Invalid engine");
+    }
+    return list_proxy<xstream, ABT_xstream>{
+        m_impl->m_mid,
+        [](margo_instance_id mid, ABT_xstream handle) {
+            margo_xstream_info info;
+            hg_return_t hret = margo_find_xstream_by_handle(mid, handle, &info);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_find_xstream_by_handle, hret,
+                    "Could not find xstream instance from provided ABT_xstream handle");
+            return named_object_proxy<xstream>(info.xstream, std::string(info.name), info.index);
+        },
+        [](margo_instance_id mid, const char* name) {
+            margo_xstream_info info;
+            hg_return_t hret = margo_find_xstream_by_name(mid, name, &info);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_find_xstream_by_name, hret,
+                    "Could not find xstream instance from provided name");
+            return named_object_proxy<xstream>(info.xstream, std::string(info.name), info.index);
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            margo_xstream_info info;
+            hg_return_t hret = margo_find_xstream_by_index(mid, index, &info);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_find_xstream_by_index, hret,
+                    "Could not find xstream instance from provided index");
+            return named_object_proxy<xstream>(info.xstream, std::string(info.name), info.index);
+        },
+        &margo_get_num_xstreams};
+}
+
+
+engine::list_proxy<pool, ABT_pool> engine::pools() const {
+    if(!m_impl) {
+        throw exception("Invalid engine");
+    }
+    return list_proxy<pool, ABT_pool>{
+        m_impl->m_mid,
+        [](margo_instance_id mid, ABT_pool handle) {
+            margo_pool_info info;
+            hg_return_t hret = margo_find_pool_by_handle(mid, handle, &info);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_find_pool_by_handle, hret,
+                    "Could not find pool instance from provided ABT_pool handle");
+            return named_object_proxy<pool>(info.pool, std::string(info.name), info.index);
+        },
+        [](margo_instance_id mid, const char* name) {
+            margo_pool_info info;
+            hg_return_t hret = margo_find_pool_by_name(mid, name, &info);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_find_pool_by_name, hret,
+                    "Could not find pool instance from provided name");
+            return named_object_proxy<pool>(info.pool, std::string(info.name), info.index);
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            margo_pool_info info;
+            hg_return_t hret = margo_find_pool_by_index(mid, index, &info);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_find_pool_by_index, hret,
+                    "Could not find pool instance from provided index");
+            return named_object_proxy<pool>(info.pool, std::string(info.name), info.index);
+        },
+        &margo_get_num_pools};
+}
+
 
 template<typename F>
 inline timed_callback engine::create_timed_callback(F&& cb) const {
