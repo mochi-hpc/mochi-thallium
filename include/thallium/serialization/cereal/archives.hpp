@@ -140,6 +140,7 @@ namespace thallium {
     typename std::enable_if<std::is_arithmetic<T>::value, void>::type
     CEREAL_LOAD_FUNCTION_NAME(proc_input_archive<CtxArg...>& ar, T & t)
     {
+        t = T{};
         ar.read(std::addressof(t), sizeof(t));
     }
 
