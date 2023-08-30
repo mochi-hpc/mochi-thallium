@@ -120,7 +120,7 @@ inline hg_return_t proc_void_object(hg_proc_t proc, std::tuple<CtxArg...>& ctx) 
     } break;
     case HG_DECODE: {
 #ifdef THALLIUM_DEBUG_RPC_TYPES
-        proc_input_archive<CtxArg> ar(proc, ctx);
+        proc_input_archive<CtxArg...> ar(proc, ctx);
         std::string        requested_type_name = "void";
         std::string        received_type_name;
         ar >> received_type_name;
