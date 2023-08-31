@@ -253,7 +253,16 @@ class engine {
      */
     engine& operator=(engine&& other) {
         if(m_impl == other.m_impl) return *this;
-        if(m_impl) this->~engine();
+        if(m_impl && m_impl.use_count() == 1) {
+            margo_instance_id mid = m_impl->m_mid;
+            if(mid && m_impl->m_owns_mid) {
+                if(margo_is_listening(mid)) {
+                    wait_for_finalize();
+                } else {
+                    finalize();
+                }
+            }
+        }
         m_impl = std::move(other.m_impl);
         return *this;
     }
@@ -263,7 +272,16 @@ class engine {
      */
     engine& operator=(const engine& other) {
         if(m_impl == other.m_impl) return *this;
-        if(m_impl) this->~engine();
+        if(m_impl && m_impl.use_count() == 1) {
+            margo_instance_id mid = m_impl->m_mid;
+            if(mid && m_impl->m_owns_mid) {
+                if(margo_is_listening(mid)) {
+                    wait_for_finalize();
+                } else {
+                    finalize();
+                }
+            }
+        }
         m_impl = other.m_impl;
         return *this;
     }
