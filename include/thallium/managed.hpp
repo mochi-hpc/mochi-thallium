@@ -70,9 +70,15 @@ template <class T> class managed {
     }
 
     /**
+     * @brief Release the underlying resource.
+     * This is equivalent to doing m = tl::managed<T>{};
+     */
+    void release() { m_obj.destroy(); }
+
+    /**
      * @brief Destructor.
      */
-    ~managed() { m_obj.destroy(); }
+    ~managed() { release(); }
 
     /**
      * @brief Dereference operator.
@@ -84,7 +90,7 @@ template <class T> class managed {
      */
     T* operator->() { return &m_obj; }
 };
-    
+
 /**
  * @brief Make a managed object by forwarding any passed parameters
  * to the constructor of the underlying resource type.
