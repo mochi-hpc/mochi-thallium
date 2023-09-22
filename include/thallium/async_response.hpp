@@ -102,6 +102,8 @@ class async_response {
      * @brief Destructor.
      */
     ~async_response() noexcept {
+        if(m_request != MARGO_REQUEST_NULL)
+            wait();
         if(m_handle != HG_HANDLE_NULL)
             margo_destroy(m_handle);
     }
@@ -114,11 +116,14 @@ class async_response {
      */
     packed_data<> wait() {
         hg_return_t ret;
-        ret = margo_wait(m_request);
-        if(ret == HG_TIMEOUT) {
-            throw timeout();
+        if(m_request != MARGO_REQUEST_NULL) {
+            ret = margo_wait(m_request);
+            m_request = MARGO_REQUEST_NULL;
+            if(ret == HG_TIMEOUT) {
+                throw timeout();
+            }
+            MARGO_ASSERT(ret, margo_wait);
         }
-        MARGO_ASSERT(ret, margo_wait);
         if(m_ignore_response)
             return packed_data<>();
         return packed_data<>(margo_get_output, margo_free_output, m_handle, m_engine_impl);
@@ -130,6 +135,8 @@ class async_response {
      * @return true if the response has been received, false otherwise.
      */
     bool received() const {
+        if(m_request == MARGO_REQUEST_NULL)
+            return true;
         int ret;
         int flag;
         ret = margo_test(m_request, &flag);
