@@ -11,6 +11,8 @@ class point {
         point(double a=0.0, double b=0.0, double c=0.0)
             : x(a), y(b), z(c) {}
 
+        point(const point&) = delete;
+
         template<typename A> friend void serialize(A& ar, point& p);
 
         double operator*(const point& p) const {
