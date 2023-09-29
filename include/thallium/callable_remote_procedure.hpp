@@ -338,7 +338,7 @@ class callable_remote_procedure_with_context {
                           const T&... args) {
         std::chrono::duration<double, std::milli> fp_ms      = t;
         double                                    timeout_ms = fp_ms.count();
-        return forward(std::make_tuple<const T&...>(args...), timeout_ms);
+        return forward(std::make_tuple(std::cref(args)...), timeout_ms);
     }
 
     /**
@@ -374,7 +374,7 @@ class callable_remote_procedure_with_context {
      * @return an async_response object that the caller can wait on.
      */
     template <typename... T> async_response async(const T&... args) {
-        return iforward(std::make_tuple<const T&...>(args...));
+        return iforward(std::make_tuple(std::cref(args)...));
     }
 
     /**
@@ -395,7 +395,7 @@ class callable_remote_procedure_with_context {
                                const T&... args) {
         std::chrono::duration<double, std::milli> fp_ms      = t;
         double                                    timeout_ms = fp_ms.count();
-        return iforward(std::make_tuple<const T&...>(args...), timeout_ms);
+        return iforward(std::make_tuple(std::creft(args)...), timeout_ms);
     }
 
     /**
