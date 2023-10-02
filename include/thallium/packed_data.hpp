@@ -194,6 +194,32 @@ class packed_data {
      * @return An object of the desired type.
      */
     template <typename T> operator T() const { return as<T>(); }
+
+    /**
+     * @brief Unpack the data into a provided set of arguments.
+     * This function is preferable to as<T> or to casting into
+     * the resulting type in cases where the resulting type
+     * cannot be easily moved, or the caller already has an instance
+     * of it that needs to be set.
+     *
+     * @tparam T Types into which to unpack.
+     * @param x Objects into which to unpack.
+     */
+    template <typename... T> void unpack(T&... x) const {
+        if(m_handle == HG_HANDLE_NULL) {
+            throw exception(
+                "Cannot unpack data from handle. Are you trying to "
+                "unpack data from an RPC that does not return any?");
+        }
+        auto t = std::make_tuple(std::ref(x)...);
+        meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
+            return proc_object_decode(proc, t, m_engine_impl, m_context);
+        };
+        hg_return_t ret = m_unpack_fn(m_handle, &mproc);
+        MARGO_ASSERT(ret, m_unpack_fn);
+        ret = m_free_fn(m_handle, &mproc);
+        MARGO_ASSERT(ret, m_free_fn);
+    }
 };
 
 } // namespace thallium

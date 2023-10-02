@@ -14,7 +14,9 @@ int main(int argc, char** argv) {
     tl::endpoint server = myEngine.lookup(argv[1]);
     point p(1,2,3);
     point q(5,2,4);
-    double ret = dot_product.on(server).async(p,q).wait();
+    double ret;
+    dot_product.on(server).async(p,q).wait().unpack(ret);
+    // or double ret = dot_product.on(server).async(p,q).wait()
     std::cout << "Dot product : " << ret << std::endl;
 
     return 0;
