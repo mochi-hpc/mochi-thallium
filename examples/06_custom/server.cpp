@@ -9,9 +9,11 @@ int main() {
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
     std::cout << "Server running at address " << myEngine.self() << std::endl;
 
-    std::function<void(const tl::request&, const point&, const point&)> dot_product = 
+    std::function<void(const tl::request&, const point&, const point&)> dot_product =
         [&myEngine](const tl::request& req, const point& p, const point& q) {
-            req.respond(p*q);
+            point pq;
+            tl::auto_respond<point> response{req, pq};
+            pq = p*q;
             myEngine.finalize();
         };
 

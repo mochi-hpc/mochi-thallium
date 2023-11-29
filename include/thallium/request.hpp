@@ -210,6 +210,34 @@ class request_with_context {
 
 using request = request_with_context<>;
 
+/**
+ * @brief auto_respond is a helper class that prevents
+ * users from forgetting to call req.respond() by
+ * having this auto_respond object call req.respond()
+ * on destruction.
+ */
+template<typename ResponseType>
+class auto_respond {
+
+    public:
+
+    auto_respond(const request& req, ResponseType& data)
+    : m_request{req}
+    , m_data{data} {}
+
+    auto_respond(auto_respond&&) = delete;
+    auto_respond(const auto_respond&) = delete;
+
+    ~auto_respond() {
+        m_request.respond(m_data);
+    }
+
+    private:
+
+    const request& m_request;
+    ResponseType&  m_data;
+};
+
 } // namespace thallium
 
 #include <thallium/endpoint.hpp>
