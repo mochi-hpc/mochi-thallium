@@ -95,6 +95,11 @@ class endpoint {
     virtual ~endpoint();
 
     /**
+     * @brief Returns the engine that created this endpoint.
+     */
+    engine get_engine() const;
+
+    /**
      * @brief Creates a string representation of the endpoint's address.
      *
      * @return A string representation of the endpoint's address.
@@ -235,6 +240,10 @@ inline endpoint::~endpoint() {
         MARGO_ASSERT_TERMINATE(ret, margo_addr_free, -1);
     }
 }
+
+engine endpoint::get_engine() const {
+    return engine{m_engine_impl.lock()};
+};
 
 inline endpoint::operator std::string() const {
     if(m_addr == HG_ADDR_NULL)

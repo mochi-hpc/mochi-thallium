@@ -13,6 +13,8 @@
 #include <memory>
 #include <string>
 #include <thallium/engine.hpp>
+#include <thallium/exception.hpp>
+#include <thallium/margo_exception.hpp>
 #include <unordered_map>
 
 namespace thallium {
@@ -34,13 +36,30 @@ template <typename T> class provider {
     uint16_t m_provider_id;
 
   public:
-    provider(const engine& e, uint16_t provider_id)
+    provider(const engine& e, uint16_t provider_id, const char* identity = "<unknown>")
     : m_engine_impl(e.m_impl)
     , m_provider_id(provider_id) {
         if(!e.m_impl) throw exception("Invalid engine");
+#if MARGO_VERSION_NUM >= 1500
+        auto mid = e.get_margo_instance();
+        if(margo_provider_registered_identity(mid, provider_id)) {
+            throw exception{
+                "[thallium] a provider with the same ID (",
+                provider_id,
+                ") is already registered"};
+        }
+        auto hret = margo_provider_register_identity(
+            mid, m_provider_id, identity);
+        MARGO_ASSERT(hret, margo_provider_register_identity);
+#endif
     }
 
-    virtual ~provider() = default;
+    virtual ~provider() {
+#if MARGO_VERSION_NUM >= 1500
+        auto mid = get_engine().get_margo_instance();
+        margo_provider_deregister_identity(mid, m_provider_id);
+#endif
+    }
 
     /**
      * @brief Copy-constructor.
@@ -61,6 +80,18 @@ template <typename T> class provider {
      * @brief Copy-assignment operator.
      */
     provider& operator=(const provider& other) = delete;
+
+    /**
+     * @brief Returns the identity of the provider.
+     */
+    const char* identity() const {
+#if MARGO_VERSION_NUM >= 1500
+        return margo_provider_registered_identity(
+            get_engine().get_margo_instance(), m_provider_id);
+#else
+        return "<unknown>";
+#endif
+    }
 
   protected:
     /**

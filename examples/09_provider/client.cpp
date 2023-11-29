@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
     tl::endpoint server = myEngine.lookup(argv[1]);
     uint16_t provider_id = atoi(argv[2]);
     tl::provider_handle ph(server, provider_id);
+    std::cout << "identity: " << ph.get_identity() << std::endl;
     int ret = sum.on(ph)(42,63);
     std::cout << "(sum) Server answered " << ret << std::endl;
     ret = prod.on(ph)(42,63);

@@ -19,7 +19,7 @@ class my_sum_provider : public tl::provider<my_sum_provider> {
     }
 
     void hello(const std::string& name) {
-        std::cout << "Hello, " << name << std::endl;
+        std::cout << "Hello, " << name << ", from " << identity() << std::endl;
     }
 
     int print(const std::string& word) {
@@ -29,8 +29,8 @@ class my_sum_provider : public tl::provider<my_sum_provider> {
 
     public:
 
-    my_sum_provider(const tl::engine& e, uint16_t provider_id=1)
-    : tl::provider<my_sum_provider>(e, provider_id) {
+    my_sum_provider(const tl::engine& e, uint16_t provider_id)
+    : tl::provider<my_sum_provider>(e, provider_id, "myprovider") {
         define("prod", &my_sum_provider::prod);
         define("sum", &my_sum_provider::sum);
         define("hello", &my_sum_provider::hello).disable_response();

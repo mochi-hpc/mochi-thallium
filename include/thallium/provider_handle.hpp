@@ -85,6 +85,31 @@ class provider_handle : public endpoint {
      * @return the provider id.
      */
     uint16_t provider_id() const { return m_provider_id; }
+
+    /**
+     * @brief Send an RPC to get the identity of the remote provider.
+     *
+     * @return The identity as a string.
+     */
+    std::string get_identity() const {
+#if MARGO_VERSION_NUM >= 1500
+        hg_return_t hret = HG_NOMEM;
+        std::vector<char> buffer{64, '\0'};
+        while(hret == HG_NOMEM) {
+            buffer.resize(buffer.size()*2);
+            size_t bufsize = buffer.size();
+            auto mid = get_engine().get_margo_instance();
+            auto addr = get_addr();
+            hret = margo_provider_get_identity(mid, addr, m_provider_id, buffer.data(), &bufsize);
+        }
+        if(hret != HG_SUCCESS) {
+            MARGO_ASSERT(hret, margo_provider_get_identity);
+        }
+        return std::string{buffer.data()};
+#else
+        return std::string{"<unknown>"};
+#endif
+    }
 };
 
 } // namespace thallium
