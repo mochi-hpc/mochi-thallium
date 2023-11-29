@@ -7,6 +7,7 @@
 #define __THALLIUM_REMOTE_PROCEDURE_HPP
 
 #include <margo.h>
+#include <memory>
 
 namespace thallium {
 
@@ -100,7 +101,8 @@ class remote_procedure {
      *
      * @return *this
      */
-    remote_procedure& disable_response();
+    remote_procedure& disable_response() &;
+    remote_procedure&& disable_response() &&;
 
     /**
      * @brief Deregisters this RPC from the engine.
@@ -111,6 +113,23 @@ class remote_procedure {
     ignore_response() {
         return disable_response();
     }
+};
+
+/**
+ * @brief The auto_remote_procedure class is a class that
+ * helps auto-deregistering a remote_procedure when it is destroyed.
+ */
+class auto_remote_procedure : public remote_procedure {
+
+    public:
+
+    auto_remote_procedure(remote_procedure&& rpc)
+    : remote_procedure(std::move(rpc)) {}
+
+    ~auto_remote_procedure() {
+        deregister();
+    }
+
 };
 
 } // namespace thallium
@@ -141,7 +160,11 @@ inline void remote_procedure::deregister() {
         margo_deregister(engine_impl->m_mid, m_id);
 }
 
-inline remote_procedure& remote_procedure::disable_response() {
+inline remote_procedure&& remote_procedure::disable_response() && {
+    return std::move(this->disable_response());
+}
+
+inline remote_procedure& remote_procedure::disable_response() & {
     m_ignore_response = true;
     auto engine_impl = m_engine_impl.lock();
     if(!engine_impl) throw exception("remote_procedure object isn't initialized");
