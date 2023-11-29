@@ -241,7 +241,7 @@ inline endpoint::~endpoint() {
     }
 }
 
-engine endpoint::get_engine() const {
+inline engine endpoint::get_engine() const {
     return engine{m_engine_impl.lock()};
 };
 
