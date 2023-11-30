@@ -33,31 +33,31 @@ typedef std::integral_constant<bool, true> ignore_return_value;
 template <typename T> class provider {
   private:
     std::weak_ptr<detail::engine_impl>  m_engine_impl;
-    uint16_t m_provider_id;
+    margo_instance_id                   m_mid;
+    uint16_t                            m_provider_id;
 
   public:
     provider(const engine& e, uint16_t provider_id, const char* identity = "<unknown>")
     : m_engine_impl(e.m_impl)
     , m_provider_id(provider_id) {
         if(!e.m_impl) throw exception("Invalid engine");
+        m_mid = e.get_margo_instance();
 #if MARGO_VERSION_NUM >= 1500
-        auto mid = e.get_margo_instance();
-        if(margo_provider_registered_identity(mid, provider_id)) {
+        if(margo_provider_registered_identity(m_mid, provider_id)) {
             throw exception{
                 "[thallium] a provider with the same ID (",
                 provider_id,
                 ") is already registered"};
         }
         auto hret = margo_provider_register_identity(
-            mid, m_provider_id, identity);
+            m_mid, m_provider_id, identity);
         MARGO_ASSERT(hret, margo_provider_register_identity);
 #endif
     }
 
     virtual ~provider() {
 #if MARGO_VERSION_NUM >= 1500
-        auto mid = get_engine().get_margo_instance();
-        margo_provider_deregister_identity(mid, m_provider_id);
+        margo_provider_deregister_identity(m_mid, m_provider_id);
 #endif
     }
 
