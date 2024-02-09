@@ -121,7 +121,7 @@ class request_with_context {
      */
     ~request_with_context() {
         hg_return_t ret = margo_destroy(m_handle);
-        MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
+        MARGO_ASSERT_TERMINATE(ret, margo_destroy);
     }
 
     /**

@@ -237,7 +237,7 @@ inline endpoint::~endpoint() {
         auto engine_impl = m_engine_impl.lock();
         if(!engine_impl) return;
         hg_return_t ret = margo_addr_free(engine_impl->m_mid, m_addr);
-        MARGO_ASSERT_TERMINATE(ret, margo_addr_free, -1);
+        MARGO_ASSERT_TERMINATE(ret, margo_addr_free);
     }
 }
 

@@ -283,7 +283,7 @@ class callable_remote_procedure_with_context {
     ~callable_remote_procedure_with_context() {
         if(m_handle != HG_HANDLE_NULL) {
             hg_return_t ret = margo_destroy(m_handle);
-            MARGO_ASSERT_TERMINATE(ret, margo_destroy, -1);
+            MARGO_ASSERT_TERMINATE(ret, margo_destroy);
         }
     }
 

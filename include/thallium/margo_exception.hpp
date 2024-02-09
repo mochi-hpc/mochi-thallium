@@ -8,6 +8,7 @@
 
 #include <exception>
 #include <iostream>
+#include <cstdlib>
 #include <margo.h>
 #include <sstream>
 #include <stdexcept>
@@ -98,7 +99,7 @@ inline const char* translate_margo_error_code(hg_return_t ret) {
         }                                                                      \
     } while(0)
 
-#define MARGO_ASSERT_TERMINATE(__ret__, __fun__, __failcode__)                 \
+#define MARGO_ASSERT_TERMINATE(__ret__, __fun__)                               \
     do {                                                                       \
         if(__ret__ != HG_SUCCESS) {                                            \
             std::stringstream msg;                                             \
@@ -106,7 +107,7 @@ inline const char* translate_margo_error_code(hg_return_t ret) {
             msg << translate_margo_error_code(__ret__);                        \
             std::cerr << #__fun__ << ":" << __FILE__ << ":" << __LINE__        \
                       << ": " << msg.str();                                    \
-            exit(__failcode__);                                                \
+            std::terminate();                                                  \
         }                                                                      \
     } while(0)
 
@@ -115,7 +116,7 @@ inline const char* translate_margo_error_code(hg_return_t ret) {
         if(!(__cond__)) {                                                      \
             std::cerr << "Condition " << #__cond__ << " failed (" << __FILE__  \
                       << __LINE__ << "), " << __msg__ << std::endl;            \
-            exit(-1);                                                          \
+            std::abort();                                                      \
         }                                                                      \
     } while(0)
 } // namespace thallium
