@@ -161,6 +161,20 @@ public:
     auto& get_context() {
         return m_context;
     }
+
+    /**
+     * @brief Calls hg_proc_save_ptr for manual encoding into the Mercury buffer.
+     */
+    void* save_ptr(size_t size) {
+        return hg_proc_save_ptr(m_proc, size);
+    }
+
+    /**
+     * @brief Restore pointer after manual encoding.
+     */
+    void restore_ptr(void* buf, size_t size) {
+        hg_proc_restore_ptr(m_proc, buf, size);
+    }
 };
 
 }

@@ -67,6 +67,14 @@ namespace thallium {
             return m_context;
         }
 
+        void* save_ptr(size_t size) {
+            return hg_proc_save_ptr(m_proc, size);
+        }
+
+        void restore_ptr(void* buf, size_t size) {
+            hg_proc_restore_ptr(m_proc, buf, size);
+        }
+
     private:
 
         hg_proc_t                          m_proc;
@@ -120,6 +128,14 @@ namespace thallium {
 
         auto& get_context() {
             return m_context;
+        }
+
+        void* save_ptr(size_t size) {
+            return hg_proc_save_ptr(m_proc, size);
+        }
+
+        void restore_ptr(void* buf, size_t size) {
+            hg_proc_restore_ptr(m_proc, buf, size);
         }
 
     private:
