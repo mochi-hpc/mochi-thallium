@@ -40,7 +40,7 @@ class endpoint {
 
   private:
     std::weak_ptr<detail::engine_impl> m_engine_impl;
-    hg_addr_t m_addr;
+    hg_addr_t m_addr = HG_ADDR_NULL;
 
     endpoint(std::weak_ptr<detail::engine_impl> e, hg_addr_t addr) noexcept
     : m_engine_impl(std::move(e))
@@ -60,9 +60,7 @@ class endpoint {
      * @brief Default constructor defined so that endpoints can
      * be member of other objects and assigned later.
      */
-    endpoint() noexcept
-    : m_engine_impl()
-    , m_addr(HG_ADDR_NULL) {}
+    endpoint() noexcept = default;
 
     /**
      * @brief Copy constructor.
@@ -183,16 +181,13 @@ inline endpoint::endpoint(const engine& e, hg_addr_t addr, bool take_ownership)
 }
 
 inline endpoint::endpoint(const endpoint& other)
-: m_engine_impl(other.m_engine_impl) {
+: m_engine_impl(other.m_engine_impl)
+, m_addr(HG_ADDR_NULL) {
+    if(other.m_addr == HG_ADDR_NULL) return;
     auto engine_impl = m_engine_impl.lock();
     if(!engine_impl) throw exception("Invalid engine");
-    if(other.m_addr != HG_ADDR_NULL) {
-        hg_return_t ret =
-            margo_addr_dup(engine_impl->m_mid, other.m_addr, &m_addr);
-        MARGO_ASSERT(ret, margo_addr_dup);
-    } else {
-        m_addr = HG_ADDR_NULL;
-    }
+    hg_return_t ret = margo_addr_dup(engine_impl->m_mid, other.m_addr, &m_addr);
+    MARGO_ASSERT(ret, margo_addr_dup);
 }
 
 inline endpoint& endpoint::operator=(const endpoint& other) {
