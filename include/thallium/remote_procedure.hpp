@@ -109,6 +109,13 @@ class remote_procedure {
      */
     void deregister();
 
+    /**
+     * @brief Return the ID of the RPC.
+     */
+    hg_id_t id() const {
+        return m_id;
+    }
+
     [[deprecated("use disable_response() instead")]] inline remote_procedure&
     ignore_response() {
         return disable_response();
