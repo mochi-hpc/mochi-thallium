@@ -336,6 +336,16 @@ class engine {
     }
 
     /**
+     * @brief Finalize the engine and block until the engine is actually finalized.
+     */
+    void finalize_and_wait() {
+        if(!m_impl) throw exception("Invalid engine");
+        margo_instance_id mid = m_impl->m_mid;
+        if(mid != MARGO_INSTANCE_NULL)
+            margo_finalize_and_wait(m_impl->m_mid);
+    }
+
+    /**
      * @brief Creates an endpoint from this engine.
      *
      * @return An endpoint corresponding to this engine.
@@ -758,13 +768,6 @@ class engine {
     template<typename T>
     struct named_object_proxy : public T {
 
-        /*
-        named_object_proxy(T&& obj, std::string name, unsigned index)
-        : T(std::move(obj))
-        , m_name(std::move(name))
-        , m_index(index) {}
-        */
-
         template<typename Handle>
         named_object_proxy(Handle&& handle, std::string name, unsigned index)
         : T(std::move(handle))
@@ -809,12 +812,6 @@ class engine {
          * Throws std::out_of_range if the name is unknown.
          */
         auto operator[](const char* name) const {
-#if 0
-            int ret = m_get_by_name(m_mid, name, &handle);
-            if(ret != 0) throw std::out_of_range("unknown object name in list_proxy");
-            int index = m_get_index(m_mid, name);
-            return named_object_proxy<T>(T(handle), std::string(name), index);
-#endif
             return m_find_by_name(m_mid, name);
         }
 
@@ -833,13 +830,6 @@ class engine {
         template<typename I,
                  std::enable_if_t<std::is_integral<I>::value, bool> = true>
         auto operator[](I index) const {
-#if 0
-            Native handle;
-            int ret = m_get_by_index(m_mid, index, &handle);
-            if(ret != 0) throw std::out_of_range("index out of range in list_proxy");
-            const char* name = m_get_name(m_mid, index);
-            return named_object_proxy<T>(T(handle), std::string(name), index);
-#endif
             return m_find_by_index(m_mid, index);
         }
 
@@ -865,21 +855,6 @@ class engine {
         typedef named_object_proxy<T> (*find_by_index_f)(margo_instance_id, uint32_t);
         typedef size_t (*get_num_f)(margo_instance_id);
 
-#if 0
-        typedef int (*get_by_name_f)(margo_instance_id, const char*, Native*);
-        typedef int (*get_by_index_f)(margo_instance_id, unsigned, Native*);
-        typedef const char* (*get_name_f)(margo_instance_id, unsigned);
-        typedef int (*get_index_f)(margo_instance_id, const char*);
-        typedef size_t (*get_num_f)(margo_instance_id);
-
-        margo_instance_id m_mid;
-        get_by_name_f     m_get_by_name;
-        get_by_index_f    m_get_by_index;
-        get_name_f        m_get_name;
-        get_index_f       m_get_index;
-        get_num_f         m_get_num;
-#endif
-
         margo_instance_id m_mid;
         find_by_handle_f  m_find_by_handle;
         find_by_name_f    m_find_by_name;
@@ -887,27 +862,17 @@ class engine {
         get_num_f         m_get_num;
 
         list_proxy(margo_instance_id mid,
-#if 0
-                   get_by_name_f get_by_name,
-                   get_by_index_f get_by_index,
-                   get_name_f get_name,
-                   get_index_f get_index,
-#endif
                    find_by_handle_f find_by_handle,
                    find_by_name_f find_by_name,
                    find_by_index_f find_by_index,
                    get_num_f get_num)
         : m_mid(mid)
-#if 0
-        , m_get_by_name(get_by_name)
-        , m_get_by_index(get_by_index)
-        , m_get_name(get_name)
-        , m_get_index(get_index)
-#endif
         , m_find_by_handle(find_by_handle)
         , m_find_by_name(find_by_name)
         , m_find_by_index(find_by_index)
         , m_get_num(get_num) {}
+
+        public:
 
         list_proxy(const list_proxy&) = default;
         list_proxy(list_proxy&&) = default;
