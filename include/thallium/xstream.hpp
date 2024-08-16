@@ -344,6 +344,13 @@ class xstream {
     }
 
     /**
+     * @brief Non-equality operator.
+     */
+    bool operator!=(const xstream& other) const noexcept {
+        return !(*this == other);
+    }
+
+    /**
      * @brief Checks whether the ES is a null handle.
      *
      * @return true if the ES is null.

@@ -351,6 +351,20 @@ class pool {
     }
 
     /**
+     * @brief Equality operator.
+     */
+    bool operator==(const pool& other) const noexcept {
+        return m_pool == other.m_pool;
+    }
+
+    /**
+     * @brief Non-equality operator.
+     */
+    bool operator!=(const pool& other) const noexcept {
+        return !(*this == other);
+    }
+
+    /**
      * @brief Destructor.
      */
     ~pool() = default;
