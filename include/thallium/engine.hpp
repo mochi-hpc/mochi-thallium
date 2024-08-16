@@ -1178,7 +1178,7 @@ inline engine::list_proxy<xstream, ABT_xstream> engine::xstreams() const {
     }
     return list_proxy<xstream, ABT_xstream>{
         m_impl->m_mid,
-        [](margo_instance_id mid, ABT_xstream handle) {
+        [](margo_instance_id mid, tl::xstream handle) {
             margo_xstream_info info;
             hg_return_t hret = margo_find_xstream_by_handle(mid, handle, &info);
             if(hret != HG_SUCCESS) MARGO_THROW(margo_find_xstream_by_handle, hret,
@@ -1209,7 +1209,7 @@ inline engine::list_proxy<pool, ABT_pool> engine::pools() const {
     }
     return list_proxy<pool, ABT_pool>{
         m_impl->m_mid,
-        [](margo_instance_id mid, ABT_pool handle) {
+        [](margo_instance_id mid, tl::pool handle) {
             margo_pool_info info;
             hg_return_t hret = margo_find_pool_by_handle(mid, handle, &info);
             if(hret != HG_SUCCESS) MARGO_THROW(margo_find_pool_by_handle, hret,
