@@ -800,9 +800,8 @@ class engine {
      * a proxy list to the internal list of either xstreams or pools.
      *
      * @tparam T thallium::xstream or thallium::pool
-     * @tparam Native ABT_xstream or ABT_pool
      */
-    template<typename T, typename Native>
+    template<typename T>
     struct list_proxy {
 
         ~list_proxy() = default;
@@ -833,9 +832,10 @@ class engine {
             return m_find_by_index(m_mid, index);
         }
 
-        template<typename N,
-                 std::enable_if_t<std::is_same<std::remove_cv_t<std::remove_reference_t<N>>, Native>::value, bool> = true>
-        auto operator[](N handle) const {
+        /**
+         * @brief Lookip the object by its handle.
+         */
+        auto operator[](T handle) const {
             return m_find_by_handle(m_mid, handle);
         }
 
@@ -850,7 +850,7 @@ class engine {
 
         friend class engine;
 
-        typedef named_object_proxy<T> (*find_by_handle_f)(margo_instance_id, Native);
+        typedef named_object_proxy<T> (*find_by_handle_f)(margo_instance_id, T);
         typedef named_object_proxy<T> (*find_by_name_f)(margo_instance_id, const char*);
         typedef named_object_proxy<T> (*find_by_index_f)(margo_instance_id, uint32_t);
         typedef size_t (*get_num_f)(margo_instance_id);
@@ -884,13 +884,13 @@ class engine {
      * @brief Returns a proxy object that can be used to access
      * the internal list of xstreams in the underlying margo instance.
      */
-    list_proxy<xstream, ABT_xstream> xstreams() const;
+    list_proxy<xstream> xstreams() const;
 
     /**
      * @brief Returns a proxy object that can be used to access
      * the internal list of pools in the underlying margo instance.
      */
-    list_proxy<pool, ABT_pool> pools() const;
+    list_proxy<pool> pools() const;
 
     void set_logger(logger* l) {
         if(!m_impl) {
@@ -1172,17 +1172,17 @@ inline pool engine::get_progress_pool() const {
 }
 
 
-inline engine::list_proxy<xstream, ABT_xstream> engine::xstreams() const {
+inline engine::list_proxy<xstream> engine::xstreams() const {
     if(!m_impl) {
         throw exception("Invalid engine");
     }
-    return list_proxy<xstream, ABT_xstream>{
+    return list_proxy<xstream>{
         m_impl->m_mid,
-        [](margo_instance_id mid, tl::xstream handle) {
+        [](margo_instance_id mid, xstream handle) {
             margo_xstream_info info;
-            hg_return_t hret = margo_find_xstream_by_handle(mid, handle, &info);
+            hg_return_t hret = margo_find_xstream_by_handle(mid, handle.native_handle(), &info);
             if(hret != HG_SUCCESS) MARGO_THROW(margo_find_xstream_by_handle, hret,
-                    "Could not find xstream instance from provided ABT_xstream handle");
+                    "Could not find xstream instance from provided xstream handle");
             return named_object_proxy<xstream>(info.xstream, std::string(info.name), info.index);
         },
         [](margo_instance_id mid, const char* name) {
@@ -1203,17 +1203,17 @@ inline engine::list_proxy<xstream, ABT_xstream> engine::xstreams() const {
 }
 
 
-inline engine::list_proxy<pool, ABT_pool> engine::pools() const {
+inline engine::list_proxy<pool> engine::pools() const {
     if(!m_impl) {
         throw exception("Invalid engine");
     }
-    return list_proxy<pool, ABT_pool>{
+    return list_proxy<pool>{
         m_impl->m_mid,
-        [](margo_instance_id mid, tl::pool handle) {
+        [](margo_instance_id mid, pool handle) {
             margo_pool_info info;
-            hg_return_t hret = margo_find_pool_by_handle(mid, handle, &info);
+            hg_return_t hret = margo_find_pool_by_handle(mid, handle.native_handle(), &info);
             if(hret != HG_SUCCESS) MARGO_THROW(margo_find_pool_by_handle, hret,
-                    "Could not find pool instance from provided ABT_pool handle");
+                    "Could not find pool instance from provided pool handle");
             return named_object_proxy<pool>(info.pool, std::string(info.name), info.index);
         },
         [](margo_instance_id mid, const char* name) {
