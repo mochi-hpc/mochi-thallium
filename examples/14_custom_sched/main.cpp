@@ -15,7 +15,7 @@ class my_pool;
 class my_sched;
 
 class my_unit {
-       
+
     tl::thread    m_thread;
     tl::task      m_task;
     tl::unit_type m_type;
@@ -24,7 +24,7 @@ class my_unit {
     friend class my_pool;
 
     public:
-                
+
     my_unit(const tl::thread& t)
     : m_thread(t), m_type(tl::unit_type::thread), m_in_pool(false) {}
 
@@ -54,11 +54,11 @@ class my_pool {
 
     mutable tl::mutex    m_mutex;
     std::deque<my_unit*> m_units;
-        
+
     public:
 
     static const tl::pool::access access_type = tl::pool::access::mpmc;
-                
+
     my_pool() {}
 
     size_t get_size() const {
@@ -90,7 +90,7 @@ class my_pool {
             m_units.erase(it);
         }
     }
-    
+
     ~my_pool() {
         std::cerr << "Pool destructor " << std::endl;
     }
@@ -99,11 +99,11 @@ class my_pool {
 class my_scheduler : private tl::scheduler {
 
     public:
-                
+
     template<typename ... Args>
     my_scheduler(Args&&... args)
     : tl::scheduler(std::forward<Args>(args)...) {}
-                    
+
     void run() {
 
         int n = num_pools();
@@ -123,13 +123,13 @@ class my_scheduler : private tl::scheduler {
                 if(unit != nullptr)
                     get_pool(target).run_unit(unit);
             }
-            
+
             if(has_to_stop()) break;
 
             tl::xstream::check_events(*this);
         }
     }
-                        
+
     tl::pool get_migr_pool() const {
         return get_pool(0);
     }
@@ -141,9 +141,9 @@ class my_scheduler : private tl::scheduler {
 
 void hello() {
     tl::xstream es = tl::xstream::self();
-    std::cout << "Hello World from ES " 
-        << es.get_rank() << ", ULT " 
-        << tl::thread::self_id() 
+    std::cout << "Hello World from ES "
+        << es.get_rank() << ", ULT "
+        << tl::thread::self_id()
         << std::endl;
 }
 
@@ -176,7 +176,7 @@ int main() {
 
     std::vector<tl::managed<tl::thread>> ths;
     for(int i=0; i < NUM_THREADS; i++) {
-        tl::managed<tl::thread> th 
+        tl::managed<tl::thread> th
             = ess[i % ess.size()]->make_thread([]() {
                     hello();
         });

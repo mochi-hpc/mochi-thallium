@@ -10,8 +10,6 @@ void sum(const tl::request& req, int x, int y) {
 
 int main() {
 
-    tl::abt scope;
-
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE);
 
     std::vector<tl::managed<tl::xstream>> ess;

@@ -15,12 +15,15 @@
 #include <string>
 #include <thallium/bulk_mode.hpp>
 #include <thallium/margo_exception.hpp>
-#include <thallium/config.hpp>
 #include <thallium/tuple_util.hpp>
 #include <thallium/function_util.hpp>
 #include <thallium/logger.hpp>
+#include <thallium/margo_instance_ref.hpp>
 #include <unordered_map>
 #include <vector>
+#include <memory>
+#include <cstdint>
+#include <utility>
 
 #define THALLIUM_SERVER_MODE MARGO_SERVER_MODE
 #define THALLIUM_CLIENT_MODE MARGO_CLIENT_MODE
@@ -44,22 +47,13 @@ class pool;
 DECLARE_MARGO_RPC_HANDLER(thallium_generic_rpc)
 hg_return_t thallium_generic_rpc(hg_handle_t handle);
 
-namespace detail {
-
-    struct engine_impl {
-        std::atomic<margo_instance_id> m_mid;
-        bool                           m_owns_mid;
-    };
-
-}
-
 /**
  * @brief The engine class is at the core of Thallium,
  * it is the first object to instanciate to start using the
  * Thallium runtime. It initializes Margo and other libraries,
  * and allow users to declare RPCs and bulk objects.
  */
-class engine {
+class engine : public margo_instance_ref {
     template<typename ... CtxArg> friend class request_with_context;
     friend class bulk;
     friend class endpoint;
@@ -77,15 +71,12 @@ class engine {
     using rpc_t = std::function<void(const request&)>;
     using finalize_callback_t = std::function<void()>;
 
-    std::shared_ptr<detail::engine_impl> m_impl;
-
     /**
      * @brief Encapsulation of some data needed by RPC callbacks
      * (namely, the initiating thallium engine and the function to call)
      */
     struct rpc_callback_data {
-        std::weak_ptr<detail::engine_impl> m_engine_impl;
-        rpc_t                              m_function;
+        rpc_t m_function;
     };
 
     /**
@@ -98,24 +89,11 @@ class engine {
         delete cb_data;
     }
 
-    static void on_engine_finalize_cb(void* arg) noexcept {
-        auto e               = static_cast<detail::engine_impl*>(arg);
-        e->m_mid.store(MARGO_INSTANCE_NULL);
-    }
-
-    static void on_engine_prefinalize_cb(void* arg) noexcept {
-        auto e = static_cast<detail::engine_impl*>(arg);
-        (void)e; // This callback does nothing for now
-    }
-
     static void finalize_callback_wrapper(void* arg) {
         auto cb = static_cast<finalize_callback_t*>(arg);
         (*cb)();
         delete cb;
     }
-
-    engine(std::shared_ptr<detail::engine_impl> impl)
-    : m_impl(std::move(impl)) {}
 
   public:
 
@@ -134,15 +112,11 @@ class engine {
      */
     engine(const std::string& addr, int mode,
            const margo_init_info* args)
-    : m_impl(std::make_shared<detail::engine_impl>()) {
-        m_impl->m_mid = margo_init_ext(addr.c_str(), mode, args);
-        if(!m_impl->m_mid)
+    {
+        m_mid = margo_init_ext(addr.c_str(), mode, args);
+        if(m_mid)
             MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-        m_impl->m_owns_mid = true;
-        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(m_impl.get()));
-        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(m_impl.get()));
+        margo_instance_ref_incr(m_mid);
     }
 
     /**
@@ -158,7 +132,7 @@ class engine {
      */
     engine(const std::string& addr, int mode, bool use_progress_thread = false,
            std::int32_t rpc_thread_count = 0, const hg_init_info *hg_opt = nullptr)
-    : m_impl(std::make_shared<detail::engine_impl>()) {
+    {
 
         std::string config = "{ \"use_progress_thread\" : ";
         config += use_progress_thread ? "true" : "false";
@@ -171,14 +145,10 @@ class engine {
         args.json_config  = config.c_str();
         args.hg_init_info = (hg_init_info*)hg_opt;
 
-        m_impl->m_mid = margo_init_ext(addr.c_str(), mode, &args);
-        if(!m_impl->m_mid)
+        m_mid = margo_init_ext(addr.c_str(), mode, &args);
+        if(!m_mid)
             MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-        m_impl->m_owns_mid = true;
-        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(m_impl.get()));
-        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(m_impl.get()));
+        margo_instance_ref_incr(m_mid);
     }
 
     /**
@@ -192,21 +162,16 @@ class engine {
      */
     engine(const std::string& addr, int mode,
            const char* config, const hg_init_info *hg_opt = nullptr)
-    : m_impl(std::make_shared<detail::engine_impl>()) {
-
+    {
         margo_init_info args;
         memset(&args, 0, sizeof(args));
         args.json_config  = config;
         args.hg_init_info = (hg_init_info*)hg_opt;
 
-        m_impl->m_mid = margo_init_ext(addr.c_str(), mode, &args);
-        if(!m_impl->m_mid)
+        m_mid = margo_init_ext(addr.c_str(), mode, &args);
+        if(!m_mid)
             MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-        m_impl->m_owns_mid = true;
-        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(m_impl.get()));
-        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(m_impl.get()));
+        margo_instance_ref_incr(m_mid);
     }
 
     engine(const std::string& addr, int mode,
@@ -222,105 +187,55 @@ class engine {
      * @param mid Margo instance.
      */
     engine(margo_instance_id mid) noexcept
-    : m_impl(std::make_shared<detail::engine_impl>()) {
-        m_impl->m_mid       = mid;
-        m_impl->m_owns_mid  = false;
-        // an engine initialize with a margo instance is just a wrapper
-        // it doesn't need to push prefinalize and finalize callbacks,
-        // at least currently.
-        /*
-        margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
-                                        static_cast<void*>(m_impl.get()));
-        margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
-                                     static_cast<void*>(m_impl.get()));
-        */
-    }
+    : margo_instance_ref(mid) {}
 
     /**
      * @brief Copy-constructor.
      */
-    engine(const engine& other) = default;
+    engine(const engine& other) noexcept = default;
 
     /**
      * @brief Move-constructor. This method will invalidate
      * the engine that is moved from.
      */
-    engine(engine&& other) = default;
+    engine(engine&& other) noexcept = default;
 
     /**
      * @brief Move-assignment operator. This method will invalidate
      * the engine that it moved from.
      */
-    engine& operator=(engine&& other) {
-        if(m_impl == other.m_impl) return *this;
-        if(m_impl && m_impl.use_count() == 1) {
-            margo_instance_id mid = m_impl->m_mid;
-            if(mid && m_impl->m_owns_mid) {
-                if(margo_is_listening(mid)) {
-                    wait_for_finalize();
-                } else {
-                    finalize();
-                }
-            }
-        }
-        m_impl = std::move(other.m_impl);
-        return *this;
-    }
+    engine& operator=(engine&& other) noexcept = default;
 
     /**
      * @brief Copy-assignment operator is deleted.
      */
-    engine& operator=(const engine& other) {
-        if(m_impl == other.m_impl) return *this;
-        if(m_impl && m_impl.use_count() == 1) {
-            margo_instance_id mid = m_impl->m_mid;
-            if(mid && m_impl->m_owns_mid) {
-                if(margo_is_listening(mid)) {
-                    wait_for_finalize();
-                } else {
-                    finalize();
-                }
-            }
-        }
-        m_impl = other.m_impl;
-        return *this;
-    }
+    engine& operator=(const engine& other) noexcept = default;
 
     /**
      * @brief Destructor.
      */
-    ~engine() {
-        if(!m_impl) return;
-        if(m_impl.use_count() > 1) return;
-        margo_instance_id mid = m_impl->m_mid;
-        if(mid == MARGO_INSTANCE_NULL) return;
-        if(m_impl->m_owns_mid) {
-            if(margo_is_listening(mid)) {
-                wait_for_finalize();
-            } else {
-                finalize();
-            }
-        }
+    ~engine() = default;
+
+    /**
+     * @brief Comparison operator.
+     */
+    bool operator==(const engine& other) const noexcept {
+        return m_mid == other.m_mid;
     }
 
     /**
-     * @brief Get the underlying margo instance. Useful
-     * when working in conjunction with C code that need
-     * to be initialized with the margo instance.
-     *
-     * @return The margo instance id.
+     * @brief Comparison operator.
      */
-    margo_instance_id get_margo_instance() const {
-        if(!m_impl) throw exception("Invalid engine");
-        return m_impl->m_mid;
+    bool operator!=(const engine& other) const noexcept {
+        return m_mid != other.m_mid;
     }
 
     /**
      * @brief Finalize the engine. Can be called by any thread.
      */
     void finalize() {
-        if(!m_impl) throw exception("Invalid engine");
-        margo_finalize(m_impl->m_mid);
+        MARGO_INSTANCE_MUST_BE_VALID;
+        margo_finalize(m_mid);
     }
 
     /**
@@ -329,20 +244,16 @@ class engine {
      * if finalize was already called.
      */
     void wait_for_finalize() {
-        if(!m_impl) throw exception("Invalid engine");
-        margo_instance_id mid = m_impl->m_mid;
-        if(mid != MARGO_INSTANCE_NULL)
-            margo_wait_for_finalize(mid);
+        MARGO_INSTANCE_MUST_BE_VALID;
+        margo_wait_for_finalize(m_mid);
     }
 
     /**
      * @brief Finalize the engine and block until the engine is actually finalized.
      */
     void finalize_and_wait() {
-        if(!m_impl) throw exception("Invalid engine");
-        margo_instance_id mid = m_impl->m_mid;
-        if(mid != MARGO_INSTANCE_NULL)
-            margo_finalize_and_wait(m_impl->m_mid);
+        MARGO_INSTANCE_MUST_BE_VALID;
+        margo_finalize_and_wait(m_mid);
     }
 
     /**
@@ -495,8 +406,7 @@ class engine {
      * @param f callback.
      */
     template <typename F> void push_prefinalize_callback(F&& f) {
-        if(!m_impl) throw exception("Invalid engine");
-        push_prefinalize_callback(static_cast<const void*>(m_impl.get()), std::forward<F>(f));
+        push_prefinalize_callback(nullptr, std::forward<F>(f));
     }
 
     /**
@@ -509,9 +419,9 @@ class engine {
      */
     template <typename F>
     void push_prefinalize_callback(const void* owner, F&& f) {
-        if(!m_impl) throw exception("Invalid engine");
+        MARGO_INSTANCE_MUST_BE_VALID;
         auto cb = new finalize_callback_t(std::forward<F>(f));
-        margo_provider_push_prefinalize_callback(m_impl->m_mid,
+        margo_provider_push_prefinalize_callback(m_mid,
             owner,
             finalize_callback_wrapper,
             static_cast<void*>(cb));
@@ -525,8 +435,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> top_prefinalize_callback() const {
-        if(!m_impl) throw exception("Invalid engine");
-        return top_prefinalize_callback(static_cast<const void*>(m_impl.get()));
+        return top_prefinalize_callback(nullptr);
     }
 
     /**
@@ -538,10 +447,10 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> top_prefinalize_callback(const void* owner) const {
+        MARGO_INSTANCE_MUST_BE_VALID;
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
-        if(!m_impl) throw exception("Invalid engine");
-        int ret = margo_provider_top_prefinalize_callback(m_impl->m_mid,
+        int ret = margo_provider_top_prefinalize_callback(m_mid,
             owner,
             &cb,
             &uargs);
@@ -558,8 +467,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_prefinalize_callback() {
-        if(!m_impl) throw exception("Invalid engine");
-        return pop_prefinalize_callback(static_cast<const void*>(m_impl.get()));
+        return pop_prefinalize_callback(nullptr);
     }
 
     /**
@@ -571,10 +479,10 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_prefinalize_callback(const void* owner) {
+        MARGO_INSTANCE_MUST_BE_VALID;
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
-        if(!m_impl) throw exception("Invalid engine");
-        int ret = margo_provider_top_prefinalize_callback(m_impl->m_mid,
+        int ret = margo_provider_top_prefinalize_callback(m_mid,
             owner,
             &cb,
             &uargs);
@@ -582,20 +490,8 @@ class engine {
         finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs);
         finalize_callback_t f_copy = *f;
         delete f;
-        if(!m_impl) throw exception("Invalid engine");
-        margo_provider_pop_prefinalize_callback(m_impl->m_mid, owner);
+        margo_provider_pop_prefinalize_callback(m_mid, owner);
         return f_copy;
-    }
-
-    template <typename F>
-    [[deprecated("Use push_finalize_callback")]] void on_finalize(F&& f) {
-        push_finalize_callback(std::forward<F>(f));
-    }
-
-    template <typename T, typename F>
-    [[deprecated("Use push_finalize_callback")]] void
-    on_finalize(const T& owner, F&& f) {
-        push_finalize_callback(static_cast<const void*>(&owner), std::forward<F>(f));
     }
 
     /**
@@ -607,8 +503,7 @@ class engine {
      * @param f callback.
      */
     template <typename F> void push_finalize_callback(F&& f) {
-        if(!m_impl) throw exception("Invalid engine");
-        push_finalize_callback(static_cast<const void*>(m_impl.get()), std::forward<F>(f));
+        push_finalize_callback(nullptr, std::forward<F>(f));
     }
 
     /**
@@ -622,9 +517,9 @@ class engine {
      */
     template<typename F>
     void push_finalize_callback(const void* owner, F&& f) {
-        if(!m_impl) throw exception("Invalid engine");
+        MARGO_INSTANCE_MUST_BE_VALID;
         auto cb = new finalize_callback_t(std::forward<F>(f));
-        margo_provider_push_finalize_callback(m_impl->m_mid,
+        margo_provider_push_finalize_callback(m_mid,
             owner,
             finalize_callback_wrapper,
             static_cast<void*>(cb));
@@ -638,8 +533,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> top_finalize_callback() const {
-        if(!m_impl) throw exception("Invalid engine");
-        return top_finalize_callback(static_cast<const void*>(m_impl.get()));
+        return top_finalize_callback(nullptr);
     }
 
     /**
@@ -651,15 +545,15 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> top_finalize_callback(const void* owner) const {
+        MARGO_INSTANCE_MUST_BE_VALID;
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
-        if(!m_impl) throw exception("Invalid engine");
-        int ret = margo_provider_top_finalize_callback(m_impl->m_mid,
+        int ret = margo_provider_top_finalize_callback(m_mid,
             owner,
             &cb,
             &uargs);
         if(ret == 0) return std::function<void(void)>();
-        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs); 
+        finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs);
         return *f;
     }
 
@@ -671,8 +565,7 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_finalize_callback() {
-        if(!m_impl) throw exception("Invalid engine");
-        return pop_finalize_callback(static_cast<const void*>(m_impl.get()));
+        return pop_finalize_callback(nullptr);
     }
 
     /**
@@ -684,10 +577,10 @@ class engine {
      * @return finalization callback.
      */
     std::function<void(void)> pop_finalize_callback(const void* owner) {
+        MARGO_INSTANCE_MUST_BE_VALID;
         margo_finalize_callback_t cb = nullptr;
         void* uargs = nullptr;
-        if(!m_impl) throw exception("Invalid engine");
-        int ret = margo_provider_top_finalize_callback(m_impl->m_mid,
+        int ret = margo_provider_top_finalize_callback(m_mid,
             owner,
             &cb,
             &uargs);
@@ -695,7 +588,7 @@ class engine {
         finalize_callback_t *f = static_cast<finalize_callback_t*>(uargs);
         finalize_callback_t f_copy = *f;
         delete f;
-        margo_provider_pop_finalize_callback(m_impl->m_mid, owner);
+        margo_provider_pop_finalize_callback(m_mid, owner);
         return f_copy;
     }
 
@@ -711,18 +604,16 @@ class engine {
      * @brief Enables this engine to be shutdown remotely.
      */
     void enable_remote_shutdown() {
-        if(!m_impl) throw exception("Invalid engine");
-         margo_enable_remote_shutdown(m_impl->m_mid);
+        MARGO_INSTANCE_MUST_BE_VALID;
+        margo_enable_remote_shutdown(m_mid);
     }
 
     /**
      * @brief Checks if the engine is listening for incoming RPCs.
      */
     bool is_listening() const {
-        if(!m_impl) {
-            throw exception("Invalid engine");
-        }
-        return margo_is_listening(m_impl->m_mid);
+        MARGO_INSTANCE_MUST_BE_VALID;
+        return margo_is_listening(m_mid);
     }
 
     /**
@@ -755,8 +646,8 @@ class engine {
      * Margo instance.
      */
     std::string get_config() const {
-        if(!m_impl) throw exception("Invalid engine");
-        char* cfg = margo_get_config(m_impl->m_mid);
+        MARGO_INSTANCE_MUST_BE_VALID;
+        char* cfg = margo_get_config(m_mid);
         if(cfg) {
             auto result = std::string(cfg);
             free(cfg);
@@ -855,18 +746,18 @@ class engine {
         typedef named_object_proxy<T> (*find_by_index_f)(margo_instance_id, uint32_t);
         typedef size_t (*get_num_f)(margo_instance_id);
 
-        margo_instance_id m_mid;
-        find_by_handle_f  m_find_by_handle;
-        find_by_name_f    m_find_by_name;
-        find_by_index_f   m_find_by_index;
-        get_num_f         m_get_num;
+        margo_instance_ref m_mid;
+        find_by_handle_f   m_find_by_handle;
+        find_by_name_f     m_find_by_name;
+        find_by_index_f    m_find_by_index;
+        get_num_f          m_get_num;
 
-        list_proxy(margo_instance_id mid,
+        list_proxy(margo_instance_ref mid,
                    find_by_handle_f find_by_handle,
                    find_by_name_f find_by_name,
                    find_by_index_f find_by_index,
                    get_num_f get_num)
-        : m_mid(mid)
+        : m_mid{mid}
         , m_find_by_handle(find_by_handle)
         , m_find_by_name(find_by_name)
         , m_find_by_index(find_by_index)
@@ -893,9 +784,7 @@ class engine {
     list_proxy<pool> pools() const;
 
     void set_logger(logger* l) {
-        if(!m_impl) {
-            throw exception("Invalid engine");
-        }
+        MARGO_INSTANCE_MUST_BE_VALID;
         margo_logger ml = {
             static_cast<void*>(l),
             &logger::log_trace,
@@ -905,16 +794,14 @@ class engine {
             &logger::log_error,
             &logger::log_critical
         };
-        if(0 != margo_set_logger(m_impl->m_mid, &ml)) {
+        if(0 != margo_set_logger(m_mid, &ml)) {
             throw exception("Cannot set engine logger");
         }
     }
 
     void set_log_level(logger::level l) {
-        if(!m_impl) {
-            throw exception("Invalid engine");
-        }
-        if(0 != margo_set_log_level(m_impl->m_mid, static_cast<margo_log_level>(l))) {
+        MARGO_INSTANCE_MUST_BE_VALID;
+        if(0 != margo_set_log_level(m_mid, static_cast<margo_log_level>(l))) {
             throw exception("Cannot set engine log level");
         }
     }
@@ -936,23 +823,18 @@ class engine {
 namespace thallium {
 
 inline engine::engine(const std::string& addr, int mode, const pool& progress_pool,
-                      const pool& default_handler_pool)
-:  m_impl(std::make_shared<detail::engine_impl>()) {
-    m_impl->m_owns_mid        = true;
-
+                      const pool& default_handler_pool) {
     margo_init_info args;
     memset(&args, 0, sizeof(args));
     args.progress_pool  = progress_pool.native_handle();
     args.rpc_pool       = default_handler_pool.native_handle();
 
-    m_impl->m_mid = margo_init_ext(addr.c_str(), mode, &args);
+    m_mid = margo_init_ext(addr.c_str(), mode, &args);
 
-    if(!m_impl->m_mid)
+    if(!m_mid)
         MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-    margo_push_prefinalize_callback(m_impl->m_mid, &engine::on_engine_prefinalize_cb,
-            static_cast<void*>(m_impl.get()));
-    margo_push_finalize_callback(m_impl->m_mid, &engine::on_engine_finalize_cb,
-            static_cast<void*>(m_impl.get()));
+
+    margo_instance_ref_incr(m_mid);
 }
 
 template <typename T1, typename... Tn>
@@ -960,26 +842,23 @@ remote_procedure
 engine::define(const std::string&                               name,
                std::function<void(const request&, T1, Tn...)>&& fun,
                uint16_t provider_id, const pool& p) {
-    if(!m_impl) throw exception("Invalid engine");
+    MARGO_INSTANCE_MUST_BE_VALID;
     hg_id_t id = MARGO_REGISTER_PROVIDER(
-        m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization,
+        m_mid, name.c_str(), meta_serialization, meta_serialization,
         thallium_generic_rpc, provider_id, p.native_handle());
 
-    std::weak_ptr<detail::engine_impl> w_impl = m_impl;
     rpc_callback_data* cb_data = new rpc_callback_data;
-    cb_data->m_engine_impl = m_impl;
-
     cb_data->m_function =
-        [fun=std::move(fun), w_impl=std::move(w_impl)](const request& r) {
+        [fun=std::move(fun), mid=get_margo_instance()](const request& r) {
             std::function<void(T1, Tn...)> call_function =
                 [&fun, &r](const T1& a1, const Tn&... args) {
                     fun(r, a1, args...);
                 };
                 std::tuple<typename std::decay<T1>::type,
                    typename std::decay<Tn>::type...> iargs;
-            meta_proc_fn mproc = [w_impl, &iargs](hg_proc_t proc) {
+            meta_proc_fn mproc = [mid, &iargs](hg_proc_t proc) {
                 auto ctx = std::tuple<>(); // TODO make this context available as argument
-                return proc_object_decode(proc, iargs, w_impl, ctx);
+                return proc_object_decode(proc, iargs, mid, ctx);
             };
             hg_return_t ret = margo_get_input(r.m_handle, &mproc);
             if(ret != HG_SUCCESS)
@@ -991,11 +870,10 @@ engine::define(const std::string&                               name,
             return HG_SUCCESS;
         };
 
-    hg_return_t ret =
-        margo_register_data(m_impl->m_mid, id, (void*)cb_data, free_rpc_callback_data);
+    auto ret = margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
     MARGO_ASSERT(ret, margo_register_data);
 
-    return remote_procedure(m_impl, id);
+    return remote_procedure(m_mid, id);
 }
 
 template <typename T1, typename... Tn>
@@ -1008,7 +886,7 @@ engine::define(const std::string&                               name,
 
 template <typename T1, typename... Tn>
 remote_procedure
-engine::define(const std::string&                             name,
+engine::define(const std::string&                                    name,
                const std::function<void(const request&, T1, Tn...)>& fun,
                uint16_t provider_id, const pool& p) {
     return define(name, std::function<void(const request&, T1, Tn...)>(fun),
@@ -1017,7 +895,7 @@ engine::define(const std::string&                             name,
 
 template <typename T1, typename... Tn>
 remote_procedure
-engine::define(const std::string&                             name,
+engine::define(const std::string&                                    name,
                const std::function<void(const request&, T1, Tn...)>& fun,
                uint16_t provider_id) {
     return define(name, std::function<void(const request&, T1, Tn...)>(fun),
@@ -1045,33 +923,32 @@ inline remote_procedure engine::define(const std::string& name) {
 }
 
 inline remote_procedure engine::define(const char* name) {
+    MARGO_INSTANCE_MUST_BE_VALID;
     hg_bool_t flag;
     hg_id_t   id;
-    if(!m_impl) throw exception("Invalid engine");
-    margo_registered_name(m_impl->m_mid, name, &id, &flag);
+    margo_registered_name(m_mid, name, &id, &flag);
     if(flag == HG_FALSE) {
-        id = MARGO_REGISTER(m_impl->m_mid, name, meta_serialization, meta_serialization, NULL);
+        id = MARGO_REGISTER(m_mid, name, meta_serialization, meta_serialization, NULL);
     }
-    return remote_procedure(m_impl, id);
+    return remote_procedure(m_mid, id);
 }
 
 inline remote_procedure engine::define(const std::string&                         name,
                                        const std::function<void(const request&)>& fun,
                                        uint16_t provider_id, const pool& p) {
-    if(!m_impl) throw exception("Invalid engine");
+    MARGO_INSTANCE_MUST_BE_VALID;
     hg_id_t id = MARGO_REGISTER_PROVIDER(
-        m_impl->m_mid, name.c_str(), meta_serialization, meta_serialization,
+        m_mid, name.c_str(), meta_serialization, meta_serialization,
         thallium_generic_rpc, provider_id, p.native_handle());
 
-    auto* cb_data          = new rpc_callback_data;
-    cb_data->m_engine_impl = m_impl;
-    cb_data->m_function    = fun;
+    auto* cb_data       = new rpc_callback_data;
+    cb_data->m_function = fun;
 
     hg_return_t ret =
-        margo_register_data(m_impl->m_mid, id, (void*)cb_data, free_rpc_callback_data);
+        margo_register_data(m_mid, id, (void*)cb_data, free_rpc_callback_data);
     MARGO_ASSERT(ret, margo_register_data);
 
-    return remote_procedure(m_impl, id);
+    return remote_procedure(m_mid, id);
 }
 
 inline remote_procedure engine::define(const std::string&                         name,
@@ -1081,24 +958,24 @@ inline remote_procedure engine::define(const std::string&                       
 }
 
 inline endpoint engine::lookup(const std::string& address) const {
-    if(!m_impl) throw exception("Invalid engine");
+    MARGO_INSTANCE_MUST_BE_VALID;
     hg_addr_t   addr;
-    hg_return_t ret = margo_addr_lookup(m_impl->m_mid, address.c_str(), &addr);
+    hg_return_t ret = margo_addr_lookup(m_mid, address.c_str(), &addr);
     MARGO_ASSERT(ret, margo_addr_lookup);
-    return endpoint(const_cast<engine&>(*this), addr);
+    return endpoint(m_mid, addr);
 }
 
 inline endpoint engine::self() const {
-    if(!m_impl) throw exception("Invalid engine");
+    MARGO_INSTANCE_MUST_BE_VALID;
     hg_addr_t   self_addr;
-    hg_return_t ret = margo_addr_self(m_impl->m_mid, &self_addr);
+    hg_return_t ret = margo_addr_self(m_mid, &self_addr);
     MARGO_ASSERT(ret, margo_addr_self);
-    return endpoint(const_cast<engine&>(*this), self_addr);
+    return endpoint(m_mid, self_addr);
 }
 
 inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
                     bulk_mode                                    flag) {
-    if(!m_impl) throw exception("Invalid engine");
+    MARGO_INSTANCE_MUST_BE_VALID;
     hg_bulk_t              handle;
     hg_uint32_t            count = segments.size();
     std::vector<void*>     buf_ptrs(count);
@@ -1108,10 +985,10 @@ inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments
         buf_sizes[i] = segments[i].second;
     }
     hg_return_t ret = margo_bulk_create(
-        m_impl->m_mid, count, &buf_ptrs[0], &buf_sizes[0],
+        m_mid, count, &buf_ptrs[0], &buf_sizes[0],
         static_cast<hg_uint32_t>(flag), &handle);
     MARGO_ASSERT(ret, margo_bulk_create);
-    return bulk(m_impl, handle, true);
+    return bulk(m_mid, handle, true);
 }
 
 #if (HG_VERSION_MAJOR > 2) || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR > 1) \
@@ -1121,7 +998,7 @@ inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments
 inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
                            bulk_mode                                    flag,
                            const hg_bulk_attr&                          attr) {
-    if(!m_impl) throw exception("Invalid engine");
+    MARGO_INSTANCE_MUST_BE_VALID;
     hg_bulk_t              handle;
     hg_uint32_t            count = segments.size();
     std::vector<void*>     buf_ptrs(count);
@@ -1131,53 +1008,46 @@ inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments
         buf_sizes[i] = segments[i].second;
     }
     hg_return_t ret = margo_bulk_create_attr(
-        m_impl->m_mid, count, &buf_ptrs[0], &buf_sizes[0],
+        m_mid, count, &buf_ptrs[0], &buf_sizes[0],
         static_cast<hg_uint32_t>(flag), &attr, &handle);
     MARGO_ASSERT(ret, margo_bulk_create);
-    return bulk(m_impl, handle, true);
+    return bulk(m_mid, handle, true);
 }
 
 #endif
 
 inline bulk engine::wrap(hg_bulk_t blk, bool is_local) {
-    if(!m_impl) throw exception("Invalid engine");
+    MARGO_INSTANCE_MUST_BE_VALID;
     hg_return_t hret = margo_bulk_ref_incr(blk);
     MARGO_ASSERT(hret, margo_bulk_ref_incr);
-    return bulk(m_impl, blk, is_local);
+    return bulk(m_mid, blk, is_local);
 }
 
 inline void engine::shutdown_remote_engine(const endpoint& ep) const {
-    if(!m_impl) throw exception("Invalid engine");
-    int         ret = margo_shutdown_remote_instance(m_impl->m_mid, ep.m_addr);
+    MARGO_INSTANCE_MUST_BE_VALID;
+    int         ret = margo_shutdown_remote_instance(m_mid, ep.m_addr);
     hg_return_t r   = ret == 0 ? HG_SUCCESS : HG_OTHER_ERROR;
     MARGO_ASSERT(r, margo_shutdown_remote_instance);
 }
 
 inline pool engine::get_handler_pool() const {
-    if(!m_impl) {
-        throw exception("Invalid engine");
-    }
+    MARGO_INSTANCE_MUST_BE_VALID;
     ABT_pool p = ABT_POOL_NULL;
-    margo_get_handler_pool(m_impl->m_mid, &p);
-    return pool(p);
+    margo_get_handler_pool(m_mid, &p);
+    return pool{p};
 }
 
 inline pool engine::get_progress_pool() const {
-    if(!m_impl) {
-        throw exception("Invalid engine");
-    }
+    MARGO_INSTANCE_MUST_BE_VALID;
     ABT_pool p = ABT_POOL_NULL;
-    margo_get_progress_pool(m_impl->m_mid, &p);
+    margo_get_progress_pool(m_mid, &p);
     return pool(p);
 }
 
-
 inline engine::list_proxy<xstream> engine::xstreams() const {
-    if(!m_impl) {
-        throw exception("Invalid engine");
-    }
+    MARGO_INSTANCE_MUST_BE_VALID;
     return list_proxy<xstream>{
-        m_impl->m_mid,
+        m_mid,
         [](margo_instance_id mid, xstream handle) {
             margo_xstream_info info;
             hg_return_t hret = margo_find_xstream_by_handle(mid, handle.native_handle(), &info);
@@ -1202,13 +1072,10 @@ inline engine::list_proxy<xstream> engine::xstreams() const {
         &margo_get_num_xstreams};
 }
 
-
 inline engine::list_proxy<pool> engine::pools() const {
-    if(!m_impl) {
-        throw exception("Invalid engine");
-    }
+    MARGO_INSTANCE_MUST_BE_VALID;
     return list_proxy<pool>{
-        m_impl->m_mid,
+        m_mid,
         [](margo_instance_id mid, pool handle) {
             margo_pool_info info;
             hg_return_t hret = margo_find_pool_by_handle(mid, handle.native_handle(), &info);
@@ -1236,9 +1103,7 @@ inline engine::list_proxy<pool> engine::pools() const {
 
 template<typename F>
 inline timed_callback engine::create_timed_callback(F&& cb) const {
-    if(!m_impl) {
-        throw exception("Invalid engine");
-    }
+    MARGO_INSTANCE_MUST_BE_VALID;
     return timed_callback(*this, std::forward<F>(cb));
 }
 
@@ -1254,11 +1119,7 @@ inline hg_return_t thallium_generic_rpc(hg_handle_t handle) {
             "margo_registered_data returned null");
     auto    cb_data = static_cast<engine::rpc_callback_data*>(data);
     auto&   rpc = cb_data->m_function;
-    if(!(cb_data->m_engine_impl.lock())) {
-        margo_destroy(handle);
-        return HG_OTHER_ERROR;
-    }
-    request req(cb_data->m_engine_impl, handle, false);
+    request req(mid, handle, false);
     rpc(req);
     margo_destroy(handle);
     return HG_SUCCESS;

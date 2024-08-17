@@ -4,7 +4,7 @@ libdir=${prefix}/lib
 includedir=${prefix}/include
 
 Name: thallium
-Description:  A C++14 library wrapping Margo, Mercury, and Argobots and providing an object-oriented way to use these libraries.
+Description:  A C++ library wrapping Margo, Mercury, and Argobots and providing an object-oriented way to use these libraries.
 Version: @THALLIUM_VERSION@
 
 Requires: margo

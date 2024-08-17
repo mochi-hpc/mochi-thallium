@@ -19,6 +19,8 @@ int main() {
 
     myEngine.define("dot_product", dot_product);
 
+    myEngine.wait_for_finalize();
+
     return 0;
 }
 

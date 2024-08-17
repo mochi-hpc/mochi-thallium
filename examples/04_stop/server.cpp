@@ -19,6 +19,8 @@ int main() {
 
     myEngine.push_finalize_callback([]() { std::cout << "Finalization was called" << std::endl; });
 
+    myEngine.wait_for_finalize();
+
     return 0;
 }
 

@@ -5,8 +5,8 @@ namespace tl = thallium;
 
 void hello() {
     tl::xstream es = tl::xstream::self();
-    std::cout << "Hello World from ES " 
-        << es.get_rank() << ", ULT " 
+    std::cout << "Hello World from ES "
+        << es.get_rank() << ", ULT "
         << tl::thread::self_id() << std::endl;
 }
 
@@ -19,7 +19,7 @@ int main() {
     tl::managed<tl::pool> myPool = tl::pool::create(tl::pool::access::spmc);
 
     for(int i=0; i < 4; i++) {
-        tl::managed<tl::xstream> es 
+        tl::managed<tl::xstream> es
             = tl::xstream::create(tl::scheduler::predef::deflt, *myPool);
         ess.push_back(std::move(es));
     }

@@ -15,6 +15,7 @@
 #include <thallium/engine.hpp>
 #include <thallium/exception.hpp>
 #include <thallium/margo_exception.hpp>
+#include <thallium/margo_instance_ref.hpp>
 #include <unordered_map>
 
 namespace thallium {
@@ -32,25 +33,23 @@ typedef std::integral_constant<bool, true> ignore_return_value;
  */
 template <typename T> class provider {
   private:
-    std::weak_ptr<detail::engine_impl>  m_engine_impl;
-    margo_instance_id                   m_mid;
-    uint16_t                            m_provider_id;
-    bool                                m_has_identity;
+    margo_instance_ref m_mid;
+    uint16_t           m_provider_id;
+    bool               m_has_identity;
 
   public:
     provider(const engine& e, uint16_t provider_id, const char* identity = nullptr)
-    : m_engine_impl(e.m_impl)
+    : m_mid{e}
     , m_provider_id(provider_id)
     , m_has_identity(identity != nullptr) {
-        if(!e.m_impl) throw exception("Invalid engine");
-        m_mid = e.get_margo_instance();
+        MARGO_INSTANCE_MUST_BE_VALID;
 #if MARGO_VERSION_NUM >= 1500
         auto registered_identity = margo_provider_registered_identity(m_mid, provider_id);
         if(m_has_identity) {
             if(registered_identity) {
                 throw exception{
-                    "[thallium] A (", registered_identity,
-                    ") provider with the same ID (",
+                    "[thallium] A \"", registered_identity,
+                    "\" provider with the same ID (",
                     provider_id, ") is already registered"};
             } else {
                 auto hret = margo_provider_register_identity(
@@ -93,31 +92,11 @@ template <typename T> class provider {
      */
     const char* identity() const {
 #if MARGO_VERSION_NUM >= 1500
-        return margo_provider_registered_identity(
-            get_engine().get_margo_instance(), m_provider_id);
+        return margo_provider_registered_identity(m_mid, m_provider_id);
 #else
         return "<unknown>";
 #endif
     }
-
-  protected:
-    /**
-     * @brief Waits for the engine to finalize.
-     */
-    [[deprecated("Use the engine's wait_for_finalize method instead")]]
-        inline void wait_for_finalize() {
-            get_engine().wait_for_finalize();
-        }
-
-    /**
-     * @brief Finalize the engine.
-     */
-    [[deprecated("Use the engine's finalize method instead")]]
-        inline void finalize() {
-            auto engine_impl = m_engine_impl.lock();
-            if(!engine_impl) throw exception("Invalid thallium engine state");
-            get_engine().finalize();
-        }
 
   private:
     // define_member as RPC for the case return value is NOT void and
@@ -385,9 +364,7 @@ template <typename T> class provider {
      * @return The engine associated with this provider.
      */
     engine get_engine() const {
-        auto engine_impl = m_engine_impl.lock();
-        if(!engine_impl) throw exception("Invalid thallium engine state");
-        return engine(engine_impl);
+        return engine(m_mid);
     }
 
     /**

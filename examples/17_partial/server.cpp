@@ -25,6 +25,7 @@ int main() {
 
     myEngine.define("sum", sum);
 
+    myEngine.wait_for_finalize();
     return 0;
 }
 

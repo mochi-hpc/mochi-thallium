@@ -5,8 +5,8 @@ namespace tl = thallium;
 
 void hello() {
     tl::xstream es = tl::xstream::self();
-    std::cout << "Hello World from ES " 
-        << es.get_rank() << ", ULT " 
+    std::cout << "Hello World from ES "
+        << es.get_rank() << ", ULT "
         << tl::thread::self_id() << std::endl;
 }
 

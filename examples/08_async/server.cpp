@@ -17,6 +17,8 @@ int main() {
     std::cout << "Server running at address " << theEngine.self() << std::endl;
     theEngine.define("sum", sum);
 
+    theEngine.wait_for_finalize();
+
     return 0;
 }
 

@@ -22,10 +22,6 @@
 
 namespace thallium {
 
-namespace detail {
-    struct engine_impl;
-}
-
 #ifdef THALLIUM_DEBUG_RPC_TYPES
 template <typename T> std::string get_type_name() {
     int         status;
@@ -58,11 +54,11 @@ inline hg_return_t hg_proc_meta_serialization(hg_proc_t proc, void* data) {
 
 template <typename T, typename ... CtxArg>
 hg_return_t proc_object_encode(hg_proc_t proc, T& data,
-                               const std::weak_ptr<detail::engine_impl>& e,
+                               margo_instance_id mid,
                                std::tuple<CtxArg...>& ctx) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE: {
-        proc_output_archive<CtxArg...> ar(proc, ctx, e);
+        proc_output_archive<CtxArg...> ar(proc, ctx, mid);
 #ifdef THALLIUM_DEBUG_RPC_TYPES
         std::string type_name = get_type_name<T>();
         ar << type_name;
@@ -80,19 +76,19 @@ hg_return_t proc_object_encode(hg_proc_t proc, T& data,
 
 template <typename T, typename ... CtxArg>
 hg_return_t proc_object_decode(hg_proc_t proc, T& data,
-                           const std::weak_ptr<detail::engine_impl>& e,
-                           std::tuple<CtxArg...>& ctx) {
+                               margo_instance_id mid,
+                               std::tuple<CtxArg...>& ctx) {
     switch(hg_proc_get_op(proc)) {
     case HG_ENCODE:
         return HG_INVALID_ARG; // not supposed to happen
     case HG_DECODE: {
-        proc_input_archive<CtxArg...> ar(proc, ctx, e);
+        proc_input_archive<CtxArg...> ar(proc, ctx, mid);
 #ifdef THALLIUM_DEBUG_RPC_TYPES
         std::string requested_type_name = get_type_name<T>();
         std::string received_type_name;
         ar >> received_type_name;
         if(requested_type_name != received_type_name) {
-            std::cerr << "[THALLIUM] RPC type error: invalid decoding from "
+            std::cerr << "[thallium] RPC type error: invalid decoding from "
                       << "(" << received_type_name << ") to ("
                       << requested_type_name << ")" << std::endl;
             return HG_INVALID_PARAM;
@@ -125,7 +121,7 @@ inline hg_return_t proc_void_object(hg_proc_t proc, std::tuple<CtxArg...>& ctx) 
         std::string        received_type_name;
         ar >> received_type_name;
         if(requested_type_name != received_type_name) {
-            std::cerr << "[THALLIUM] RPC type error: invalid decoding from "
+            std::cerr << "[thallium] RPC type error: invalid decoding from "
                       << "(" << received_type_name << ") to ("
                       << requested_type_name << ")" << std::endl;
             return HG_INVALID_PARAM;

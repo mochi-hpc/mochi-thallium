@@ -26,18 +26,14 @@ if (NOT CMAKE_BUILD_TYPE)
     set_property (CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
                   "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif ()
-option (ENABLE_CEREAL "Enable cereal serialization" ON)
+
+option (ENABLE_TESTS "Enable tests" OFF)
+option (ENABLE_EXAMPLES "Enable examples" OFF)
 
 include_directories (${CMAKE_BINARY_DIR}/include)
 
-# packages we depend on
-if (ENABLE_CEREAL)
-    find_package (cereal CONFIG REQUIRED)
-    set (CEREAL_TARGET cereal::cereal)
-    set (THALLIUM_USE_CEREAL ON)
-    get_target_property (CEREAL_INC cereal::cereal INTERFACE_INCLUDE_DIRECTORIES)
-    message (STATUS "Found cereal library")
-endif (ENABLE_CEREAL)
+find_package (cereal CONFIG REQUIRED)
+get_target_property (CEREAL_INC cereal::cereal INTERFACE_INCLUDE_DIRECTORIES)
 
 find_package (PkgConfig REQUIRED)
 pkg_check_modules (margo REQUIRED IMPORTED_TARGET margo)
@@ -49,5 +45,3 @@ endif (ENABLE_TESTS)
 if (ENABLE_EXAMPLES)
     add_subdirectory (examples)
 endif (ENABLE_EXAMPLES)
-
-configure_file (include/thallium/config.hpp.in ${CMAKE_BINARY_DIR}/include/thallium/config.hpp)

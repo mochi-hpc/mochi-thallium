@@ -8,6 +8,7 @@
 
 #include <margo.h>
 #include <memory>
+#include <thallium/margo_instance_ref.hpp>
 
 namespace thallium {
 
@@ -16,9 +17,6 @@ class endpoint;
 class provider_handle;
 template<typename ... CtxArg> class callable_remote_procedure_with_context;
 using callable_remote_procedure = callable_remote_procedure_with_context<>;
-namespace detail {
-    struct engine_impl;
-}
 
 /**
  * @brief remote_procedure objects are produced by
@@ -31,19 +29,20 @@ class remote_procedure {
     friend class engine;
 
   private:
-    std::weak_ptr<detail::engine_impl> m_engine_impl;
-    hg_id_t                            m_id = 0;
-    bool                               m_ignore_response;
+
+    margo_instance_ref m_mid;
+    hg_id_t            m_id = 0;
+    bool               m_ignore_response;
 
     /**
      * @brief Constructor. Made private because remote_procedure
      * objects are created only by engine::define().
      *
-     * @param e Engine object that created the remote_procedure.
+     * @param mid Margo instance that created the remote_procedure.
      * @param id Mercury RPC id.
      */
-    remote_procedure(std::weak_ptr<detail::engine_impl> e, hg_id_t id)
-    : m_engine_impl(std::move(e))
+    remote_procedure(margo_instance_ref mid, hg_id_t id)
+    : m_mid{std::move(mid)}
     , m_id(id)
     , m_ignore_response(false) {}
 
@@ -115,11 +114,6 @@ class remote_procedure {
     hg_id_t id() const {
         return m_id;
     }
-
-    [[deprecated("use disable_response() instead")]] inline remote_procedure&
-    ignore_response() {
-        return disable_response();
-    }
 };
 
 /**
@@ -150,32 +144,30 @@ namespace thallium {
 inline callable_remote_procedure remote_procedure::on(const endpoint& ep) const {
     if(m_id == 0)
         throw exception("remote_procedure object isn't initialized");
-    return callable_remote_procedure(m_engine_impl, m_id, ep, m_ignore_response, 0);
+    return callable_remote_procedure(m_mid, m_id, ep, m_ignore_response, 0);
 }
 
 inline callable_remote_procedure
 remote_procedure::on(const provider_handle& ph) const {
     if(m_id == 0)
         throw exception("remote_procedure object isn't initialized");
-    return callable_remote_procedure(m_engine_impl, m_id, ph, m_ignore_response,
+    return callable_remote_procedure(m_mid, m_id, ph, m_ignore_response,
                                      ph.provider_id());
 }
 
 inline void remote_procedure::deregister() {
-    auto engine_impl = m_engine_impl.lock();
-    if(engine_impl)
-        margo_deregister(engine_impl->m_mid, m_id);
+    MARGO_INSTANCE_MUST_BE_VALID;
+    margo_deregister(m_mid, m_id);
 }
 
 inline remote_procedure&& remote_procedure::disable_response() && {
-    return std::move(this->disable_response());
+    return std::move(disable_response());
 }
 
 inline remote_procedure& remote_procedure::disable_response() & {
+    MARGO_INSTANCE_MUST_BE_VALID;
     m_ignore_response = true;
-    auto engine_impl = m_engine_impl.lock();
-    if(!engine_impl) throw exception("remote_procedure object isn't initialized");
-    margo_registered_disable_response(engine_impl->m_mid, m_id, HG_TRUE);
+    margo_registered_disable_response(m_mid, m_id, HG_TRUE);
     return *this;
 }
 

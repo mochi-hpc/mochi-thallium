@@ -10,6 +10,7 @@
 #include <margo.h>
 #include <string>
 #include <thallium/bulk.hpp>
+#include <thallium/margo_instance_ref.hpp>
 #include <vector>
 
 namespace thallium {
@@ -113,16 +114,14 @@ namespace thallium {
 
 inline std::size_t remote_bulk::operator>>(const bulk_segment& dest) const {
 
-    auto engine_impl = m_segment.m_bulk.m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    const margo_instance_id& mid           = engine_impl->m_mid;
-    const hg_bulk_op_t&      op            = HG_BULK_PULL;
-    const hg_addr_t&         origin_addr   = m_endpoint.m_addr;
-    const hg_bulk_t&         origin_handle = m_segment.m_bulk.m_bulk;
-    const size_t&            origin_offset = m_segment.m_offset;
-    const hg_bulk_t&         local_handle  = dest.m_bulk.m_bulk;
-    const size_t&            local_offset  = dest.m_offset;
-    size_t                   size          = dest.m_size;
+    margo_instance_id mid           = m_endpoint.m_mid;
+    hg_bulk_op_t      op            = HG_BULK_PULL;
+    hg_addr_t         origin_addr   = m_endpoint.m_addr;
+    hg_bulk_t         origin_handle = m_segment.m_bulk.m_bulk;
+    size_t            origin_offset = m_segment.m_offset;
+    hg_bulk_t         local_handle  = dest.m_bulk.m_bulk;
+    size_t            local_offset  = dest.m_offset;
+    size_t            size          = dest.m_size;
 
     if(size > m_segment.m_size)
         size = m_segment.m_size;
@@ -137,16 +136,14 @@ inline std::size_t remote_bulk::operator>>(const bulk_segment& dest) const {
 
 inline std::size_t remote_bulk::operator<<(const bulk_segment& src) const {
 
-    auto engine_impl = m_segment.m_bulk.m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    const margo_instance_id& mid           = engine_impl->m_mid;
-    const hg_bulk_op_t&      op            = HG_BULK_PUSH;
-    const hg_addr_t&         origin_addr   = m_endpoint.m_addr;
-    const hg_bulk_t&         origin_handle = m_segment.m_bulk.m_bulk;
-    const size_t&            origin_offset = m_segment.m_offset;
-    const hg_bulk_t&         local_handle  = src.m_bulk.m_bulk;
-    const size_t&            local_offset  = src.m_offset;
-    size_t                   size          = src.m_size;
+    margo_instance_id mid           = m_endpoint.m_mid;
+    hg_bulk_op_t      op            = HG_BULK_PUSH;
+    hg_addr_t         origin_addr   = m_endpoint.m_addr;
+    hg_bulk_t         origin_handle = m_segment.m_bulk.m_bulk;
+    size_t            origin_offset = m_segment.m_offset;
+    hg_bulk_t         local_handle  = src.m_bulk.m_bulk;
+    size_t            local_offset  = src.m_offset;
+    size_t            size          = src.m_size;
 
     if(size > m_segment.m_size)
         size = m_segment.m_size;

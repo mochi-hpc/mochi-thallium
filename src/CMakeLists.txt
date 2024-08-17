@@ -19,7 +19,7 @@ set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
 set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
 
 add_library (thallium INTERFACE)
-target_link_libraries (thallium INTERFACE PkgConfig::margo ${CEREAL_TARGET})
+target_link_libraries (thallium INTERFACE PkgConfig::margo cereal::cereal)
 target_include_directories (thallium INTERFACE $<INSTALL_INTERFACE:include>)
 
 # local include's BEFORE, in case old incompatable .hpp files in prefix/include
@@ -68,5 +68,3 @@ install (DIRECTORY ../include/thallium
          FILES_MATCHING PATTERN "*.hpp")
 install (FILES ../include/thallium.hpp
          DESTINATION include)
-install (FILES ${CMAKE_CURRENT_BINARY_DIR}/../include/thallium/config.hpp
-         DESTINATION include/thallium)
