@@ -722,7 +722,7 @@ class engine : public margo_instance_ref {
         }
 
         /**
-         * @brief Lookip the object by its handle.
+         * @brief Lookup the object by its handle.
          */
         auto operator[](T handle) const {
             return m_find_by_handle(m_mid, handle);
@@ -735,6 +735,138 @@ class engine : public margo_instance_ref {
             return m_get_num(m_mid);
         }
 
+        /**
+         * @brief Remove the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto remove(const char* name) const {
+            return m_remove_by_name(m_mid, name);
+        }
+
+        /**
+         * @brief remove the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto remove(const std::string& name) const {
+            return remove(name.c_str());
+        }
+
+        /**
+         * @brief Remove the object by its index.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        template<typename I,
+                 std::enable_if_t<std::is_integral<I>::value, bool> = true>
+        auto remove(I index) const {
+            return m_remove_by_index(m_mid, index);
+        }
+
+        /**
+         * @brief Remove the object by its handle.
+         */
+        auto remove(T handle) const {
+            return m_remove_by_handle(m_mid, handle);
+        }
+
+        /**
+         * @brief Increment the refcount of the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto ref_incr(const char* name) const {
+            return m_ref_incr_by_name(m_mid, name);
+        }
+
+        /**
+         * @brief Increment the refcount of the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto ref_incr(const std::string& name) const {
+            return ref_incr(name.c_str());
+        }
+
+        /**
+         * @brief Increment the refcount of the object by its index.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        template<typename I,
+                 std::enable_if_t<std::is_integral<I>::value, bool> = true>
+        auto ref_incr(I index) const {
+            return m_ref_incr_by_index(m_mid, index);
+        }
+
+        /**
+         * @brief Increment the refcount of the object by its handle.
+         */
+        auto ref_incr(T handle) const {
+            return m_ref_incr_by_handle(m_mid, handle);
+        }
+
+        /**
+         * @brief Decrement the refcount of the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto release(const char* name) const {
+            return m_release_by_name(m_mid, name);
+        }
+
+        /**
+         * @brief Decrement the refcount of the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto release(const std::string& name) const {
+            return release(name.c_str());
+        }
+
+        /**
+         * @brief Decrement the refcount of the object by its index.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        template<typename I,
+                 std::enable_if_t<std::is_integral<I>::value, bool> = true>
+        auto release(I index) const {
+            return m_release_by_index(m_mid, index);
+        }
+
+        /**
+         * @brief Decrement the refcount of the object by its handle.
+         */
+        auto release(T handle) const {
+            return m_release_by_handle(m_mid, handle);
+        }
+
+        /**
+         * @brief Get the refcount of the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto ref_count(const char* name) const {
+            return m_ref_count_by_name(m_mid, name);
+        }
+
+        /**
+         * @brief Get the refcount of the object by its name.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        auto ref_count(const std::string& name) const {
+            return ref_count(name.c_str());
+        }
+
+        /**
+         * @brief Get the refcount of the object by its index.
+         * Throws std::out_of_range if the name is unknown.
+         */
+        template<typename I,
+                 std::enable_if_t<std::is_integral<I>::value, bool> = true>
+        auto ref_count(I index) const {
+            return m_ref_count_by_index(m_mid, index);
+        }
+
+        /**
+         * @brief Get the refcount of the object by its handle.
+         */
+        auto ref_count(T handle) const {
+            return m_ref_count_by_handle(m_mid, handle);
+        }
+
         private:
 
         friend class engine;
@@ -742,24 +874,78 @@ class engine : public margo_instance_ref {
         typedef named_object_proxy<T> (*find_by_handle_f)(margo_instance_id, T);
         typedef named_object_proxy<T> (*find_by_name_f)(margo_instance_id, const char*);
         typedef named_object_proxy<T> (*find_by_index_f)(margo_instance_id, uint32_t);
+
         typedef size_t (*get_num_f)(margo_instance_id);
 
-        margo_instance_ref m_mid;
-        find_by_handle_f   m_find_by_handle;
-        find_by_name_f     m_find_by_name;
-        find_by_index_f    m_find_by_index;
-        get_num_f          m_get_num;
+        typedef void (*remove_by_handle_f)(margo_instance_id, T);
+        typedef void (*remove_by_name_f)(margo_instance_id, const char*);
+        typedef void (*remove_by_index_f)(margo_instance_id, uint32_t);
+
+        typedef void (*ref_incr_by_handle_f)(margo_instance_id, T);
+        typedef void (*ref_incr_by_name_f)(margo_instance_id, const char*);
+        typedef void (*ref_incr_by_index_f)(margo_instance_id, uint32_t);
+
+        typedef void (*release_by_handle_f)(margo_instance_id, T);
+        typedef void (*release_by_name_f)(margo_instance_id, const char*);
+        typedef void (*release_by_index_f)(margo_instance_id, uint32_t);
+
+        typedef unsigned (*ref_count_by_handle_f)(margo_instance_id, T);
+        typedef unsigned (*ref_count_by_name_f)(margo_instance_id, const char*);
+        typedef unsigned (*ref_count_by_index_f)(margo_instance_id, uint32_t);
+
+        margo_instance_ref    m_mid;
+        find_by_handle_f      m_find_by_handle;
+        find_by_name_f        m_find_by_name;
+        find_by_index_f       m_find_by_index;
+        get_num_f             m_get_num;
+        remove_by_handle_f    m_remove_by_handle;
+        remove_by_name_f      m_remove_by_name;
+        remove_by_index_f     m_remove_by_index;
+        ref_incr_by_handle_f  m_ref_incr_by_handle;
+        ref_incr_by_name_f    m_ref_incr_by_name;
+        ref_incr_by_index_f   m_ref_incr_by_index;
+        release_by_handle_f   m_release_by_handle;
+        release_by_name_f     m_release_by_name;
+        release_by_index_f    m_release_by_index;
+        ref_count_by_handle_f m_ref_count_by_handle;
+        ref_count_by_name_f   m_ref_count_by_name;
+        ref_count_by_index_f  m_ref_count_by_index;
 
         list_proxy(margo_instance_ref mid,
                    find_by_handle_f find_by_handle,
                    find_by_name_f find_by_name,
                    find_by_index_f find_by_index,
-                   get_num_f get_num)
+                   get_num_f get_num,
+                   remove_by_handle_f remove_by_handle,
+                   remove_by_name_f remove_by_name,
+                   remove_by_index_f remove_by_index,
+                   ref_incr_by_handle_f ref_incr_by_handle,
+                   ref_incr_by_name_f ref_incr_by_name,
+                   ref_incr_by_index_f ref_incr_by_index,
+                   release_by_handle_f release_by_handle,
+                   release_by_name_f release_by_name,
+                   release_by_index_f release_by_index,
+                   ref_count_by_handle_f ref_count_by_handle,
+                   ref_count_by_name_f ref_count_by_name,
+                   ref_count_by_index_f ref_count_by_index)
         : m_mid{mid}
         , m_find_by_handle(find_by_handle)
         , m_find_by_name(find_by_name)
         , m_find_by_index(find_by_index)
-        , m_get_num(get_num) {}
+        , m_get_num(get_num)
+        , m_remove_by_handle(remove_by_handle)
+        , m_remove_by_name(remove_by_name)
+        , m_remove_by_index(remove_by_index)
+        , m_ref_incr_by_handle(ref_incr_by_handle)
+        , m_ref_incr_by_name(ref_incr_by_name)
+        , m_ref_incr_by_index(ref_incr_by_index)
+        , m_release_by_handle(release_by_handle)
+        , m_release_by_name(release_by_name)
+        , m_release_by_index(release_by_index)
+        , m_ref_count_by_handle(ref_count_by_handle)
+        , m_ref_count_by_name(ref_count_by_name)
+        , m_ref_count_by_index(ref_count_by_index)
+        {}
 
         public:
 
@@ -1044,6 +1230,7 @@ inline engine::list_proxy<xstream> engine::xstreams() const {
     MARGO_INSTANCE_MUST_BE_VALID;
     return list_proxy<xstream>{
         m_mid,
+        /* find */
         [](margo_instance_id mid, xstream handle) {
             margo_xstream_info info;
             hg_return_t hret = margo_find_xstream_by_handle(mid, handle.native_handle(), &info);
@@ -1065,35 +1252,180 @@ inline engine::list_proxy<xstream> engine::xstreams() const {
                     "Could not find xstream instance from provided index");
             return named_object_proxy<xstream>(info.xstream, std::string(info.name), info.index);
         },
-        &margo_get_num_xstreams};
+        /* size */
+        &margo_get_num_xstreams,
+        /* remove */
+        [](margo_instance_id mid, xstream handle) {
+            hg_return_t hret = margo_remove_xstream_by_handle(mid, handle.native_handle());
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_remove_xstream_by_handle, hret,
+                "Could not remove xstream instance from provided xstream handle");
+        },
+        [](margo_instance_id mid, const char* name) {
+            hg_return_t hret = margo_remove_xstream_by_name(mid, name);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_remove_xstream_by_name, hret,
+                "Could not remove xstream instance from provided name");
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            hg_return_t hret = margo_remove_xstream_by_index(mid, index);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_remove_xstream_by_index, hret,
+                "Could not remove xstream instance from provided index");
+        },
+        /* ref_incr */
+        [](margo_instance_id mid, xstream handle) {
+            hg_return_t hret = margo_xstream_ref_incr_by_handle(mid, handle.native_handle());
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_ref_incr_by_handle, hret,
+                "Could not increment refcount of xstream instance from provided xstream handle");
+        },
+        [](margo_instance_id mid, const char* name) {
+            hg_return_t hret = margo_xstream_ref_incr_by_name(mid, name);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_ref_incr_by_name, hret,
+                "Could not increment refcount of xstream instance from provided name");
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            hg_return_t hret = margo_xstream_ref_incr_by_index(mid, index);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_ref_incr_by_index, hret,
+                "Could not increment refcount of xstream instance from provided index");
+        },
+        /* release */
+        [](margo_instance_id mid, xstream handle) {
+            hg_return_t hret = margo_xstream_release_by_handle(mid, handle.native_handle());
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_release_by_handle, hret,
+                "Could not decrement refcount of xstream instance from provided xstream handle");
+        },
+        [](margo_instance_id mid, const char* name) {
+            hg_return_t hret = margo_xstream_release_by_name(mid, name);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_release_by_name, hret,
+                "Could not decrement refcount of xstream instance from provided name");
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            hg_return_t hret = margo_xstream_release_by_index(mid, index);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_release_by_index, hret,
+                "Could not decrement refcount of xstream instance from provided index");
+        },
+        /* ref_count */
+        [](margo_instance_id mid, xstream handle) {
+            unsigned refcount;
+            hg_return_t hret = margo_xstream_ref_count_by_handle(mid, handle.native_handle(), &refcount);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_ref_count_by_handle, hret,
+                "Could not get refcount of xstream instance from provided xstream handle");
+            return refcount;
+        },
+        [](margo_instance_id mid, const char* name) {
+            unsigned refcount;
+            hg_return_t hret = margo_xstream_ref_count_by_name(mid, name, &refcount);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_ref_count_by_name, hret,
+                "Could not get refcount of xstream instance from provided name");
+            return refcount;
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            unsigned refcount;
+            hg_return_t hret = margo_xstream_ref_count_by_index(mid, index, &refcount);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_xstream_ref_count_by_index, hret,
+                "Could not get refcount of xstream instance from provided index");
+            return refcount;
+        }
+    };
 }
 
 inline engine::list_proxy<pool> engine::pools() const {
     MARGO_INSTANCE_MUST_BE_VALID;
     return list_proxy<pool>{
         m_mid,
+        /* find */
         [](margo_instance_id mid, pool handle) {
             margo_pool_info info;
             hg_return_t hret = margo_find_pool_by_handle(mid, handle.native_handle(), &info);
             if(hret != HG_SUCCESS) MARGO_THROW(margo_find_pool_by_handle, hret,
-                    "Could not find pool instance from provided pool handle");
+                "Could not find pool instance from provided pool handle");
             return named_object_proxy<pool>(info.pool, std::string(info.name), info.index);
         },
         [](margo_instance_id mid, const char* name) {
             margo_pool_info info;
             hg_return_t hret = margo_find_pool_by_name(mid, name, &info);
             if(hret != HG_SUCCESS) MARGO_THROW(margo_find_pool_by_name, hret,
-                    "Could not find pool instance from provided name");
+                "Could not find pool instance from provided name");
             return named_object_proxy<pool>(info.pool, std::string(info.name), info.index);
         },
         [](margo_instance_id mid, uint32_t index) {
             margo_pool_info info;
             hg_return_t hret = margo_find_pool_by_index(mid, index, &info);
             if(hret != HG_SUCCESS) MARGO_THROW(margo_find_pool_by_index, hret,
-                    "Could not find pool instance from provided index");
+                "Could not find pool instance from provided index");
             return named_object_proxy<pool>(info.pool, std::string(info.name), info.index);
         },
-        &margo_get_num_pools};
+        /* size */
+        &margo_get_num_pools,
+        /* remove */
+        [](margo_instance_id mid, pool handle) {
+            hg_return_t hret = margo_remove_pool_by_handle(mid, handle.native_handle());
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_remove_pool_by_handle, hret,
+                "Could not remove pool instance from provided pool handle");
+        },
+        [](margo_instance_id mid, const char* name) {
+            hg_return_t hret = margo_remove_pool_by_name(mid, name);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_remove_pool_by_name, hret,
+                "Could not remove pool instance from provided name");
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            hg_return_t hret = margo_remove_pool_by_index(mid, index);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_remove_pool_by_index, hret,
+                "Could not remove pool instance from provided index");
+        },
+        /* ref_incr */
+        [](margo_instance_id mid, pool handle) {
+            hg_return_t hret = margo_pool_ref_incr_by_handle(mid, handle.native_handle());
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_ref_incr_by_handle, hret,
+                "Could not increment the refcount of pool instance from provided pool handle");
+        },
+        [](margo_instance_id mid, const char* name) {
+            hg_return_t hret = margo_pool_ref_incr_by_name(mid, name);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_ref_incr_by_name, hret,
+                "Could not increment the refcount pool instance from provided name");
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            hg_return_t hret = margo_pool_ref_incr_by_index(mid, index);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_ref_incr_by_index, hret,
+                "Could not increment the refcount pool instance from provided index");
+        },
+        /* release */
+        [](margo_instance_id mid, pool handle) {
+            hg_return_t hret = margo_pool_release_by_handle(mid, handle.native_handle());
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_release_by_handle, hret,
+                "Could not decrement the refcount of pool instance from provided pool handle");
+        },
+        [](margo_instance_id mid, const char* name) {
+            hg_return_t hret = margo_pool_release_by_name(mid, name);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_release_by_name, hret,
+                "Could not decrement the refcount pool instance from provided name");
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            hg_return_t hret = margo_pool_release_by_index(mid, index);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_release_by_index, hret,
+                "Could not decrement the refcount pool instance from provided index");
+        },
+        /* ref_count */
+        [](margo_instance_id mid, pool handle) {
+            unsigned refcount;
+            hg_return_t hret = margo_pool_ref_count_by_handle(mid, handle.native_handle(), &refcount);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_ref_count_by_handle, hret,
+                "Could not get refcount of pool instance from provided pool handle");
+            return refcount;
+        },
+        [](margo_instance_id mid, const char* name) {
+            unsigned refcount;
+            hg_return_t hret = margo_pool_ref_count_by_name(mid, name, &refcount);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_ref_count_by_name, hret,
+                "Could not get refcount of pool instance from provided name");
+            return refcount;
+        },
+        [](margo_instance_id mid, uint32_t index) {
+            unsigned refcount;
+            hg_return_t hret = margo_pool_ref_count_by_index(mid, index, &refcount);
+            if(hret != HG_SUCCESS) MARGO_THROW(margo_pool_ref_count_by_index, hret,
+                "Could not get refcount of pool instance from provided index");
+            return refcount;
+        }
+    };
 }
 
 
