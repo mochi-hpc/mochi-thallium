@@ -29,7 +29,7 @@ class margo_instance_ref {
 
     margo_instance_ref(margo_instance_id mid) noexcept
     : m_mid{mid} {
-        if(m_mid) margo_instance_ref_incr(m_mid);
+        margo_instance_ref_incr(m_mid);
     }
 
     margo_instance_ref(margo_instance_ref&& other) noexcept

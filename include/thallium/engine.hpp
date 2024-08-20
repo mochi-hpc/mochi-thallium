@@ -183,8 +183,6 @@ class engine : public margo_instance_ref {
 
     /**
      * @brief Builds an engine around an existing margo instance.
-     *
-     * @param mid Margo instance.
      */
     engine(margo_instance_id mid) noexcept
     : margo_instance_ref(mid) {}
@@ -830,10 +828,8 @@ inline engine::engine(const std::string& addr, int mode, const pool& progress_po
     args.rpc_pool       = default_handler_pool.native_handle();
 
     m_mid = margo_init_ext(addr.c_str(), mode, &args);
-
     if(!m_mid)
         MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-
     margo_instance_ref_incr(m_mid);
 }
 
