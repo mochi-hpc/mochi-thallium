@@ -27,6 +27,12 @@ if (NOT CMAKE_BUILD_TYPE)
                   "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif ()
 
+set (THALLIUM_VERSION_MAJOR 0)
+set (THALLIUM_VERSION_MINOR 14)
+set (THALLIUM_VERSION_PATCH 0)
+set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
+set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
+
 option (ENABLE_TESTS "Enable tests" OFF)
 option (ENABLE_EXAMPLES "Enable examples" OFF)
 
@@ -45,3 +51,5 @@ endif (ENABLE_TESTS)
 if (ENABLE_EXAMPLES)
     add_subdirectory (examples)
 endif (ENABLE_EXAMPLES)
+
+configure_file (include/thallium/config.hpp.in ${CMAKE_BINARY_DIR}/include/thallium/config.hpp @ONLY)

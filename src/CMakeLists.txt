@@ -9,15 +9,6 @@ include (CMakePackageConfigHelpers)
 # where to install files for "find_package"
 set (thallium-pkg "share/cmake/thallium")
 
-#
-# library version set here (e.g. for shared libs).
-#
-set (THALLIUM_VERSION_MAJOR 0)
-set (THALLIUM_VERSION_MINOR 14)
-set (THALLIUM_VERSION_PATCH 0)
-set (thallium-vers "${THALLIUM_VERSION_MAJOR}.${THALLIUM_VERSION_MINOR}")
-set (THALLIUM_VERSION "${thallium-vers}.${THALLIUM_VERSION_PATCH}")
-
 add_library (thallium INTERFACE)
 target_link_libraries (thallium INTERFACE PkgConfig::margo cereal::cereal)
 target_include_directories (thallium INTERFACE $<INSTALL_INTERFACE:include>)
@@ -68,3 +59,5 @@ install (DIRECTORY ../include/thallium
          FILES_MATCHING PATTERN "*.hpp")
 install (FILES ../include/thallium.hpp
          DESTINATION include)
+install (FILES ${CMAKE_CURRENT_BINARY_DIR}/../include/thallium/config.hpp
+         DESTINATION include/thallium)
