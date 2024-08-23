@@ -6,10 +6,7 @@ include (CMakeFindDependencyMacro)
 
 @PACKAGE_INIT@
 
-set (THALLIUM_USE_CEREAL @ENABLE_CEREAL@)
-if (THALLIUM_USE_CEREAL)
 find_dependency (cereal)
-endif ()
 find_dependency (PkgConfig)
 pkg_check_modules (margo REQUIRED IMPORTED_TARGET margo)
 

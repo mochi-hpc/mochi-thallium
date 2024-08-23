@@ -2,7 +2,6 @@
 #define __THALLIUM_HPP
 
 #include <margo.h>
-#include <thallium/config.hpp>
 #include <thallium/abt.hpp>
 #include <thallium/anonymous.hpp>
 #include <thallium/bulk_mode.hpp>

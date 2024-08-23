@@ -14,6 +14,8 @@ int main() {
     std::cout << "Server running at address " << myEngine.self() << std::endl;
     myEngine.define("hello", hello).disable_response();
 
+    myEngine.wait_for_finalize();
+
     return 0;
 }
 

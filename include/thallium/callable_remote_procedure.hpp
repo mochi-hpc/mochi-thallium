@@ -10,12 +10,12 @@
 #include <cstdint>
 #include <margo.h>
 #include <thallium/async_response.hpp>
-#include <thallium/config.hpp>
 #include <thallium/margo_exception.hpp>
 #include <thallium/packed_data.hpp>
 #include <thallium/serialization/proc_output_archive.hpp>
 #include <thallium/serialization/serialize.hpp>
 #include <thallium/timeout.hpp>
+#include <thallium/margo_instance_ref.hpp>
 #include <thallium/reference_util.hpp>
 #include <tuple>
 #include <utility>
@@ -25,10 +25,6 @@ namespace thallium {
 class engine;
 class remote_procedure;
 class endpoint;
-
-namespace detail {
-    struct engine_impl;
-}
 
 /**
  * @brief callable_remote_procedure_with_context objects represent an RPC
@@ -43,19 +39,19 @@ class callable_remote_procedure_with_context {
     template<typename ... CtxArg2> friend class callable_remote_procedure_with_context;
 
   private:
-    std::weak_ptr<detail::engine_impl> m_engine_impl;
-    hg_handle_t                        m_handle;
-    bool                               m_ignore_response;
-    uint16_t                           m_provider_id;
-    mutable std::tuple<CtxArg...>      m_context;
+    margo_instance_ref            m_mid;
+    hg_handle_t                   m_handle;
+    bool                          m_ignore_response;
+    uint16_t                      m_provider_id;
+    mutable std::tuple<CtxArg...> m_context;
 
     callable_remote_procedure_with_context(
-            std::weak_ptr<detail::engine_impl> e,
+            margo_instance_ref mid,
             hg_handle_t handle,
             bool ignore_response,
             uint16_t provider_id,
             std::tuple<CtxArg...>&& context)
-    : m_engine_impl(e)
+    : m_mid(std::move(mid))
     , m_handle(handle)
     , m_ignore_response(ignore_response)
     , m_provider_id(provider_id)
@@ -70,18 +66,26 @@ class callable_remote_procedure_with_context {
      * @brief Constructor. Made private since callable_remote_procedure_with_context can only
      * be created from remote_procedure::on().
      *
-     * @param e engine used to create the remote_procedure.
+     * @param mid Margo instance used to create the callable_remote_procedure.
      * @param id id of the RPC to call.
      * @param ep endpoint on which to call the RPC.
      * @param ignore_resp whether the response should be ignored.
      * @param provider_id provider id
      * @param context serialization context
      */
-    callable_remote_procedure_with_context(std::weak_ptr<detail::engine_impl> e,
-                              hg_id_t id, const endpoint& ep,
-                              bool ignore_resp, uint16_t provider_id,
-                              const std::tuple<CtxArg...>& context
-                              = std::tuple<CtxArg...>());
+    callable_remote_procedure_with_context(
+            margo_instance_ref mid,
+            hg_id_t id, const endpoint& ep,
+            bool ignore_resp, uint16_t provider_id,
+            const std::tuple<CtxArg...>& context = std::tuple<CtxArg...>())
+    : m_mid(std::move(mid))
+    , m_ignore_response(ignore_resp)
+    , m_provider_id(provider_id)
+    , m_context(context) {
+        m_ignore_response = ignore_resp;
+        hg_return_t ret = margo_create(m_mid, ep.m_addr, id, &m_handle);
+        MARGO_ASSERT(ret, margo_create);
+    }
 
     /**
      * @brief Sends the RPC to the endpoint (calls margo_forward), passing a
@@ -100,7 +104,7 @@ class callable_remote_procedure_with_context {
         hg_return_t  ret;
         meta_proc_fn mproc = [this, &args](hg_proc_t proc) {
             return proc_object_encode(proc, const_cast<std::tuple<T...>&>(args),
-                               m_engine_impl, m_context);
+                               m_mid, m_context);
         };
         if(timeout_ms > 0.0) {
             ret = margo_provider_forward_timed(
@@ -118,7 +122,7 @@ class callable_remote_procedure_with_context {
         }
         if(m_ignore_response)
             return packed_data<>();
-        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_engine_impl);
+        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_mid);
     }
 
     packed_data<> forward(double timeout_ms = -1.0) const {
@@ -142,7 +146,7 @@ class callable_remote_procedure_with_context {
         }
         if(m_ignore_response)
             return packed_data<>();
-        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_engine_impl);
+        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_mid);
     }
 
     /**
@@ -166,7 +170,7 @@ class callable_remote_procedure_with_context {
         margo_request req;
         meta_proc_fn  mproc = [this, &args](hg_proc_t proc) {
             return proc_object_encode(proc, const_cast<std::tuple<T...>&>(args),
-                                      m_engine_impl, m_context);
+                                      m_mid, m_context);
         };
         if(timeout_ms > 0.0) {
             ret = margo_provider_iforward_timed(
@@ -180,7 +184,7 @@ class callable_remote_procedure_with_context {
                 const_cast<void*>(static_cast<const void*>(&mproc)), &req);
             MARGO_ASSERT(ret, margo_provider_iforward);
         }
-        return async_response(req, m_engine_impl, m_handle, m_ignore_response);
+        return async_response(req, m_mid, m_handle, m_ignore_response);
     }
 
     async_response iforward(double timeout_ms = -1.0) const {
@@ -201,7 +205,7 @@ class callable_remote_procedure_with_context {
                 const_cast<void*>(static_cast<const void*>(&mproc)), &req);
             MARGO_ASSERT(ret, margo_provider_iforward);
         }
-        return async_response(req, m_engine_impl, m_handle, m_ignore_response);
+        return async_response(req, m_mid, m_handle, m_ignore_response);
     }
 
   public:
@@ -210,7 +214,7 @@ class callable_remote_procedure_with_context {
      */
     callable_remote_procedure_with_context(
             const callable_remote_procedure_with_context& other)
-    : m_engine_impl(other.m_engine_impl)
+    : m_mid(other.m_mid)
     , m_handle(other.m_handle)
     , m_ignore_response(other.m_ignore_response)
     , m_provider_id(other.m_provider_id)
@@ -227,13 +231,11 @@ class callable_remote_procedure_with_context {
      */
     callable_remote_procedure_with_context(
             callable_remote_procedure_with_context&& other) noexcept
-    : m_engine_impl(std::move(other.m_engine_impl))
-    , m_handle(other.m_handle)
+    : m_mid(other.m_mid)
+    , m_handle(std::exchange(other.m_handle, HG_HANDLE_NULL))
     , m_ignore_response(other.m_ignore_response)
     , m_provider_id(other.m_provider_id)
-    , m_context(std::move(other.m_context)) {
-        other.m_handle = HG_HANDLE_NULL;
-    }
+    , m_context(std::move(other.m_context)) {}
 
     /**
      * @brief Copy-assignment operator.
@@ -248,7 +250,7 @@ class callable_remote_procedure_with_context {
             MARGO_ASSERT(ret, margo_destroy);
         }
         m_handle          = other.m_handle;
-        m_engine_impl     = other.m_engine_impl;
+        m_mid             = other.m_mid;
         m_ignore_response = other.m_ignore_response;
         m_provider_id     = other.m_provider_id;
         m_context         = other.m_context;
@@ -268,9 +270,8 @@ class callable_remote_procedure_with_context {
             hg_return_t ret = margo_destroy(m_handle);
             MARGO_ASSERT(ret, margo_destroy);
         }
-        m_handle          = other.m_handle;
-        other.m_handle    = HG_HANDLE_NULL;
-        m_engine_impl     = std::move(other.m_engine_impl);
+        m_handle          = std::exchange(other.m_handle, HG_HANDLE_NULL);
+        m_mid             = std::move(other.m_mid);
         m_ignore_response = other.m_ignore_response;
         m_provider_id     = other.m_provider_id;
         m_context         = std::move(other.m_context);
@@ -298,7 +299,7 @@ class callable_remote_procedure_with_context {
     auto with_serialization_context(NewCtxArg&&... args) const {
         return callable_remote_procedure_with_context
             <unwrap_decay_t<NewCtxArg>...>(
-                m_engine_impl,
+                m_mid,
                 m_handle,
                 m_ignore_response,
                 m_provider_id,
@@ -423,34 +424,6 @@ class callable_remote_procedure_with_context {
 };
 
 using callable_remote_procedure = callable_remote_procedure_with_context<>;
-
-} // namespace thallium
-
-#include <thallium/engine.hpp>
-#include <thallium/endpoint.hpp>
-
-namespace thallium {
-
-template<typename ... CtxArg>
-inline callable_remote_procedure_with_context<CtxArg...>::
-    callable_remote_procedure_with_context(
-            std::weak_ptr<detail::engine_impl> e,
-            hg_id_t id,
-            const endpoint& ep,
-            bool     ignore_resp,
-            uint16_t provider_id,
-            const std::tuple<CtxArg...>& context)
-: m_engine_impl(std::move(e))
-, m_ignore_response(ignore_resp)
-, m_provider_id(provider_id)
-, m_context(context) {
-    m_ignore_response = ignore_resp;
-    auto engine_impl = ep.m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    hg_return_t ret =
-        margo_create(engine_impl->m_mid, ep.m_addr, id, &m_handle);
-    MARGO_ASSERT(ret, margo_create);
-}
 
 } // namespace thallium
 

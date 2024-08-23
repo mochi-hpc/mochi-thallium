@@ -24,5 +24,7 @@ int main() {
             req.respond(1);
         };
     myEngine.define("do_rdma",f);
+
+    myEngine.wait_for_finalize();
 }
 

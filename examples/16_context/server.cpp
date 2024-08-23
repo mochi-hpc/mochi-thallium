@@ -25,6 +25,8 @@ int main() {
 
     myEngine.define("process", process);
 
+    myEngine.wait_for_finalize();
+
     return 0;
 }
 

@@ -10,6 +10,9 @@
 #include <margo.h>
 #include <margo-timer.h>
 #include <thallium/exception.hpp>
+#include <thallium/margo_instance_ref.hpp>
+#include <memory>
+#include <functional>
 
 namespace thallium {
 
@@ -25,7 +28,11 @@ class timed_callback {
     margo_timer_t                          m_timer = MARGO_TIMER_NULL;
     std::unique_ptr<std::function<void()>> m_callback;
 
-    timed_callback(const engine& e, std::function<void()> fun);
+    timed_callback(margo_instance_id mid, std::function<void()> fun)
+    : m_callback(std::make_unique<std::function<void()>>(std::move(fun))) {
+        auto ret = margo_timer_create(mid, &call, m_callback.get(), &m_timer);
+        if(ret != 0) throw exception("Could not create timed_callback");
+    }
 
     static void call(void* uargs) {
         auto cb = static_cast<std::function<void()>*>(uargs);
@@ -40,14 +47,14 @@ class timed_callback {
 
     /**
      * @brief Move-assignment operator.
-     * WARNING: do not use this method if the callback has
-     * been scheduled.
+     *
+     * @warning: do not use this method if the callback has been scheduled.
      */
     timed_callback& operator=(timed_callback&& other) {
         if(this == &other) return *this;
-        this->m_timer = other.m_timer;
-        this->m_callback = std::move(other.m_callback);
-        this->m_timer = MARGO_TIMER_NULL;
+        if(m_timer) margo_timer_cancel(m_timer);
+        m_timer = std::exchange(other.m_timer, MARGO_TIMER_NULL);
+        m_callback = std::move(other.m_callback);
         return *this;
     }
 
@@ -57,32 +64,17 @@ class timed_callback {
     }
 
     void start(double timeout_ms) {
-        if(0 != margo_timer_start(m_timer, timeout_ms)) {
+        if(0 != margo_timer_start(m_timer, timeout_ms))
             throw exception("Could not start timed_callback: "
-                "timer invalid or already started");
-        }
+                            "timer invalid or already started");
     }
 
     void cancel() {
-        if(0 != margo_timer_cancel(m_timer)) {
+        if(0 != margo_timer_cancel(m_timer))
             throw exception("Could not cancel timed_callback: "
-                "timer invalid or not started");
-        }
+                            "timer invalid or not started");
     }
 };
-
-} // namespace thallium
-
-#include <thallium/engine.hpp>
-
-namespace thallium {
-
-inline timed_callback::timed_callback(const engine& e, std::function<void()> fun)
-: m_callback(std::make_unique<std::function<void()>>(std::move(fun))) {
-    int ret = margo_timer_create(e.m_impl->m_mid, &call, m_callback.get(), &m_timer);
-    if(ret != 0)
-        throw exception("Could not create timed_callback");
-}
 
 } // namespace thallium
 

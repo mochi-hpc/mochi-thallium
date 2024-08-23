@@ -6,6 +6,7 @@
 #ifndef __THALLIUM_ASYNC_RESPONSE_HPP
 #define __THALLIUM_ASYNC_RESPONSE_HPP
 
+#include <thallium/margo_instance_ref.hpp>
 #include <thallium/margo_exception.hpp>
 #include <thallium/packed_data.hpp>
 #include <thallium/proc_object.hpp>
@@ -19,10 +20,6 @@ namespace thallium {
 template<typename ... CtxArg> class callable_remote_procedure_with_context;
 using callable_remote_procedure = callable_remote_procedure_with_context<>;
 
-namespace detail {
-    struct engine_impl;
-}
-
 /**
  * @brief async_response objects are created by sending an
  * RPC in a non-blocking way. They can be used to wait for
@@ -32,24 +29,24 @@ class async_response {
     template<typename ... CtxArg> friend class callable_remote_procedure_with_context;
 
   private:
-    margo_request                      m_request;
-    std::weak_ptr<detail::engine_impl> m_engine_impl;
-    hg_handle_t                        m_handle;
-    bool                               m_ignore_response;
+    margo_instance_ref m_mid;
+    margo_request      m_request;
+    hg_handle_t        m_handle;
+    bool               m_ignore_response;
 
     /**
      * @brief Constructor. Made private since async_response
      * objects are created by callable_remote_procedure only.
      *
      * @param req Margo request to wait on.
-     * @param e Engine associated with the RPC.
+     * @param mid Margo instance associated with the RPC.
      * @param c callable_remote_procedure that created the async_response.
      * @param ignore_resp whether response should be ignored.
      */
-    async_response(margo_request req, std::weak_ptr<detail::engine_impl> e,
+    async_response(margo_request req, margo_instance_ref mid,
                    hg_handle_t handle, bool ignore_resp) noexcept
-    : m_request(req)
-    , m_engine_impl(std::move(e))
+    : m_mid(std::move(mid))
+    , m_request(req)
     , m_handle(handle)
     , m_ignore_response(ignore_resp) {
         margo_ref_incr(handle);
@@ -67,13 +64,10 @@ class async_response {
      * @param other async_response to move from.
      */
     async_response(async_response&& other) noexcept
-    : m_request(other.m_request)
-    , m_engine_impl(std::move(other.m_engine_impl))
-    , m_handle(other.m_handle)
-    , m_ignore_response(other.m_ignore_response) {
-        other.m_request = MARGO_REQUEST_NULL;
-        other.m_handle  = HG_HANDLE_NULL;
-    }
+    : m_mid(std::move(other.m_mid))
+    , m_request{std::exchange(other.m_request, MARGO_REQUEST_NULL)}
+    , m_handle{std::exchange(other.m_handle, HG_HANDLE_NULL)}
+    , m_ignore_response(other.m_ignore_response) {}
 
     /**
      * @brief Copy-assignment operator is deleted.
@@ -81,20 +75,18 @@ class async_response {
     async_response& operator=(const async_response& other) = delete;
 
     /**
-     * @brief Move-assignment operator. Will invalidate
-     * the moved-from object.
+     * @brief Move-assignment operator.
      */
-    async_response& operator=(async_response&& other) noexcept {
-        if(this == &other)
-            return *this;
+    async_response& operator=(async_response&& other) {
+        if(&other == this || m_request == other.m_request) return *this;
+        if(m_request != MARGO_REQUEST_NULL)
+            wait();
         if(m_handle != HG_HANDLE_NULL)
             margo_destroy(m_handle);
-        m_request         = other.m_request;
-        m_engine_impl     = std::move(other.m_engine_impl);
-        m_handle          = other.m_handle;
+        m_mid             = std::move(other.m_mid);
+        m_request         = std::exchange(other.m_request, MARGO_REQUEST_NULL);
+        m_handle          = std::exchange(other.m_handle, HG_HANDLE_NULL);
         m_ignore_response = other.m_ignore_response;
-        other.m_request   = MARGO_REQUEST_NULL;
-        other.m_handle    = HG_HANDLE_NULL;
         return *this;
     }
 
@@ -126,7 +118,7 @@ class async_response {
         }
         if(m_ignore_response)
             return packed_data<>();
-        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_engine_impl);
+        return packed_data<>(margo_get_output, margo_free_output, m_handle, m_mid);
     }
 
     /**
@@ -161,7 +153,7 @@ class async_response {
      */
     template <typename Iterator>
     static packed_data<> wait_any(const Iterator& begin, const Iterator& end,
-                                    Iterator& completed) {
+                                  Iterator& completed) {
         std::vector<margo_request> reqs;
         size_t                     count = std::distance(begin, end);
         reqs.reserve(count);
@@ -180,7 +172,7 @@ class async_response {
             return packed_data<>();
         }
         return packed_data<>(margo_get_output, margo_free_output,
-                completed->m_handle, completed->m_engine_impl);
+                completed->m_handle, completed->m_mid);
     }
 };
 

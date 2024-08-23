@@ -11,6 +11,7 @@
 #include <margo.h>
 #include <string>
 #include <thallium/margo_exception.hpp>
+#include <thallium/margo_instance_ref.hpp>
 
 namespace thallium {
 class endpoint;
@@ -19,10 +20,6 @@ class endpoint;
 template <typename S> S& operator<<(S& s, const thallium::endpoint& e);
 
 namespace thallium {
-
-namespace detail {
-    struct engine_impl;
-}
 
 class engine;
 template<typename ... CtxArg> class request_with_context;
@@ -33,18 +30,15 @@ class remote_bulk;
  * RPC can be sent. They are created using engine::lookup().
  */
 class endpoint {
+
     friend class engine;
     template<typename ... CtxArg> friend class request_with_context;
     template<typename ... CtxArg> friend class callable_remote_procedure_with_context;
     friend class remote_bulk;
 
   private:
-    std::weak_ptr<detail::engine_impl> m_engine_impl;
-    hg_addr_t m_addr = HG_ADDR_NULL;
-
-    endpoint(std::weak_ptr<detail::engine_impl> e, hg_addr_t addr) noexcept
-    : m_engine_impl(std::move(e))
-    , m_addr(addr) {}
+    margo_instance_ref m_mid;
+    hg_addr_t          m_addr = HG_ADDR_NULL;
 
   public:
     /**
@@ -54,7 +48,15 @@ class endpoint {
      * @param e Engine that created the endpoint.
      * @param addr Mercury address.
      */
-    endpoint(const engine& e, hg_addr_t addr, bool take_ownership = true);
+    endpoint(margo_instance_ref mid, hg_addr_t addr, bool take_ownership = true)
+    : m_mid{std::move(mid)}
+    , m_addr(addr) {
+        MARGO_INSTANCE_MUST_BE_VALID;
+        if(!take_ownership && addr != HG_ADDR_NULL) {
+            auto ret = margo_addr_dup(m_mid, addr, &m_addr);
+            MARGO_ASSERT(ret, margo_addr_dup);
+        }
+    }
 
     /**
      * @brief Default constructor defined so that endpoints can
@@ -65,32 +67,67 @@ class endpoint {
     /**
      * @brief Copy constructor.
      */
-    endpoint(const endpoint& other);
+    endpoint(const endpoint& other)
+    : m_mid(other.m_mid)
+    , m_addr(HG_ADDR_NULL) {
+        MARGO_INSTANCE_MUST_BE_VALID;
+        if(other.m_addr == HG_ADDR_NULL) return;
+        hg_return_t ret = margo_addr_dup(m_mid, other.m_addr, &m_addr);
+        MARGO_ASSERT(ret, margo_addr_dup);
+    }
 
     /**
      * @brief Move constructor.
      */
     endpoint(endpoint&& other) noexcept
-    : m_engine_impl(other.m_engine_impl)
-    , m_addr(other.m_addr) {
-        other.m_engine_impl.reset();
-        other.m_addr = HG_ADDR_NULL;
-    }
+    : m_mid(std::move(other.m_mid))
+    , m_addr(std::exchange(other.m_addr, HG_ADDR_NULL)) {}
 
     /**
      * @brief Copy-assignment operator.
      */
-    endpoint& operator=(const endpoint& other);
+    endpoint& operator=(const endpoint& other) {
+        hg_return_t ret;
+        if(&other == this)
+            return *this;
+        if(m_addr != HG_ADDR_NULL) {
+            ret = margo_addr_free(m_mid, m_addr);
+            MARGO_ASSERT(ret, margo_addr_free);
+        }
+        m_mid = other.m_mid;
+        if(other.m_addr != HG_ADDR_NULL) {
+            ret = margo_addr_dup(m_mid, other.m_addr, &m_addr);
+            MARGO_ASSERT(ret, margo_addr_dup);
+        } else {
+            m_addr = HG_ADDR_NULL;
+        }
+        return *this;
+    }
 
     /**
      * @brief Move-assignment operator.
      */
-    endpoint& operator=(endpoint&& other);
+    endpoint& operator=(endpoint&& other) {
+        if(&other == this)
+            return *this;
+        if(m_addr != HG_ADDR_NULL) {
+            auto ret = margo_addr_free(m_mid, m_addr);
+            MARGO_ASSERT(ret, margo_addr_free);
+        }
+        m_mid  = std::move(other.m_mid);
+        m_addr = std::exchange(other.m_addr, HG_ADDR_NULL);
+        return *this;
+    }
 
     /**
      * @brief Destructor.
      */
-    virtual ~endpoint();
+    virtual ~endpoint() {
+        if(m_addr != HG_ADDR_NULL) {
+            auto ret = margo_addr_free(m_mid, m_addr);
+            MARGO_ASSERT_TERMINATE(ret, margo_addr_free);
+        }
+    }
 
     /**
      * @brief Returns the engine that created this endpoint.
@@ -102,7 +139,18 @@ class endpoint {
      *
      * @return A string representation of the endpoint's address.
      */
-    operator std::string() const;
+    operator std::string() const {
+        std::string result;
+        if(m_addr == HG_ADDR_NULL)
+            return result;
+        hg_size_t   size;
+        auto ret = margo_addr_to_string(m_mid, nullptr, &size, m_addr);
+        MARGO_ASSERT(ret, margo_addr_to_string);
+        result.resize(size);
+        ret = margo_addr_to_string(m_mid, const_cast<char*>(result.data()), &size, m_addr);
+        MARGO_ASSERT(ret, margo_addr_to_string);
+        return result;
+    }
 
     /**
      * @brief Indicates whether the endpoint is null or not.
@@ -110,6 +158,11 @@ class endpoint {
      * @return true if the endpoint is a null address.
      */
     bool is_null() const noexcept { return m_addr == HG_ADDR_NULL; }
+
+    /**
+     * @brief Returns whether the endpoint is valid.
+     */
+    operator bool() const noexcept { return !is_null(); }
 
     /**
      * @brief Returns the underlying Mercury address.
@@ -121,13 +174,28 @@ class endpoint {
      *
      * @return The underlying hg_addr_t.
      */
-    hg_addr_t get_addr(bool copy = false) const;
+    hg_addr_t get_addr(bool copy = false) const {
+        if(!copy || m_addr == HG_ADDR_NULL)
+            return m_addr;
+        hg_addr_t new_addr;
+        auto ret = margo_addr_dup(m_mid, m_addr, &new_addr);
+        MARGO_ASSERT(ret, margo_addr_dup);
+        return new_addr;
+    }
 
     /**
      * @brief Compares two addresses for equality.
      */
-    bool operator==(const endpoint& other) const;
+    bool operator==(const endpoint& other) const {
+        if(is_null() && other.is_null()) return true;
+        if(is_null() || other.is_null()) return false;
+        if(m_mid != other.m_mid) return false;
+        return margo_addr_cmp(m_mid, m_addr, other.m_addr) == HG_TRUE;
+    }
 
+    /**
+     * @brief Compares two addresses for equality.
+     */
     bool operator!=(const endpoint& other) const {
         return !(*this == other);
     }
@@ -138,7 +206,11 @@ class endpoint {
      * the peer address from the list of the peers, before freeing it and
      * reclaim resources.
      */
-    void set_remove();
+    void set_remove() {
+        if(is_null()) return;
+        auto ret = margo_addr_set_remove(m_mid, m_addr);
+        MARGO_ASSERT(ret, margo_addr_set_remove);
+    }
 
     template <typename S> friend S& ::operator<<(S& s, const endpoint& e);
 };
@@ -164,127 +236,12 @@ template <typename S> S& operator<<(S& s, const thallium::endpoint& e) {
 }
 
 #include <thallium/engine.hpp>
-#include <vector>
 
 namespace thallium {
 
-inline endpoint::endpoint(const engine& e, hg_addr_t addr, bool take_ownership)
-: m_engine_impl(e.m_impl)
-, m_addr(HG_ADDR_NULL) {
-    if(!e.m_impl) throw exception("Invalid engine");
-    if(take_ownership) {
-        m_addr = addr;
-    } else {
-        hg_return_t ret = margo_addr_dup(e.m_impl->m_mid, addr, &m_addr);
-        MARGO_ASSERT(ret, margo_addr_dup);
-    }
-}
-
-inline endpoint::endpoint(const endpoint& other)
-: m_engine_impl(other.m_engine_impl)
-, m_addr(HG_ADDR_NULL) {
-    if(other.m_addr == HG_ADDR_NULL) return;
-    auto engine_impl = m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    hg_return_t ret = margo_addr_dup(engine_impl->m_mid, other.m_addr, &m_addr);
-    MARGO_ASSERT(ret, margo_addr_dup);
-}
-
-inline endpoint& endpoint::operator=(const endpoint& other) {
-    hg_return_t ret;
-    if(&other == this)
-        return *this;
-    if(m_addr != HG_ADDR_NULL) {
-        auto engine_impl = m_engine_impl.lock();
-        if(!engine_impl) throw exception("Invalid engine");
-        ret = margo_addr_free(engine_impl->m_mid, m_addr);
-        MARGO_ASSERT(ret, margo_addr_free);
-    }
-    m_engine_impl = other.m_engine_impl;
-    if(other.m_addr != HG_ADDR_NULL) {
-        auto engine_impl = m_engine_impl.lock();
-        if(!engine_impl) throw exception("Invalid engine");
-        ret = margo_addr_dup(engine_impl->m_mid, other.m_addr, &m_addr);
-        MARGO_ASSERT(ret, margo_addr_dup);
-    } else {
-        m_addr = HG_ADDR_NULL;
-    }
-    return *this;
-}
-
-inline endpoint& endpoint::operator=(endpoint&& other) {
-    if(&other == this)
-        return *this;
-    if(m_addr != HG_ADDR_NULL) {
-        auto engine_impl = m_engine_impl.lock();
-        if(!engine_impl) throw exception("Invalid engine");
-        hg_return_t ret = margo_addr_free(engine_impl->m_mid, m_addr);
-        MARGO_ASSERT(ret, margo_addr_free);
-    }
-    m_engine_impl = other.m_engine_impl;
-    m_addr        = other.m_addr;
-    other.m_addr  = HG_ADDR_NULL;
-    return *this;
-}
-
-inline endpoint::~endpoint() {
-    if(m_addr != HG_ADDR_NULL) {
-        auto engine_impl = m_engine_impl.lock();
-        if(!engine_impl) return;
-        hg_return_t ret = margo_addr_free(engine_impl->m_mid, m_addr);
-        MARGO_ASSERT_TERMINATE(ret, margo_addr_free);
-    }
-}
-
 inline engine endpoint::get_engine() const {
-    return engine{m_engine_impl.lock()};
+    return engine{m_mid};
 };
-
-inline endpoint::operator std::string() const {
-    if(m_addr == HG_ADDR_NULL)
-        return std::string();
-
-    auto engine_impl = m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    hg_size_t   size;
-    hg_return_t ret =
-        margo_addr_to_string(engine_impl->m_mid, NULL, &size, m_addr);
-    MARGO_ASSERT(ret, margo_addr_to_string);
-
-    std::vector<char> result(size);
-
-    ret = margo_addr_to_string(engine_impl->m_mid, &result[0], &size, m_addr);
-    MARGO_ASSERT(ret, margo_addr_to_string);
-    return std::string(result.data());
-}
-
-inline hg_addr_t endpoint::get_addr(bool copy) const {
-    if(!copy || m_addr == HG_ADDR_NULL)
-        return m_addr;
-    auto engine_impl = m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    hg_addr_t   new_addr;
-    hg_return_t ret =
-        margo_addr_dup(engine_impl->m_mid, m_addr, &new_addr);
-    MARGO_ASSERT(ret, margo_addr_dup);
-    return new_addr;
-}
-
-inline bool endpoint::operator==(const endpoint& other) const {
-    if(is_null() && other.is_null()) return true;
-    if(is_null() || other.is_null()) return false;
-    auto engine_impl = m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    return margo_addr_cmp(engine_impl->m_mid, m_addr, other.m_addr) == HG_TRUE;
-}
-
-inline void endpoint::set_remove() {
-    if(is_null()) return;
-    auto engine_impl = m_engine_impl.lock();
-    if(!engine_impl) throw exception("Invalid engine");
-    auto ret = margo_addr_set_remove(engine_impl->m_mid, m_addr);
-    MARGO_ASSERT(ret, margo_addr_set_remove);
-}
 
 } // namespace thallium
 

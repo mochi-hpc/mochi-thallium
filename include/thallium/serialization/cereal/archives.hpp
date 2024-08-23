@@ -10,15 +10,14 @@
 #include <cstring>
 #include <mercury_proc.h>
 #include <cereal/cereal.hpp>
+#include <margo.h>
+#include <thallium/exception.hpp>
 
 namespace thallium {
 
     using namespace std::string_literals;
 
     class engine;
-    namespace detail {
-        struct engine_impl;
-    }
 
     template<typename ... CtxArg>
     class proc_output_archive :
@@ -30,18 +29,17 @@ namespace thallium {
     public:
 
         proc_output_archive(hg_proc_t p, std::tuple<CtxArg...>& context,
-                            std::weak_ptr<detail::engine_impl> e)
+                            margo_instance_id mid)
         : cereal::OutputArchive<proc_output_archive, cereal::AllowEmptyClassElision>(this)
         , m_proc(p)
         , m_context(context)
-        , m_engine_impl(std::move(e))
+        , m_mid(mid)
         {}
 
         proc_output_archive(hg_proc_t p, std::tuple<CtxArg...>& context)
         : cereal::OutputArchive<proc_output_archive, cereal::AllowEmptyClassElision>(this)
         , m_proc(p)
         , m_context(context)
-        , m_engine_impl()
         {}
 
         ~proc_output_archive() = default;
@@ -49,12 +47,9 @@ namespace thallium {
         inline void write(const void* data, size_t size) {
             hg_return_t ret = hg_proc_memcpy(m_proc, const_cast<void*>(data), size);
             if(ret != HG_SUCCESS) {
-                throw std::runtime_error("Error during serialization, hg_proc_memcpy returned"s + std::to_string(ret));
+                throw exception(
+                    "Error during serialization, hg_proc_memcpy returned"s + std::to_string(ret));
             }
-        }
-
-        const std::weak_ptr<detail::engine_impl>& get_engine_impl() const {
-            return m_engine_impl;
         }
 
         engine get_engine() const;
@@ -77,9 +72,9 @@ namespace thallium {
 
     private:
 
-        hg_proc_t                          m_proc;
-        std::tuple<CtxArg...>&             m_context;
-        std::weak_ptr<detail::engine_impl> m_engine_impl;
+        hg_proc_t              m_proc;
+        std::tuple<CtxArg...>& m_context;
+        margo_instance_id      m_mid = MARGO_INSTANCE_NULL;
 
     };
 
@@ -93,31 +88,26 @@ namespace thallium {
     public:
 
         proc_input_archive(hg_proc_t p, std::tuple<CtxArg...>& context,
-                           std::weak_ptr<detail::engine_impl> e)
+                           margo_instance_id mid)
         : cereal::InputArchive<proc_input_archive<CtxArg...>, cereal::AllowEmptyClassElision>(this)
         , m_proc(p)
         , m_context(context)
-        , m_engine_impl(std::move(e))
+        , m_mid(mid)
         {}
 
         proc_input_archive(hg_proc_t p, std::tuple<CtxArg...>& context)
         : cereal::InputArchive<proc_input_archive<CtxArg...>, cereal::AllowEmptyClassElision>(this)
         , m_proc(p)
         , m_context(context)
-        , m_engine_impl()
         {}
 
         ~proc_input_archive() = default;
 
         inline void read(void* data, std::size_t size) {
-            hg_return_t ret = hg_proc_memcpy(m_proc, static_cast<void*>(data), size);
+            auto ret = hg_proc_memcpy(m_proc, static_cast<void*>(data), size);
             if(ret != HG_SUCCESS) {
-                throw std::runtime_error("Error during serialization, hg_proc_memcpy returned"s + std::to_string(ret));
+                throw exception("Error during serialization, hg_proc_memcpy returned "s + std::to_string(ret));
             }
-        }
-
-        const std::weak_ptr<detail::engine_impl>& get_engine_impl() const {
-            return m_engine_impl;
         }
 
         engine get_engine() const;
@@ -140,9 +130,9 @@ namespace thallium {
 
     private:
 
-        hg_proc_t                          m_proc;
-        std::tuple<CtxArg...>&             m_context;
-        std::weak_ptr<detail::engine_impl> m_engine_impl;
+        hg_proc_t              m_proc;
+        std::tuple<CtxArg...>& m_context;
+        margo_instance_id      m_mid;
     };
 
     template<class T, class... CtxArg> inline

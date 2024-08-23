@@ -11,6 +11,7 @@
 #include <thallium/serialization/proc_input_archive.hpp>
 #include <thallium/serialization/serialize.hpp>
 #include <thallium/reference_util.hpp>
+#include <thallium/margo_instance_ref.hpp>
 
 namespace thallium {
 
@@ -18,10 +19,6 @@ template<typename ... CtxArg> class callable_remote_procedure_with_context;
 class async_response;
 template<typename ... CtxArg> class request_with_context;
 using request = request_with_context<>;
-
-namespace detail {
-    struct engine_impl;
-}
 
 /**
  * @brief packed_data objects encapsulate data serialized
@@ -35,8 +32,8 @@ class packed_data {
     template<typename ... CtxArg2> friend class packed_data;;
 
   private:
-    std::weak_ptr<detail::engine_impl> m_engine_impl;
-    hg_handle_t m_handle = HG_HANDLE_NULL;
+    margo_instance_ref m_mid;
+    hg_handle_t        m_handle = HG_HANDLE_NULL;
     hg_return_t (*m_unpack_fn)(hg_handle_t,void*) = nullptr;
     hg_return_t (*m_free_fn)(hg_handle_t,void*) = nullptr;
     mutable std::tuple<CtxArg...> m_context;
@@ -44,16 +41,13 @@ class packed_data {
     /**
      * @brief Constructor. Made private since packed_data
      * objects are created by callable_remote_procedure only.
-     *
-     * @param h Handle containing the result of an RPC.
-     * @param e Engine associated with the RPC.
      */
     packed_data(hg_return_t (*unpack_fn)(hg_handle_t,void*),
                 hg_return_t (*free_fn)(hg_handle_t,void*),
                 hg_handle_t h,
-                std::weak_ptr<detail::engine_impl> e,
+                margo_instance_ref mid,
                 std::tuple<CtxArg...>&& ctx = std::tuple<CtxArg...>())
-    : m_engine_impl(std::move(e))
+    : m_mid(std::move(mid))
     , m_handle(h)
     , m_unpack_fn(unpack_fn)
     , m_free_fn(free_fn)
@@ -67,42 +61,29 @@ class packed_data {
     packed_data(const packed_data&)            = delete;
     packed_data& operator=(const packed_data&) = delete;
 
-    packed_data(packed_data&& rhs)
-    : m_engine_impl(std::move(rhs.m_engine_impl)),
-      m_context(std::move(rhs.m_context)) {
-        m_handle        = rhs.m_handle;
-        rhs.m_handle    = HG_HANDLE_NULL;
-        m_unpack_fn     = rhs.m_unpack_fn;
-        rhs.m_unpack_fn = nullptr;
-        m_free_fn       = rhs.m_free_fn;
-        rhs.m_free_fn   = nullptr;
-    }
+    packed_data(packed_data&& other)
+    : m_mid(std::move(other.m_mid))
+    , m_handle(std::exchange(other.m_handle, HG_HANDLE_NULL))
+    , m_unpack_fn(std::exchange(other.m_unpack_fn, nullptr))
+    , m_free_fn(std::exchange(other.m_free_fn, nullptr))
+    , m_context(std::move(other.m_context)) {}
 
     packed_data& operator=(packed_data&& rhs) {
-
-        if(&rhs == this) {
-            return *this;
-        }
+        if(&rhs == this) return *this;
 
         // the original members m_handle, m_context, and m_handle are being
         // replaced here by the ones from rhs. It may be necessary to release
         // their resources if `packed_data` has claimed ownership over them,
-        // otherwise we would be leaking
-        m_engine_impl = std::move(rhs.m_engine_impl);
-        m_context = std::move(rhs.m_context);
-
-        m_handle        = rhs.m_handle;
-        rhs.m_handle    = HG_HANDLE_NULL;
-        m_unpack_fn     = rhs.m_unpack_fn;
-        rhs.m_unpack_fn = nullptr;
-        m_free_fn       = rhs.m_free_fn;
-        rhs.m_free_fn   = nullptr;
+        // otherwise we would be leaking memory.
+        m_mid       = std::move(rhs.m_mid);
+        m_context   = std::move(rhs.m_context);
+        m_handle    = std::exchange(rhs.m_handle, HG_HANDLE_NULL);
+        m_unpack_fn = std::exchange(rhs.m_unpack_fn, nullptr);
+        m_free_fn   = std::exchange(rhs.m_free_fn, nullptr);
     }
 
     ~packed_data() {
-        if(m_handle != HG_HANDLE_NULL) {
-            margo_destroy(m_handle);
-        }
+        if(m_handle != HG_HANDLE_NULL) margo_destroy(m_handle);
     }
 
     /**
@@ -122,7 +103,7 @@ class packed_data {
     template<typename ... NewCtxArg>
     auto with_serialization_context(NewCtxArg&&... args) {
         return packed_data<unwrap_decay_t<NewCtxArg>...>(
-            m_unpack_fn, m_free_fn, m_handle, m_engine_impl,
+            m_unpack_fn, m_free_fn, m_handle, m_mid,
             std::make_tuple<NewCtxArg...>(std::forward<NewCtxArg>(args)...));
     }
 
@@ -141,7 +122,7 @@ class packed_data {
         }
         std::tuple<T> t;
         meta_proc_fn  mproc = [this, &t](hg_proc_t proc) {
-            return proc_object_decode(proc, t, m_engine_impl, m_context);
+            return proc_object_decode(proc, t, m_mid, m_context);
         };
         hg_return_t ret = m_unpack_fn(m_handle, &mproc);
         MARGO_ASSERT(ret, m_unpack_fn);
@@ -175,7 +156,7 @@ class packed_data {
                    typename std::decay<Tn>::type...>
                      t;
         meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
-            return proc_object_decode(proc, t, m_engine_impl, m_context);
+            return proc_object_decode(proc, t, m_mid, m_context);
         };
         hg_return_t ret = m_unpack_fn(m_handle, &mproc);
         MARGO_ASSERT(ret, m_unpack_fn);
@@ -213,7 +194,7 @@ class packed_data {
         }
         auto t = std::make_tuple(std::ref(x)...);
         meta_proc_fn mproc = [this, &t](hg_proc_t proc) {
-            return proc_object_decode(proc, t, m_engine_impl, m_context);
+            return proc_object_decode(proc, t, m_mid, m_context);
         };
         hg_return_t ret = m_unpack_fn(m_handle, &mproc);
         MARGO_ASSERT(ret, m_unpack_fn);

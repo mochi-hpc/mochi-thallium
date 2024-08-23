@@ -6,11 +6,12 @@
 #ifndef __THALLIUM_BULK_HPP
 #define __THALLIUM_BULK_HPP
 
+#include <thallium/margo_instance_ref.hpp>
+#include <thallium/margo_exception.hpp>
 #include <cstdint>
 #include <memory>
 #include <margo.h>
 #include <string>
-#include <thallium/margo_exception.hpp>
 #include <vector>
 
 namespace thallium {
@@ -19,36 +20,35 @@ class engine;
 class endpoint;
 class remote_bulk;
 class bulk_segment;
-namespace detail {
-    struct engine_impl;
-}
 
 /**
  * @brief bulk objects represent abstractions of memory
  * segments exposed by a process for RDMA operations. A bulk
  * object can be serialized to be sent over RPC to another process.
  */
-class bulk {
+class bulk : public margo_instance_ref {
+
     friend class engine;
     friend class remote_bulk;
 
   private:
-    std::weak_ptr<detail::engine_impl> m_engine_impl;
-    hg_bulk_t m_bulk        = HG_BULK_NULL;
-    bool      m_is_local    = true;
+
+    margo_instance_ref m_mid;
+    hg_bulk_t          m_bulk     = HG_BULK_NULL;
+    bool               m_is_local = false;
 
     /**
      * @brief Constructor. Made private as bulk objects
      * are instanciated by engine::expose (for example),
      * not directory by users.
      *
-     * @param e Reference to the engine instance creating the object.
+     * @param mid Margo instance creating the object.
      * @param b Mercury bulk handle.
      * @param local Whether the bulk handle referes to memory that is
      * local to this process.
      */
-    bulk(std::weak_ptr<detail::engine_impl> e, hg_bulk_t b, bool local) noexcept
-    : m_engine_impl(std::move(e))
+    bulk(margo_instance_ref mid, hg_bulk_t b, bool local) noexcept
+    : m_mid{std::move(mid)}
     , m_bulk(b)
     , m_is_local(local) {}
 
@@ -57,16 +57,13 @@ class bulk {
      * @brief Default constructor, defined so that one can have a bulk
      * object as class member and associate it later with an actual bulk.
      */
-    bulk() noexcept
-    : m_engine_impl()
-    , m_bulk(HG_BULK_NULL)
-    , m_is_local(false) {}
+    bulk() noexcept = default;
 
     /**
      * @brief Copy constructor.
      */
     bulk(const bulk& other)
-    : m_engine_impl(other.m_engine_impl)
+    : m_mid{other.m_mid}
     , m_bulk(other.m_bulk)
     , m_is_local(other.m_is_local) {
         if(other.m_bulk != HG_BULK_NULL) {
@@ -79,7 +76,7 @@ class bulk {
      * @brief Move constructor.
      */
     bulk(bulk&& other) noexcept
-    : m_engine_impl(std::move(other.m_engine_impl))
+    : m_mid(std::move(other.m_mid))
     , m_bulk(other.m_bulk)
     , m_is_local(other.m_is_local) {
         other.m_bulk = HG_BULK_NULL;
@@ -95,13 +92,13 @@ class bulk {
             hg_return_t ret = margo_bulk_free(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_free);
         }
-        m_bulk        = other.m_bulk;
-        m_engine_impl = other.m_engine_impl;
+        m_bulk     = other.m_bulk;
         m_is_local = other.m_is_local;
         if(m_bulk != HG_BULK_NULL) {
             hg_return_t ret = margo_bulk_ref_incr(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_ref_incr);
         }
+        m_mid = other.m_mid;
         return *this;
     }
 
@@ -115,10 +112,10 @@ class bulk {
             hg_return_t ret = margo_bulk_free(m_bulk);
             MARGO_ASSERT(ret, margo_bulk_free);
         }
-        m_engine_impl = other.m_engine_impl;
         m_bulk        = other.m_bulk;
         m_is_local    = other.m_is_local;
         other.m_bulk  = HG_BULK_NULL;
+        m_mid         = std::move(other.m_mid);
         return *this;
     }
 
@@ -229,15 +226,14 @@ class bulk {
      */
     template <typename A> void serialize(A& ar) {
         using namespace std::string_literals;
-        int ret = hg_proc_hg_bulk_t(ar.get_proc(), &m_bulk);
+        auto ret = hg_proc_hg_bulk_t(ar.get_proc(), &m_bulk);
         if(ret != HG_SUCCESS) {
-            throw std::runtime_error(
-                "Error during serialization, hg_proc_hg_bulk_t returned"s +
-                std::to_string(ret));
+            std::stringstream ss;
+            throw exception{
+                "Error during serialization, hg_proc_hg_bulk_t returned "s +
+                HG_Error_to_string(ret)};
         }
-        if(m_engine_impl.lock() == nullptr) {
-            m_engine_impl = ar.get_engine_impl();
-        }
+        if(!m_mid) m_mid = ar.get_engine().get_margo_instance();
     }
 };
 
