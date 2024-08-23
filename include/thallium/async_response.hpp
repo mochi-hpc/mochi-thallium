@@ -30,9 +30,9 @@ class async_response {
 
   private:
     margo_instance_ref m_mid;
-    margo_request      m_request;
-    hg_handle_t        m_handle;
-    bool               m_ignore_response;
+    margo_request      m_request = MARGO_REQUEST_NULL;
+    hg_handle_t        m_handle  = HG_HANDLE_NULL;
+    bool               m_ignore_response = false;
 
     /**
      * @brief Constructor. Made private since async_response
@@ -53,6 +53,9 @@ class async_response {
     }
 
   public:
+
+    async_response() = default;
+
     /**
      * @brief Copy constructor is deleted.
      */
@@ -107,6 +110,8 @@ class async_response {
      * @return a packed_data containing the response.
      */
     packed_data<> wait() {
+        if(m_handle == HG_HANDLE_NULL)
+            throw exception("Calling wait on an invalid async_response");
         hg_return_t ret;
         if(m_request != MARGO_REQUEST_NULL) {
             ret = margo_wait(m_request);
