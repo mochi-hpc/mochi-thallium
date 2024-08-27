@@ -114,7 +114,7 @@ class engine : public margo_instance_ref {
            const margo_init_info* args)
     {
         m_mid = margo_init_ext(addr.c_str(), mode, args);
-        if(m_mid)
+        if(!m_mid)
             MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
         margo_instance_ref_incr(m_mid);
     }
