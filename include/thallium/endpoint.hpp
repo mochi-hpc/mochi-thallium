@@ -140,16 +140,16 @@ class endpoint {
      * @return A string representation of the endpoint's address.
      */
     operator std::string() const {
-        std::string result;
+        std::vector<char> result;
         if(m_addr == HG_ADDR_NULL)
-            return result;
-        hg_size_t   size;
+            return std::string{};
+        hg_size_t size;
         auto ret = margo_addr_to_string(m_mid, nullptr, &size, m_addr);
         MARGO_ASSERT(ret, margo_addr_to_string);
         result.resize(size);
         ret = margo_addr_to_string(m_mid, const_cast<char*>(result.data()), &size, m_addr);
         MARGO_ASSERT(ret, margo_addr_to_string);
-        return result;
+        return std::string{result.data()};
     }
 
     /**
