@@ -116,7 +116,6 @@ class engine : public margo_instance_ref {
         m_mid = margo_init_ext(addr.c_str(), mode, args);
         if(!m_mid)
             MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-        margo_instance_ref_incr(m_mid);
     }
 
     /**
@@ -148,7 +147,6 @@ class engine : public margo_instance_ref {
         m_mid = margo_init_ext(addr.c_str(), mode, &args);
         if(!m_mid)
             MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-        margo_instance_ref_incr(m_mid);
     }
 
     /**
@@ -171,7 +169,6 @@ class engine : public margo_instance_ref {
         m_mid = margo_init_ext(addr.c_str(), mode, &args);
         if(!m_mid)
             MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-        margo_instance_ref_incr(m_mid);
     }
 
     engine(const std::string& addr, int mode,
@@ -183,9 +180,20 @@ class engine : public margo_instance_ref {
 
     /**
      * @brief Builds an engine around an existing margo instance.
+     *
+     * If take_ownership is false, this new instance of engine will increase
+     * the margo_instance_id's reference count by 1, leaving it the same as
+     * before when the destructor is called. The caller is responsible for
+     * releasing and/or finalizing the margo instance themselves.
+     *
+     * If take_ownership is true, the engine will NOT increase the margo
+     * instance's reference count, hence taking responsibility for releasing
+     * it.
+     *
+     * @important only one engine can every take ownership of a margo instance.
      */
-    engine(margo_instance_id mid) noexcept
-    : margo_instance_ref(mid) {}
+    engine(margo_instance_id mid, bool take_ownership = false) noexcept
+    : margo_instance_ref(mid, take_ownership) {}
 
     /**
      * @brief Copy-constructor.
@@ -233,6 +241,13 @@ class engine : public margo_instance_ref {
      */
     void finalize() {
         MARGO_INSTANCE_MUST_BE_VALID;
+        // note: we increment the reference count before finalizing.
+        // margo_finalize will decrement it back. This ensures that
+        // margo_finalize will not cause the instance to be freed, so
+        // margo_instance_release can safely be called in the engine's
+        // destructor, or in the destructor of any other object referencing
+        // the margo instance.
+        margo_instance_ref_incr(m_mid);
         margo_finalize(m_mid);
     }
 
@@ -251,6 +266,13 @@ class engine : public margo_instance_ref {
      */
     void finalize_and_wait() {
         MARGO_INSTANCE_MUST_BE_VALID;
+        // note: we increment the reference count before finalizing.
+        // margo_finalize_and_wait will decrement it back. This ensures that
+        // margo_finalize_and_wait will not cause the instance to be freed, so
+        // margo_instance_release can safely be called in the engine's
+        // destructor, or in the destructor of any other object referencing
+        // the margo instance.
+        margo_instance_ref_incr(m_mid);
         margo_finalize_and_wait(m_mid);
     }
 
@@ -1016,7 +1038,6 @@ inline engine::engine(const std::string& addr, int mode, const pool& progress_po
     m_mid = margo_init_ext(addr.c_str(), mode, &args);
     if(!m_mid)
         MARGO_THROW(margo_init_ext, HG_OTHER_ERROR, "Could not initialize Margo");
-    margo_instance_ref_incr(m_mid);
 }
 
 template <typename T1, typename... Tn>

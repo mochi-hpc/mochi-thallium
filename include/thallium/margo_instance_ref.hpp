@@ -27,9 +27,10 @@ class margo_instance_ref {
 
     margo_instance_ref() noexcept = default;
 
-    margo_instance_ref(margo_instance_id mid) noexcept
+    margo_instance_ref(margo_instance_id mid, bool take_ownership = false) noexcept
     : m_mid{mid} {
-        margo_instance_ref_incr(m_mid);
+        if(!take_ownership)
+            margo_instance_ref_incr(m_mid);
     }
 
     margo_instance_ref(margo_instance_ref&& other) noexcept
