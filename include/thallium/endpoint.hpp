@@ -70,8 +70,8 @@ class endpoint {
     endpoint(const endpoint& other)
     : m_mid(other.m_mid)
     , m_addr(HG_ADDR_NULL) {
-        MARGO_INSTANCE_MUST_BE_VALID;
         if(other.m_addr == HG_ADDR_NULL) return;
+        MARGO_INSTANCE_MUST_BE_VALID;
         hg_return_t ret = margo_addr_dup(m_mid, other.m_addr, &m_addr);
         MARGO_ASSERT(ret, margo_addr_dup);
     }
