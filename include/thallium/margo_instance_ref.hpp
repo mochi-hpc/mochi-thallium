@@ -7,15 +7,16 @@
 #define __THALLIUM_MARGO_REF_HPP
 
 #include <margo.h>
+#include <string>
 #include <utility>
 
 namespace thallium {
 
-#define MARGO_INSTANCE_MUST_BE_VALID_AUX(func)                                       \
-    do {                                                                             \
-        if(!m_mid) throw exception{"Trying to call " #func " on an invalid engine"}; \
+#define MARGO_INSTANCE_MUST_BE_VALID                                         \
+    do {                                                                     \
+        if(!m_mid) throw exception{                                          \
+            "Trying to call ", __func__, " with an invalid margo instance"}; \
     } while(0)
-#define MARGO_INSTANCE_MUST_BE_VALID MARGO_INSTANCE_MUST_BE_VALID_AUX(__func__)
 
 class margo_instance_ref {
 
