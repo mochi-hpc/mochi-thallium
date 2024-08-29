@@ -26,7 +26,7 @@ class bulk_segment;
  * segments exposed by a process for RDMA operations. A bulk
  * object can be serialized to be sent over RPC to another process.
  */
-class bulk : public margo_instance_ref {
+class bulk {
 
     friend class engine;
     friend class remote_bulk;
