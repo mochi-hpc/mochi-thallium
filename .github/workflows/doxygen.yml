@@ -9,16 +9,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-#      - name: Call doxygen
-#        uses: mattnotmitt/doxygen-action@v1.9.4
-
-#      - name: Upload artifacts
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: thallium-doxygen-for-${{ github.sha }}
-#          path: doc
-#          retention-days: 5
-
       - name: Trigger RTDs build
         uses: dfm/rtds-action@v1
         with:
