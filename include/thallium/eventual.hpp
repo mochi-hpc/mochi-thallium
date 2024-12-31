@@ -135,9 +135,19 @@ template <typename T> class eventual {
      *
      * @return The value stored in the eventual.
      */
-    value_type wait() {
+    value_type wait() const & {
         TL_EVENTUAL_ASSERT(ABT_eventual_wait(m_eventual, nullptr));
         return m_value;
+    }
+
+    /**
+     * @brief Wait on the eventual.
+     *
+     * @return The value stored in the eventual.
+     */
+    value_type&& wait() const && {
+        TL_EVENTUAL_ASSERT(ABT_eventual_wait(m_eventual, nullptr));
+        return std::move(m_value);
     }
 
     /**
@@ -152,7 +162,10 @@ template <typename T> class eventual {
     /**
      * @brief Reset the eventual.
      */
-    void reset() { TL_EVENTUAL_ASSERT(ABT_eventual_reset(m_eventual)); }
+    void reset() {
+        m_value = value_type{};
+        TL_EVENTUAL_ASSERT(ABT_eventual_reset(m_eventual));
+    }
 };
 
 /**

@@ -21,6 +21,67 @@ class endpoint;
 class remote_bulk;
 class bulk_segment;
 
+
+/**
+ * @brief The async_bulk_op class is returned by the push_to and pull_from
+ * methods and track a non-blocking RDMA operation.
+ */
+class async_bulk_op {
+
+    friend class remote_bulk;
+
+    public:
+
+    bool test() const {
+        if(m_request == MARGO_REQUEST_NULL)
+            throw exception{"Calling async_bulk_op::test() on a null request"};
+        int flag;
+        int ret = margo_test(m_request, &flag);
+        MARGO_ASSERT((hg_return_t)ret, margo_test);
+        return flag != 0;
+    }
+
+    std::size_t wait() {
+        if(m_request == MARGO_REQUEST_NULL)
+            throw exception{"Calling async_bulk_op::wait() on a null request"};
+        hg_return_t ret = margo_wait(m_request);
+        MARGO_ASSERT(ret, margo_wait);
+        return m_tranferred_size;
+    }
+
+    async_bulk_op(const async_bulk_op&) = delete;
+
+    async_bulk_op(async_bulk_op&& other)
+    : m_request{std::exchange(other.m_request, MARGO_REQUEST_NULL)}
+    {}
+
+    async_bulk_op& operator=(const async_bulk_op&) = delete;
+
+    async_bulk_op& operator=(async_bulk_op&& other) {
+        if(&other == this || m_request == other.m_request) return *this;
+        if(m_request != MARGO_REQUEST_NULL)
+            wait();
+        m_request = std::exchange(other.m_request, MARGO_REQUEST_NULL);
+        return *this;
+    }
+
+    ~async_bulk_op() {
+        if(m_request != MARGO_REQUEST_NULL) {
+            wait();
+        }
+    }
+
+    private:
+
+    async_bulk_op(std::size_t size, margo_request req)
+    : m_tranferred_size{size}
+    , m_request{req}
+    {}
+
+    std::size_t   m_tranferred_size;
+    margo_request m_request;
+};
+
 /**
  * @brief bulk objects represent abstractions of memory
  * segments exposed by a process for RDMA operations. A bulk
@@ -195,6 +256,19 @@ class bulk {
     std::size_t operator>>(const remote_bulk& b) const;
 
     /**
+     * @brief Pushes data from the left operand (entire bulk object)
+     * to the right operand (remote_bulk). If the size of the
+     * segments don't match, the smallest size is used.
+     * This operation is non-blocking, returning an async_bulk_op
+     * object that the caller can wait on.
+     *
+     * @param b remote_bulk object towards which to push data.
+     *
+     * @return an async_bulk_op object.
+     */
+    async_bulk_op push_to(const remote_bulk& b) const;
+
+    /**
      * @brief Pulls data from the right operand (remote_bulk)
      * to the left operand (bulk). If the size of the
      * segments don't match, the smallest size is used.
@@ -204,6 +278,19 @@ class bulk {
      * @return the size of data transfered.
      */
     std::size_t operator<<(const remote_bulk& b) const;
+
+    /**
+     * @brief Pulls data from the right operand (remote_bulk)
+     * to the left operand (bulk). If the size of the
+     * segments don't match, the smallest size is used.
+     * This operation is non-blocking, returning an async_bulk_op
+     * object that the caller can wait on.
+     *
+     * @param b remote_bulk object from which to pull data.
+     *
+     * @return an async_bulk_op object.
+     */
+    async_bulk_op pull_from(const remote_bulk& b) const;
 
     /**
      * @brief Returns the underlying hg_bulk_t handle.
@@ -321,6 +408,19 @@ class bulk_segment {
     std::size_t operator>>(const remote_bulk& b) const;
 
     /**
+     * @brief Pushes data from the left operand (bulk_segment)
+     * to the right operand (remote_bulk). If the size of the
+     * segments don't match, the smallest size is used.
+     * This operation is non-blocking, returning an async_bulk_op
+     * object that the caller can wait on.
+     *
+     * @param b remote_bulk object towards which to push data.
+     *
+     * @return an async_bulk_op object.
+     */
+    async_bulk_op push_to(const remote_bulk& b) const;
+
+    /**
      * @brief Pulls data from the right operand (remote_bulk)
      * to the right operand (bulk_segment). If the size of the
      * segments don't match, the smallest size is used.
@@ -330,6 +430,19 @@ class bulk_segment {
      * @return the size of data transfered.
      */
     std::size_t operator<<(const remote_bulk& b) const;
+
+    /**
+     * @brief Pulls data from the right operand (remote_bulk)
+     * to the left operand (bulk_segment). If the size of the
+     * segments don't match, the smallest size is used.
+     * This operation is non-blocking, returning an async_bulk_op
+     * object that the caller can wait on.
+     *
+     * @param b remote_bulk object from which to pull data.
+     *
+     * @return an async_bulk_op object.
+     */
+    async_bulk_op pull_from(const remote_bulk& b) const;
 
     /**
      * @brief Selects a subsegment from this segment. If the size is too
@@ -390,16 +503,32 @@ inline std::size_t bulk_segment::operator>>(const remote_bulk& b) const {
     return b << *this;
 }
 
+inline async_bulk_op bulk_segment::push_to(const remote_bulk& b) const {
+    return b.push_from(*this);
+}
+
 inline std::size_t bulk_segment::operator<<(const remote_bulk& b) const {
     return b >> *this;
+}
+
+inline async_bulk_op bulk_segment::pull_from(const remote_bulk& b) const {
+    return b.pull_to(*this);
 }
 
 inline std::size_t bulk::operator>>(const remote_bulk& b) const {
     return b << (this->select(0, size()));
 }
 
+inline async_bulk_op bulk::push_to(const remote_bulk& b) const {
+    return b.push_from(*this);
+}
+
 inline std::size_t bulk::operator<<(const remote_bulk& b) const {
     return b >> (this->select(0, size()));
+}
+
+inline async_bulk_op bulk::pull_from(const remote_bulk& b) const {
+    return b.pull_to(*this);
 }
 
 } // namespace thallium
