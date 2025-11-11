@@ -9,6 +9,8 @@
 
 #include <abt.h>
 #include <mutex>
+#include <chrono>
+#include <ctime>
 #include <thallium/exception.hpp>
 #include <thallium/mutex.hpp>
 
@@ -146,7 +148,7 @@ class condition_variable {
      * @param lock Mutex to lock when condition variable is satisfied.
      * @param abstime Date until which to wait.
      *
-     * @return true if lock was acquired, false if timeout
+     * @return true if lock was acquired, false if timeout.
      */
     bool wait_until(std::unique_lock<mutex>& lock,
                     const struct timespec*   abstime) {
@@ -163,6 +165,55 @@ class condition_variable {
                 ret);
         }
     }
+
+    /**
+     * @brief Wait on a condition variable until a specific point in time.
+     *
+     * @tparam Clock
+     * @tparam Duration
+     * @param lock Mutex to lock when the condition variable is satisfied.
+     * @param abs_time Time point until which to wait.
+     *
+     * @return true if lock was acquired, false if timeout.
+     */
+    template <typename Clock, typename Duration>
+    bool wait_until(std::unique_lock<mutex>& lock,
+                    const std::chrono::time_point<Clock, Duration>& abs_time)
+    {
+        using namespace std::chrono;
+
+        // Convert time_point to timespec
+        auto secs = time_point_cast<seconds>(abs_time);
+        auto ns = duration_cast<nanoseconds>(abs_time - secs).count();
+
+        struct timespec ts;
+        ts.tv_sec  = secs.time_since_epoch().count();
+        ts.tv_nsec = static_cast<long>(ns);
+
+        return wait_until(lock, &ts);
+    }
+
+    /**
+     * @brief Wait on a condition variable for a specified amount of time.
+     *
+     * @tparam Rep
+     * @tparam Period
+     * @tparam Clock
+     * @param lock Mutex to lock when the condition variable is satisfied.
+     * @param rel_time Duration to wait for.
+     *
+     * @return true if lock was acquired, false if timeout.
+     */
+    template <typename Rep, typename Period, typename Clock = std::chrono::steady_clock>
+    bool wait_for(std::unique_lock<mutex>& lock,
+                  const std::chrono::duration<Rep, Period>& rel_time)
+        {
+            using namespace std::chrono;
+
+            // Compute absolute deadline as "now + rel_time"
+            auto abs_time = Clock::now() + rel_time;
+            return wait_until(lock, abs_time);
+        }
 };
 
 } // namespace thallium
