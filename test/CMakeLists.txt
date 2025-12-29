@@ -23,6 +23,10 @@ set(UNIT_TEST_FILES
     test_serialization_primitives
     test_error_handling
     test_endpoint
+    test_serialization_stl
+    test_rpc_advanced
+    test_provider
+    test_bulk_transfers
 )
 
 # Create a separate test executable for each test file
