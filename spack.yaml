@@ -4,6 +4,7 @@ spack:
   - pkg-config
   - cmake
   - cereal
+  - doctest
   concretizer:
     unify: true
     reuse: true
