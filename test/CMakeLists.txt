@@ -27,6 +27,8 @@ set(UNIT_TEST_FILES
     test_rpc_advanced
     test_provider
     test_bulk_transfers
+    test_serialization_custom
+    test_serialization_context
 )
 
 # Create a separate test executable for each test file
