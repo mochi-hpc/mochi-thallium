@@ -22,6 +22,7 @@ set(UNIT_TEST_FILES
     test_rpc_basic
     test_serialization_primitives
     test_error_handling
+    test_endpoint
 )
 
 # Create a separate test executable for each test file
