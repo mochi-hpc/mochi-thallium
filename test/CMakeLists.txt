@@ -32,6 +32,14 @@ set(UNIT_TEST_FILES
     test_async_operations
     test_finalization
     test_configuration
+    test_argobots_pools
+    test_argobots_xstreams
+    test_argobots_threads
+    test_argobots_schedulers
+    test_sync_primitives
+    test_timed_callbacks
+    test_logging
+    test_edge_cases
 )
 
 # Create a separate test executable for each test file
