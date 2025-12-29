@@ -29,6 +29,9 @@ set(UNIT_TEST_FILES
     test_bulk_transfers
     test_serialization_custom
     test_serialization_context
+    test_async_operations
+    test_finalization
+    test_configuration
 )
 
 # Create a separate test executable for each test file
