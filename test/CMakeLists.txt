@@ -45,7 +45,6 @@ set(UNIT_TEST_FILES
 # Create a separate test executable for each test file
 foreach(test_name ${UNIT_TEST_FILES})
     add_executable(${test_name}
-        unit/test_main.cpp
         unit/${test_name}.cpp
     )
 
