@@ -1,5 +1,6 @@
 spack:
   specs:
+  - cxx
   - mochi-margo ^mercury~boostsys~checksum ^libfabric fabrics=tcp,rxm
   - pkg-config
   - cmake
