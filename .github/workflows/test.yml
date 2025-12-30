@@ -1,0 +1,58 @@
+name: Unit tests
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    permissions:
+      packages: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup spack
+      uses: spack/setup-spack@v2.1.1
+      with:
+        ref: develop
+
+    - name: Set install root for Spack
+      run: |
+        spack -e tests config add config:install_tree:root:/opt/spack
+        spack -e tests config add view:/opt/view
+
+    - name: Add mochi-spack-packages
+      run: |
+        git clone https://github.com/mochi-hpc/mochi-spack-packages
+        spack -e tests repo add mochi-spack-packages
+
+    - name: Install spack environment
+      run: |
+        spack -e tests install
+
+    - name: Show spack-installed packages for debugging
+      run: |
+        spack -e tests find -dlv
+
+    - name: Build code and run unit tests
+      run: |
+        eval `spack env activate --sh tests`
+        mkdir build
+        cd build
+        cmake .. -DENABLE_TESTS=ON
+        make
+        make test
+
+    - name: Show test output
+      if: always()
+      run: |
+        cat build/Testing/Temporary/LastTest.log

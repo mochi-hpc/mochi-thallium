@@ -36,8 +36,14 @@ math (EXPR THALLIUM_VERSION_NUM "${THALLIUM_VERSION_MAJOR}*1000000 + ${THALLIUM_
 
 option (ENABLE_TESTS "Enable tests" OFF)
 option (ENABLE_EXAMPLES "Enable examples" OFF)
+option (ENABLE_COVERAGE "Enable code coverage" OFF)
 
 include_directories (${CMAKE_BINARY_DIR}/include)
+
+if (ENABLE_COVERAGE)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0 -fno-inline -fno-inline-small-functions -fno-default-inline")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage -lgcov")
+endif ()
 
 find_package (cereal CONFIG REQUIRED)
 get_target_property (CEREAL_INC cereal::cereal INTERFACE_INCLUDE_DIRECTORIES)
@@ -47,7 +53,7 @@ pkg_check_modules (margo REQUIRED IMPORTED_TARGET margo)
 
 add_subdirectory (src)
 if (ENABLE_TESTS)
-    add_subdirectory (test)
+    add_subdirectory (tests)
 endif (ENABLE_TESTS)
 if (ENABLE_EXAMPLES)
     add_subdirectory (examples)

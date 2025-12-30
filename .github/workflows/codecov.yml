@@ -1,0 +1,69 @@
+name: Code coverage
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+jobs:
+  codecov:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup spack
+      uses: spack/setup-spack@v2.1.1
+      with:
+        ref: develop
+
+    - name: Add mochi-spack-packages
+      run: |
+        git clone https://github.com/mochi-hpc/mochi-spack-packages
+        spack -e tests repo add mochi-spack-packages
+
+    - name: Install spack environment
+      run: |
+        spack -e tests install
+
+    - name: Show spack-installed packages for debugging
+      run: |
+        spack -e tests find -dlv
+
+    - name: Build code and run unit tests
+      run: |
+        eval `spack env activate --sh tests`
+        mkdir build
+        cd build
+        cmake .. -DENABLE_TESTS=ON -DENABLE_COVERAGE=ON
+        make
+        make test
+
+    - name: Install gcovr
+      run: |
+        pip install gcovr
+
+    - name: Generate coverage report
+      run: |
+        cd build
+        # Detect which gcov to use (match the compiler version)
+        GCOV_EXEC=$(which gcov-13 gcov-12 gcov-11 gcov 2>/dev/null | head -1)
+        echo "Using gcov: $GCOV_EXEC"
+        gcovr --root .. --xml --output coverage.xml \
+          --gcov-executable "$GCOV_EXEC" \
+          --exclude '../tests/.*' \
+          --exclude '.*/doctest.h' \
+          --exclude '.*/cereal/.*' \
+          --exclude '/usr/.*' \
+          --print-summary
+
+    - uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./build/coverage.xml
+        fail_ci_if_error: true
+        verbose: true
