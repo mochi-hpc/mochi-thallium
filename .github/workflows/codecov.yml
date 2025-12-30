@@ -43,10 +43,23 @@ jobs:
         make
         make test
 
+    - name: Install gcovr
+      run: |
+        pip install gcovr
+
+    - name: Generate coverage report
+      run: |
+        cd build
+        gcovr --root .. --xml --output coverage.xml \
+          --exclude '../tests/.*' \
+          --exclude '.*/doctest.h' \
+          --exclude '.*/cereal/.*' \
+          --exclude '/usr/.*' \
+          --print-summary
+
     - uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./build/coverage.xml
         fail_ci_if_error: true
         verbose: true
-        gcov: true
-        gcov_args: --xml
