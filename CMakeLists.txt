@@ -53,7 +53,7 @@ pkg_check_modules (margo REQUIRED IMPORTED_TARGET margo)
 
 add_subdirectory (src)
 if (ENABLE_TESTS)
-    add_subdirectory (test)
+    add_subdirectory (tests)
 endif (ENABLE_TESTS)
 if (ENABLE_EXAMPLES)
     add_subdirectory (examples)
