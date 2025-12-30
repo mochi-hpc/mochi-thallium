@@ -50,7 +50,11 @@ jobs:
     - name: Generate coverage report
       run: |
         cd build
+        # Detect which gcov to use (match the compiler version)
+        GCOV_EXEC=$(which gcov-13 gcov-12 gcov-11 gcov 2>/dev/null | head -1)
+        echo "Using gcov: $GCOV_EXEC"
         gcovr --root .. --xml --output coverage.xml \
+          --gcov-executable "$GCOV_EXEC" \
           --exclude '../tests/.*' \
           --exclude '.*/doctest.h' \
           --exclude '.*/cereal/.*' \
