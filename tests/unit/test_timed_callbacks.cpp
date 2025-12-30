@@ -273,8 +273,12 @@ TEST_CASE("timer multiple measurements") {
     t.stop();
     double elapsed2 = t.read();
 
-    // Second should be longer
-    REQUIRE(elapsed2 > elapsed1);
+    // Both measurements should be within reasonable bounds
+    // Allow generous tolerance for scheduling variations
+    REQUIRE(elapsed1 >= 0.04);  // At least 40ms (50ms - 20% margin)
+    REQUIRE(elapsed1 <= 0.20);  // At most 200ms (generous upper bound)
+    REQUIRE(elapsed2 >= 0.08);  // At least 80ms (100ms - 20% margin)
+    REQUIRE(elapsed2 <= 0.30);  // At most 300ms (generous upper bound)
 
     myEngine.finalize();
 }
