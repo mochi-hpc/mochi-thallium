@@ -193,4 +193,15 @@ TEST_CASE("exception with NULL or invalid pointers") {
     myEngine.finalize();
 }
 
+TEST_CASE("timeout exception what() returns correct message") {
+    // Test that timeout exception has correct what() message
+    // Covers timeout.hpp line 20
+    try {
+        throw tl::timeout();
+        REQUIRE(false);  // Should not reach here
+    } catch (const tl::timeout& e) {
+        REQUIRE(std::string(e.what()) == "Request timed out");
+    }
+}
+
 } // TEST_SUITE

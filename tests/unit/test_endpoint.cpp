@@ -141,4 +141,49 @@ TEST_CASE("endpoint invalid address") {
     myEngine.finalize();
 }
 
+TEST_CASE("endpoint null address to_string") {
+    // Test that converting null endpoint to string returns empty string
+    // Covers endpoint.hpp line 145
+    tl::endpoint null_ep;  // Default constructed, null address
+
+    std::string str = static_cast<std::string>(null_ep);  // Line 145
+    REQUIRE(str.empty());
+}
+
+TEST_CASE("endpoint stream operator") {
+    // Test streaming endpoint to output stream
+    // Covers endpoint.hpp lines 233-235
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    tl::endpoint ep = myEngine.self();
+
+    std::stringstream ss;
+    ss << ep;  // Lines 233-235
+
+    std::string streamed = ss.str();
+    std::string direct = static_cast<std::string>(ep);
+
+    REQUIRE(streamed == direct);
+    REQUIRE(!streamed.empty());
+
+    myEngine.finalize();
+}
+
+TEST_CASE("endpoint copy constructor from non-null") {
+    // Test copy constructor assertion path
+    // Covers endpoint.hpp line 77
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    tl::endpoint ep1 = myEngine.self();
+
+    tl::endpoint ep2(ep1);  // Copy constructor - Line 77
+
+    REQUIRE(ep1 == ep2);
+    REQUIRE(!ep2.is_null());
+
+    std::string addr1 = static_cast<std::string>(ep1);
+    std::string addr2 = static_cast<std::string>(ep2);
+    REQUIRE(addr1 == addr2);
+
+    myEngine.finalize();
+}
+
 } // TEST_SUITE

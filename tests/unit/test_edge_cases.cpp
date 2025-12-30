@@ -7,6 +7,7 @@
 #include <doctest/doctest.h>
 #include "test_helpers.hpp"
 #include <thallium.hpp>
+#include <thallium/abt_errors.hpp>
 #include <thallium/serialization/stl/string.hpp>
 #include <thallium/serialization/stl/vector.hpp>
 #include <atomic>
@@ -423,6 +424,36 @@ TEST_CASE("RPC with zero values") {
     REQUIRE(result);
 
     myEngine.finalize();
+}
+
+// ============================================================================
+// Argobots Error Utility Functions
+// ============================================================================
+
+TEST_CASE("abt_error_get_name returns error names") {
+    // Test error name lookup utility function
+    // Covers abt_errors.hpp lines 13, 67
+    const char* name_success = tl::abt_error_get_name(ABT_SUCCESS);
+    REQUIRE(std::string(name_success) == "ABT_SUCCESS");
+
+    const char* name_mem = tl::abt_error_get_name(ABT_ERR_MEM);
+    REQUIRE(std::string(name_mem) == "ABT_ERR_MEM");
+
+    const char* name_inv_thread = tl::abt_error_get_name(ABT_ERR_INV_THREAD);
+    REQUIRE(std::string(name_inv_thread) == "ABT_ERR_INV_THREAD");
+}
+
+TEST_CASE("abt_error_get_description returns descriptions") {
+    // Test error description lookup utility function
+    // Covers abt_errors.hpp lines 70, 124
+    const char* desc_success = tl::abt_error_get_description(ABT_SUCCESS);
+    REQUIRE(std::string(desc_success) == "Successful return code");
+
+    const char* desc_mem = tl::abt_error_get_description(ABT_ERR_MEM);
+    REQUIRE(std::string(desc_mem) == "Memory allocation failure");
+
+    const char* desc_inv_thread = tl::abt_error_get_description(ABT_ERR_INV_THREAD);
+    REQUIRE(strlen(desc_inv_thread) > 0);  // Has non-empty description
 }
 
 } // TEST_SUITE

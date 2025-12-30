@@ -441,4 +441,44 @@ TEST_CASE("bulk bidirectional transfer") {
     myEngine.finalize();
 }
 
+TEST_CASE("bulk move-assignment operator") {
+    // Test move-assignment of bulk objects
+    // Covers bulk.hpp lines 169-180
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+
+    std::vector<char> buf1(128, 'A');
+    std::vector<char> buf2(256, 'B');
+
+    tl::bulk b1 = myEngine.expose({{buf1.data(), buf1.size()}}, tl::bulk_mode::read_only);
+    tl::bulk b2 = myEngine.expose({{buf2.data(), buf2.size()}}, tl::bulk_mode::read_only);
+
+    size_t orig_size = b2.size();
+
+    // Move-assign - Lines 169-180
+    b1 = std::move(b2);
+
+    REQUIRE(b1.size() == orig_size);
+    REQUIRE(b2.is_null());
+
+    myEngine.finalize();
+}
+
+TEST_CASE("bulk self move-assignment") {
+    // Test self-assignment safety in move-assignment operator
+    // Covers bulk.hpp lines 169-171 (self-assignment guard)
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+
+    std::vector<char> buf(64, 'X');
+    tl::bulk b = myEngine.expose({{buf.data(), buf.size()}}, tl::bulk_mode::read_only);
+
+    size_t orig_size = b.size();
+
+    // Self-assignment should be safe - Lines 169-171
+    b = std::move(b);
+
+    REQUIRE(b.size() == orig_size);
+
+    myEngine.finalize();
+}
+
 } // TEST_SUITE

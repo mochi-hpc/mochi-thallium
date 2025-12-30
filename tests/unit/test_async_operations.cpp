@@ -215,4 +215,61 @@ TEST_CASE("async with multiple return values") {
     myEngine.finalize();
 }
 
+TEST_CASE("async_response destructor waits on pending request") {
+    // Test that destructor calls wait() when request is pending
+    // Covers async_response.hpp line 101
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("echo", [](const tl::request& req, int x) {
+        req.respond(x);
+    });
+
+    auto rpc = myEngine.define("echo");
+    tl::endpoint ep = myEngine.lookup(addr);
+
+    {
+        // Create async_response that will be destroyed with pending request
+        auto response = rpc.on(ep).async(42);
+        // Destructor should call wait() - Line 101
+    }
+
+    myEngine.finalize();
+}
+
+TEST_CASE("async_response wait on invalid handle throws") {
+    // Test exception when calling wait() on invalid handle
+    // Covers async_response.hpp line 114
+    tl::async_response invalid_response;  // Default constructed
+
+    REQUIRE_THROWS_AS(invalid_response.wait(), tl::exception);  // Line 114
+}
+
+TEST_CASE("async_response received() polls completion") {
+    // Test received() method for polling async operation status
+    // Covers async_response.hpp lines 139-141
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("instant", [](const tl::request& req) {
+        req.respond(123);
+    });
+
+    auto rpc = myEngine.define("instant");
+    tl::endpoint ep = myEngine.lookup(addr);
+
+    auto response = rpc.on(ep).async();
+
+    // Poll until received - Lines 139-141
+    while (!response.received()) {
+        // Yield to allow the RPC to complete
+        tl::thread::yield();
+    }
+
+    int result = response.wait();
+    REQUIRE(result == 123);
+
+    myEngine.finalize();
+}
+
 } // TEST_SUITE

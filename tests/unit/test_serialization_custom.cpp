@@ -182,6 +182,32 @@ struct ComplexShape {
     }
 };
 
+// Type that accesses engine during serialization
+// Used to test proc_output_archive::get_engine()
+struct TypeThatAccessesEngine {
+    int value;
+
+    TypeThatAccessesEngine() : value(0) {}
+    TypeThatAccessesEngine(int v) : value(v) {}
+
+    template<typename Archive>
+    void save(Archive& ar) const {
+        // Access engine during serialization - Covers proc_output_archive.hpp lines 15-16
+        tl::engine e = ar.get_engine();
+        REQUIRE(e.get_margo_instance() != MARGO_INSTANCE_NULL);
+        ar & value;
+    }
+
+    template<typename Archive>
+    void load(Archive& ar) {
+        ar & value;
+    }
+
+    bool operator==(const TypeThatAccessesEngine& other) const {
+        return value == other.value;
+    }
+};
+
 TEST_SUITE("Custom Serialization") {
 
 TEST_CASE("simple POD struct") {
@@ -403,6 +429,27 @@ TEST_CASE("complex nested types") {
 
     REQUIRE(result == input);
     REQUIRE(result.vertices.size() == 3);
+
+    myEngine.finalize();
+}
+
+TEST_CASE("serialization accesses engine from archive") {
+    // Test that custom types can access engine during serialization
+    // Covers proc_output_archive.hpp lines 15-16
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("serialize_with_engine", [](const tl::request& req, TypeThatAccessesEngine t) {
+        req.respond(t);
+    });
+
+    auto rpc = myEngine.define("serialize_with_engine");
+    tl::endpoint ep = myEngine.lookup(addr);
+
+    TypeThatAccessesEngine input{42};
+    TypeThatAccessesEngine result = rpc.on(ep)(input);
+
+    REQUIRE(result.value == 42);
 
     myEngine.finalize();
 }

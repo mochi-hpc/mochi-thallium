@@ -21,6 +21,15 @@ public:
         define("get_id", &test_provider::get_id);
     }
 
+#if MARGO_VERSION_NUM >= 1500
+    test_provider(tl::engine& e, uint16_t provider_id, const char* identity)
+        : tl::provider<test_provider>(e, provider_id, identity) {
+
+        define("add", &test_provider::add);
+        define("get_id", &test_provider::get_id);
+    }
+#endif
+
     void add(const tl::request& req, int a, int b) {
         req.respond(a + b);
     }
@@ -253,5 +262,39 @@ TEST_CASE("provider handle comparison") {
 
     myEngine.finalize();
 }
+
+#if MARGO_VERSION_NUM >= 1500
+TEST_CASE("provider with identity string") {
+    // Test provider identity registration
+    // Covers provider.hpp lines 55, 57, 66
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+
+    // Create provider with identity
+    test_provider prov(myEngine, 1, "my_service");
+
+    // Verify identity
+    const char* identity = prov.identity();
+    REQUIRE(identity != nullptr);
+    REQUIRE(std::string(identity) == "my_service");
+
+    myEngine.finalize();
+    // Destructor deregisters - Line 66
+}
+
+TEST_CASE("provider duplicate identity detection") {
+    // Test that duplicate provider IDs with same identity are detected
+    // Covers provider.hpp lines 49-50
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+
+    test_provider prov1(myEngine, 5, "service_a");
+
+    // Duplicate ID with same identity should throw
+    REQUIRE_THROWS({
+        test_provider prov2(myEngine, 5, "service_a");
+    });
+
+    myEngine.finalize();
+}
+#endif
 
 } // TEST_SUITE
