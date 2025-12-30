@@ -41,7 +41,7 @@ option (ENABLE_COVERAGE "Enable code coverage" OFF)
 include_directories (${CMAKE_BINARY_DIR}/include)
 
 if (ENABLE_COVERAGE)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -O0 -fno-inline -fno-inline-small-functions -fno-default-inline")
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage -lgcov")
 endif ()
 
