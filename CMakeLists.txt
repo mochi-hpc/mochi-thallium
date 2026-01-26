@@ -57,6 +57,7 @@ if (ENABLE_TESTS)
 endif (ENABLE_TESTS)
 if (ENABLE_EXAMPLES)
     add_subdirectory (examples)
+    add_subdirectory (docs/examples/thallium)
 endif (ENABLE_EXAMPLES)
 
 configure_file (include/thallium/config.hpp.in ${CMAKE_BINARY_DIR}/include/thallium/config.hpp @ONLY)
