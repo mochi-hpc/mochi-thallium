@@ -7,8 +7,7 @@ global variables to access anything outside the function.
 
 Fortunately, Thallium can use lambdas as RPC handlers, and even
 any object that has parenthesis operator overloaded.
-These objects and lambdas must be converted into :code:`std::function`
-objects first. Here is how to rewrite the sum server using a lambda.
+Here is how to rewrite the sum server using a lambda.
 
 .. literalinclude:: ../../examples/thallium/04_lambdas/server.cpp
        :language: cpp
