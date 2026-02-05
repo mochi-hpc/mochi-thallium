@@ -405,6 +405,32 @@ class engine : public margo_instance_ref {
 #endif
 
     /**
+     * @brief Exposes a series of memory segments for bulk operations.
+     *
+     * @param count number of segments
+     * @param ptrs base pointers of the segments to expose
+     * @param sizes sizes of the segments to expose
+     * @param flag indicates whether the bulk is read-write, read-only or
+     * write-only.
+     *
+     * @return a bulk object representing the memory exposed for RDMA.
+     */
+    bulk expose(unsigned count, void** ptrs, size_t* sizes,
+                bulk_mode flag);
+
+#if (HG_VERSION_MAJOR > 2) || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR > 1) \
+    || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR == 1                        \
+        && HG_VERSION_PATCH > 0)
+
+    /**
+     * @brief Version of the expose function that also takes an hg_bulk_attr.
+     */
+    bulk expose(unsigned count, void** ptrs, size_t* sizes,
+                bulk_mode flag, const hg_bulk_attr& attr);
+
+#endif
+
+    /**
      * @brief Creates a bulk object from an hg_bulk_t handle. The user
      * is still responsible for calling margo_bulk_free or HG_Bulk_free
      * on the original handle (this function will increment the hg_bulk_t's
@@ -1176,45 +1202,73 @@ inline endpoint engine::self() const {
     return endpoint(m_mid, self_addr);
 }
 
-inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
-                    bulk_mode                                    flag) {
+inline bulk engine::expose(unsigned count, void** ptrs, size_t* sizes,
+                           bulk_mode flag) {
     MARGO_INSTANCE_MUST_BE_VALID;
+    std::vector<hg_size_t> hg_sizes;
+    hg_size_t* hg_sizes_ptr = nullptr;
+    if(sizeof(size_t*) != sizeof(hg_size_t)) {
+        hg_sizes.resize(count);
+        for(unsigned i=0; i < count; ++i) hg_sizes[i] = sizes[i];
+        hg_sizes_ptr = hg_sizes.data();
+    } else {
+        hg_sizes_ptr = static_cast<hg_size_t*>(sizes);
+    }
     hg_bulk_t              handle;
-    hg_uint32_t            count = segments.size();
-    std::vector<void*>     buf_ptrs(count);
-    std::vector<hg_size_t> buf_sizes(count);
+    hg_return_t ret = margo_bulk_create(
+        m_mid, count, ptrs, hg_sizes_ptr,
+        static_cast<hg_uint32_t>(flag), &handle);
+    MARGO_ASSERT(ret, margo_bulk_create);
+    return bulk(m_mid, handle, true);
+}
+
+inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
+                           bulk_mode                                    flag) {
+    MARGO_INSTANCE_MUST_BE_VALID;
+    std::vector<void*>  buf_ptrs(segments.size());
+    std::vector<size_t> buf_sizes(segments.size());
     for(unsigned i = 0; i < segments.size(); i++) {
         buf_ptrs[i]  = segments[i].first;
         buf_sizes[i] = segments[i].second;
     }
-    hg_return_t ret = margo_bulk_create(
-        m_mid, count, &buf_ptrs[0], &buf_sizes[0],
-        static_cast<hg_uint32_t>(flag), &handle);
-    MARGO_ASSERT(ret, margo_bulk_create);
-    return bulk(m_mid, handle, true);
+    return expose(segments.size(), buf_ptrs.data(), buf_sizes.data(), flag);
 }
 
 #if (HG_VERSION_MAJOR > 2) || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR > 1) \
     || (HG_VERSION_MAJOR == 2 && HG_VERSION_MINOR == 1                        \
         && HG_VERSION_PATCH > 0)
 
+inline bulk engine::expose(unsigned count, void** ptrs, size_t* sizes,
+                           bulk_mode flag, const hg_bulk_attr& attr) {
+    MARGO_INSTANCE_MUST_BE_VALID;
+    std::vector<hg_size_t> hg_sizes;
+    hg_size_t* hg_sizes_ptr = nullptr;
+    if(sizeof(size_t*) != sizeof(hg_size_t)) {
+        hg_sizes.resize(count);
+        for(unsigned i=0; i < count; ++i) hg_sizes[i] = sizes[i];
+        hg_sizes_ptr = hg_sizes.data();
+    } else {
+        hg_sizes_ptr = static_cast<hg_size_t*>(sizes);
+    }
+    hg_bulk_t              handle;
+    hg_return_t ret = margo_bulk_create_attr(
+        m_mid, count, ptrs, hg_sizes_ptr,
+        static_cast<hg_uint32_t>(flag), &attr, &handle);
+    MARGO_ASSERT(ret, margo_bulk_create_attr);
+    return bulk(m_mid, handle, true);
+}
+
 inline bulk engine::expose(const std::vector<std::pair<void*, size_t>>& segments,
                            bulk_mode                                    flag,
                            const hg_bulk_attr&                          attr) {
     MARGO_INSTANCE_MUST_BE_VALID;
-    hg_bulk_t              handle;
-    hg_uint32_t            count = segments.size();
-    std::vector<void*>     buf_ptrs(count);
-    std::vector<hg_size_t> buf_sizes(count);
+    std::vector<void*>  buf_ptrs(segments.size());
+    std::vector<size_t> buf_sizes(segments.size());
     for(unsigned i = 0; i < segments.size(); i++) {
         buf_ptrs[i]  = segments[i].first;
         buf_sizes[i] = segments[i].second;
     }
-    hg_return_t ret = margo_bulk_create_attr(
-        m_mid, count, &buf_ptrs[0], &buf_sizes[0],
-        static_cast<hg_uint32_t>(flag), &attr, &handle);
-    MARGO_ASSERT(ret, margo_bulk_create);
-    return bulk(m_mid, handle, true);
+    return expose(segments.size(), buf_ptrs.data(), buf_sizes.data(), flag, attr);
 }
 
 #endif
