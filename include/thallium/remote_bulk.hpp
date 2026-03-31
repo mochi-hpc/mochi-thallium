@@ -6,6 +6,7 @@
 #ifndef __THALLIUM_REMOTE_BULK_HPP
 #define __THALLIUM_REMOTE_BULK_HPP
 
+#include <chrono>
 #include <cstdint>
 #include <margo.h>
 #include <string>
@@ -15,6 +16,8 @@
 
 namespace thallium {
 
+class timed_remote_bulk;
+
 /**
  * @brief A remote_bulk object represents a bulk_segment object
  * that has been associated with an endpoint and is ready for
@@ -23,6 +26,7 @@ namespace thallium {
 class remote_bulk {
     friend class bulk;
     friend class bulk_segment;
+    friend class timed_remote_bulk;
 
   private:
     bulk_segment m_segment;
@@ -130,6 +134,39 @@ class remote_bulk {
     inline remote_bulk operator()(std::size_t offset, std::size_t size) const {
         return select(offset, size);
     }
+
+    /**
+     * @brief Returns a timed_remote_bulk proxy that performs transfers
+     * using a millisecond deadline. Synchronous transfers (operator>> and
+     * operator<<) throw tl::timeout on expiry; asynchronous transfers
+     * (pull_to, push_from) return an async_bulk_op whose wait() throws
+     * tl::timeout on expiry.
+     *
+     * @param timeout_ms Deadline in milliseconds (0 = no timeout).
+     *
+     * @return a timed_remote_bulk proxy.
+     */
+    timed_remote_bulk timed(double timeout_ms) const noexcept;
+
+    /**
+     * @brief Returns a timed_remote_bulk proxy that performs transfers
+     * using a deadline expressed as a std::chrono::duration.
+     *
+     * @tparam Rep Duration representation type.
+     * @tparam Period Duration period type.
+     * @param d Deadline duration.
+     *
+     * @return a timed_remote_bulk proxy.
+     */
+    template<typename Rep, typename Period>
+    timed_remote_bulk timed(const std::chrono::duration<Rep,Period>& d) const noexcept;
+
+  private:
+
+    std::size_t   transfer_timed(const bulk_segment& local, hg_bulk_op_t op,
+                                 double timeout_ms) const;
+    async_bulk_op itransfer_timed(const bulk_segment& local, hg_bulk_op_t op,
+                                  double timeout_ms) const;
 };
 
 } // namespace thallium
@@ -229,5 +266,7 @@ inline async_bulk_op remote_bulk::push_from(const bulk_segment& src) const {
 }
 
 } // namespace thallium
+
+#include <thallium/timed_remote_bulk.hpp>
 
 #endif

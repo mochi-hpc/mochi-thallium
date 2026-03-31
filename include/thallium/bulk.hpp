@@ -8,6 +8,7 @@
 
 #include <thallium/margo_instance_ref.hpp>
 #include <thallium/margo_exception.hpp>
+#include <thallium/timeout.hpp>
 #include <cstdint>
 #include <memory>
 #include <margo.h>
@@ -20,6 +21,7 @@ class engine;
 class endpoint;
 class remote_bulk;
 class bulk_segment;
+class timed_remote_bulk;
 
 
 /**
@@ -45,6 +47,8 @@ class async_bulk_op {
         if(m_request == MARGO_REQUEST_NULL)
             throw exception{"Calling async_bulk_op::wait() on a null request"};
         hg_return_t ret = margo_wait(m_request);
+        m_request = MARGO_REQUEST_NULL;
+        if(ret == HG_TIMEOUT) throw timeout{};
         MARGO_ASSERT(ret, margo_wait);
         return m_tranferred_size;
     }

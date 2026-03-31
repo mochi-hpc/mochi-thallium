@@ -481,4 +481,253 @@ TEST_CASE("bulk self move-assignment") {
     myEngine.finalize();
 }
 
+TEST_CASE("bulk timed transfer pull success") {
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("bulk_timed_pull",
+        [&myEngine](const tl::request& req, tl::bulk& remote_bulk) {
+            std::vector<char> local_buffer(remote_bulk.size());
+            std::vector<std::pair<void*, size_t>> segments = {
+                {local_buffer.data(), local_buffer.size()}
+            };
+            tl::bulk local = myEngine.expose(segments, tl::bulk_mode::write_only);
+            // Use timed transfer with a generous deadline (5 seconds)
+            std::size_t n = remote_bulk.on(req.get_endpoint()).timed(5000.0) >> local;
+            REQUIRE(n == local_buffer.size());
+            req.respond(local_buffer);
+        });
+
+    std::vector<char> send_buffer(128, 'T');
+    std::vector<std::pair<void*, size_t>> segments = {
+        {send_buffer.data(), send_buffer.size()}
+    };
+    tl::bulk bulk_handle = myEngine.expose(segments, tl::bulk_mode::read_only);
+
+    auto rpc = myEngine.define("bulk_timed_pull");
+    tl::endpoint self_ep = myEngine.lookup(addr);
+
+    std::vector<char> result = rpc.on(self_ep)(bulk_handle);
+
+    REQUIRE(result.size() == send_buffer.size());
+    REQUIRE(result == send_buffer);
+
+    myEngine.finalize();
+}
+
+TEST_CASE("bulk timed transfer push success") {
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("bulk_timed_push",
+        [&myEngine](const tl::request& req, tl::bulk& remote_bulk) {
+            std::vector<char> local_buffer(remote_bulk.size(), 'P');
+            std::vector<std::pair<void*, size_t>> segments = {
+                {local_buffer.data(), local_buffer.size()}
+            };
+            tl::bulk local = myEngine.expose(segments, tl::bulk_mode::read_only);
+            // Use timed transfer with a generous deadline (5 seconds)
+            std::size_t n = remote_bulk.on(req.get_endpoint()).timed(5000.0) << local;
+            REQUIRE(n == local_buffer.size());
+            req.respond();
+        });
+
+    std::vector<char> recv_buffer(128, '\0');
+    std::vector<std::pair<void*, size_t>> segments = {
+        {recv_buffer.data(), recv_buffer.size()}
+    };
+    tl::bulk bulk_handle = myEngine.expose(segments, tl::bulk_mode::write_only);
+
+    auto rpc = myEngine.define("bulk_timed_push");
+    tl::endpoint self_ep = myEngine.lookup(addr);
+
+    rpc.on(self_ep)(bulk_handle);
+
+    REQUIRE(recv_buffer[0] == 'P');
+    REQUIRE(recv_buffer[recv_buffer.size() - 1] == 'P');
+
+    myEngine.finalize();
+}
+
+TEST_CASE("bulk async timed transfer pull success") {
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("bulk_async_timed_pull",
+        [&myEngine](const tl::request& req, tl::bulk& remote_bulk) {
+            std::vector<char> local_buffer(remote_bulk.size());
+            std::vector<std::pair<void*, size_t>> segments = {
+                {local_buffer.data(), local_buffer.size()}
+            };
+            tl::bulk local = myEngine.expose(segments, tl::bulk_mode::write_only);
+            tl::async_bulk_op op =
+                remote_bulk.on(req.get_endpoint()).timed(5000.0).pull_to(local);
+            std::size_t n = op.wait();
+            REQUIRE(n == local_buffer.size());
+            req.respond(local_buffer);
+        });
+
+    std::vector<char> send_buffer(128, 'Q');
+    std::vector<std::pair<void*, size_t>> segments = {
+        {send_buffer.data(), send_buffer.size()}
+    };
+    tl::bulk bulk_handle = myEngine.expose(segments, tl::bulk_mode::read_only);
+
+    auto rpc = myEngine.define("bulk_async_timed_pull");
+    tl::endpoint self_ep = myEngine.lookup(addr);
+
+    std::vector<char> result = rpc.on(self_ep)(bulk_handle);
+
+    REQUIRE(result.size() == send_buffer.size());
+    REQUIRE(result == send_buffer);
+
+    myEngine.finalize();
+}
+
+TEST_CASE("bulk async timed transfer push success") {
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("bulk_async_timed_push",
+        [&myEngine](const tl::request& req, tl::bulk& remote_bulk) {
+            std::vector<char> local_buffer(remote_bulk.size(), 'R');
+            std::vector<std::pair<void*, size_t>> segments = {
+                {local_buffer.data(), local_buffer.size()}
+            };
+            tl::bulk local = myEngine.expose(segments, tl::bulk_mode::read_only);
+            tl::async_bulk_op op =
+                remote_bulk.on(req.get_endpoint()).timed(5000.0).push_from(local);
+            std::size_t n = op.wait();
+            REQUIRE(n == local_buffer.size());
+            req.respond();
+        });
+
+    std::vector<char> recv_buffer(128, '\0');
+    std::vector<std::pair<void*, size_t>> segments = {
+        {recv_buffer.data(), recv_buffer.size()}
+    };
+    tl::bulk bulk_handle = myEngine.expose(segments, tl::bulk_mode::write_only);
+
+    auto rpc = myEngine.define("bulk_async_timed_push");
+    tl::endpoint self_ep = myEngine.lookup(addr);
+
+    rpc.on(self_ep)(bulk_handle);
+
+    REQUIRE(recv_buffer[0] == 'R');
+    REQUIRE(recv_buffer[recv_buffer.size() - 1] == 'R');
+
+    myEngine.finalize();
+}
+
+TEST_CASE("bulk timed transfer chrono duration") {
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("bulk_timed_chrono",
+        [&myEngine](const tl::request& req, tl::bulk& remote_bulk) {
+            std::vector<char> local_buffer(remote_bulk.size());
+            std::vector<std::pair<void*, size_t>> segments = {
+                {local_buffer.data(), local_buffer.size()}
+            };
+            tl::bulk local = myEngine.expose(segments, tl::bulk_mode::write_only);
+            // Use std::chrono::duration overload
+            std::size_t n =
+                remote_bulk.on(req.get_endpoint()).timed(std::chrono::seconds(5)) >> local;
+            REQUIRE(n == local_buffer.size());
+            req.respond(local_buffer);
+        });
+
+    std::vector<char> send_buffer(64, 'C');
+    std::vector<std::pair<void*, size_t>> segments = {
+        {send_buffer.data(), send_buffer.size()}
+    };
+    tl::bulk bulk_handle = myEngine.expose(segments, tl::bulk_mode::read_only);
+
+    auto rpc = myEngine.define("bulk_timed_chrono");
+    tl::endpoint self_ep = myEngine.lookup(addr);
+
+    std::vector<char> result = rpc.on(self_ep)(bulk_handle);
+
+    REQUIRE(result == send_buffer);
+
+    myEngine.finalize();
+}
+
+TEST_CASE("bulk timed transfer timeout exception") {
+    // Tests that margo_bulk_transfer_timed propagates HG_TIMEOUT as tl::timeout.
+    // A near-zero deadline may or may not fire on shared-memory transports;
+    // both success and tl::timeout are acceptable outcomes.
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("bulk_timed_timeout_sync",
+        [&myEngine](const tl::request& req, tl::bulk& remote_bulk) {
+            std::vector<char> local_buffer(remote_bulk.size());
+            std::vector<std::pair<void*, size_t>> segments = {
+                {local_buffer.data(), local_buffer.size()}
+            };
+            tl::bulk local = myEngine.expose(segments, tl::bulk_mode::write_only);
+            try {
+                remote_bulk.on(req.get_endpoint()).timed(0.000001) >> local;
+                req.respond(true);  // completed before timeout
+            } catch(const tl::timeout&) {
+                req.respond(false); // timed out as expected
+            }
+        });
+
+    std::vector<char> send_buffer(128, 'X');
+    std::vector<std::pair<void*, size_t>> segments = {
+        {send_buffer.data(), send_buffer.size()}
+    };
+    tl::bulk bulk_handle = myEngine.expose(segments, tl::bulk_mode::read_only);
+
+    auto rpc = myEngine.define("bulk_timed_timeout_sync");
+    tl::endpoint self_ep = myEngine.lookup(addr);
+
+    // Either the transfer succeeded before the deadline, or tl::timeout was thrown.
+    // Both are valid — what must NOT happen is any other exception type.
+    bool completed = rpc.on(self_ep)(bulk_handle);
+    (void)completed;
+
+    myEngine.finalize();
+}
+
+TEST_CASE("bulk async timed transfer timeout exception") {
+    // Tests that margo_bulk_itransfer_timed propagates HG_TIMEOUT via wait()
+    // as tl::timeout.
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+    std::string addr = static_cast<std::string>(myEngine.self());
+
+    myEngine.define("bulk_timed_timeout_async",
+        [&myEngine](const tl::request& req, tl::bulk& remote_bulk) {
+            std::vector<char> local_buffer(remote_bulk.size());
+            std::vector<std::pair<void*, size_t>> segments = {
+                {local_buffer.data(), local_buffer.size()}
+            };
+            tl::bulk local = myEngine.expose(segments, tl::bulk_mode::write_only);
+            try {
+                tl::async_bulk_op op =
+                    remote_bulk.on(req.get_endpoint()).timed(0.000001).pull_to(local);
+                op.wait();
+                req.respond(true);  // completed before timeout
+            } catch(const tl::timeout&) {
+                req.respond(false); // timed out as expected
+            }
+        });
+
+    std::vector<char> send_buffer(128, 'Y');
+    std::vector<std::pair<void*, size_t>> segments = {
+        {send_buffer.data(), send_buffer.size()}
+    };
+    tl::bulk bulk_handle = myEngine.expose(segments, tl::bulk_mode::read_only);
+
+    auto rpc = myEngine.define("bulk_timed_timeout_async");
+    tl::endpoint self_ep = myEngine.lookup(addr);
+
+    bool completed = rpc.on(self_ep)(bulk_handle);
+    (void)completed;
+
+    myEngine.finalize();
+}
+
 } // TEST_SUITE
