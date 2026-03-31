@@ -204,7 +204,7 @@ class condition_variable {
      *
      * @return true if lock was acquired, false if timeout.
      */
-    template <typename Rep, typename Period, typename Clock = std::chrono::steady_clock>
+    template <typename Rep, typename Period, typename Clock = std::chrono::system_clock>
     bool wait_for(std::unique_lock<mutex>& lock,
                   const std::chrono::duration<Rep, Period>& rel_time)
         {
