@@ -16,3 +16,6 @@ spack:
   packages:
     mochi-margo:
       require: "@0.18.0:"
+  repos:
+    mochi:
+      git: https://github.com/mochi-hpc/mochi-spack-packages.git
