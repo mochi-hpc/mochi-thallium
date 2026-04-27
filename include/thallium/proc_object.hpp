@@ -23,9 +23,25 @@
 namespace thallium {
 
 #ifdef THALLIUM_DEBUG_RPC_TYPES
+namespace detail {
+
+// Strip cv-qualifiers and references from each element of a tuple so that
+// "int const&" (produced by std::make_tuple(std::cref(x))) compares equal
+// to "int" (produced by the decayed types stored on the receiver side).
+template <typename T>
+struct decay_tuple { using type = typename std::decay<T>::type; };
+
+template <typename... Ts>
+struct decay_tuple<std::tuple<Ts...>> {
+    using type = std::tuple<typename std::decay<Ts>::type...>;
+};
+
+} // namespace detail
+
 template <typename T> std::string get_type_name() {
+    using CleanT = typename detail::decay_tuple<T>::type;
     int         status;
-    const char* mangled_type_name = typeid(T).name();
+    const char* mangled_type_name = typeid(CleanT).name();
     char*       type_name =
         abi::__cxa_demangle(mangled_type_name, nullptr, nullptr, &status);
     if(status != 0)

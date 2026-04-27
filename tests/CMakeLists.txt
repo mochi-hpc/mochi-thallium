@@ -61,9 +61,17 @@ foreach(test_name ${UNIT_TEST_FILES})
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
+# test_check_types links against thallium_check_types to enable RPC type
+# checking (-DTHALLIUM_DEBUG_RPC_TYPES).  It is kept separate from the
+# standard foreach loop because it needs a different link line.
+add_executable(test_check_types unit/test_check_types.cpp)
+target_include_directories(test_check_types PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/unit)
+target_link_libraries(test_check_types thallium thallium_check_types doctest::doctest)
+add_test(NAME test_check_types COMMAND test_check_types)
+
 # Optional: Add a target to run all unit tests
 add_custom_target(run_all_unit_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-    DEPENDS ${UNIT_TEST_FILES}
+    DEPENDS ${UNIT_TEST_FILES} test_check_types
     COMMENT "Running all unit tests"
 )
