@@ -62,6 +62,25 @@ foreach(test_name ${UNIT_TEST_FILES})
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
+# Precompile the headers shared by every unit test into a single .gch
+# that captures the full transitive include tree of thallium.hpp (engine, bulk,
+# Argobots wrappers, Cereal, Margo, etc.).  All remaining targets reuse it via
+# REUSE_FROM, so the compiler parses those headers only once instead of once
+# per test executable.  test_check_types is kept separate because it links
+# thallium_check_types which may add compile definitions incompatible with the
+# shared PCH.
+list(GET UNIT_TEST_FILES 0 _pch_donor)
+target_precompile_headers(${_pch_donor}
+    PRIVATE
+        <thallium.hpp>
+        "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_helpers.hpp"
+)
+foreach(test_name IN LISTS UNIT_TEST_FILES)
+    if(NOT test_name STREQUAL _pch_donor)
+        target_precompile_headers(${test_name} REUSE_FROM ${_pch_donor})
+    endif()
+endforeach()
+
 # test_check_types links against thallium_check_types to enable RPC type
 # checking (-DTHALLIUM_DEBUG_RPC_TYPES).  It is kept separate from the
 # standard foreach loop because it needs a different link line.
