@@ -3,8 +3,6 @@
  * Unit tests for advanced async operation patterns
  */
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <doctest/doctest.h>
 #include "test_helpers.hpp"
 #include <thallium.hpp>
 #include <thallium/serialization/stl/string.hpp>

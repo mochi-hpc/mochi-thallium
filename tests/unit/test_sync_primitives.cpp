@@ -3,8 +3,6 @@
  * Unit tests for synchronization primitives (mutex, barrier, condition_variable, eventual)
  */
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <doctest/doctest.h>
 #include "test_helpers.hpp"
 #include <thallium.hpp>
 #include <thallium/mutex.hpp>

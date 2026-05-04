@@ -16,6 +16,14 @@ target_link_libraries(TestBulkServer thallium)
 # Unit tests with doctest
 find_package(doctest REQUIRED)
 
+# Compile doctest's implementation (including main()) exactly once into a
+# static library.  Every test binary links against it instead of defining
+# DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN themselves, which lets us put
+# <doctest/doctest.h> in the shared PCH (declarations only) and avoid
+# parsing the full doctest header 24 times.
+add_library(doctest_main STATIC unit/doctest_main.cpp)
+target_link_libraries(doctest_main PUBLIC doctest::doctest)
+
 # List of unit test files
 set(UNIT_TEST_FILES
     test_engine
@@ -55,7 +63,7 @@ foreach(test_name ${UNIT_TEST_FILES})
 
     target_link_libraries(${test_name}
         thallium
-        doctest::doctest
+        doctest_main
     )
 
     # Add as CTest test
@@ -73,6 +81,7 @@ list(GET UNIT_TEST_FILES 0 _pch_donor)
 target_precompile_headers(${_pch_donor}
     PRIVATE
         <thallium.hpp>
+        <doctest/doctest.h>
         "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_helpers.hpp"
 )
 foreach(test_name IN LISTS UNIT_TEST_FILES)
