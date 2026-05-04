@@ -116,7 +116,7 @@ class bulk_buffer_pool {
     }
 
     // Build one tier and add it to m_state; throws and cleans up on failure.
-    void add_bucket(engine& e, std::size_t count, std::size_t sz,
+    void add_bucket(const engine& e, std::size_t count, std::size_t sz,
                     bulk_mode mode, const A& alloc) {
         bucket b;
         b.buf_size = sz;

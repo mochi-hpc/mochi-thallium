@@ -54,7 +54,7 @@ class bulk_buffer {
         std::size_t    size;
         A              alloc;
 
-        impl(engine& e, std::size_t sz, bulk_mode mode, A al);
+        impl(engine e, std::size_t sz, bulk_mode mode, A al);
         ~impl() noexcept;
 
         // Non-copyable / non-movable (managed exclusively via shared_ptr)
@@ -83,7 +83,7 @@ class bulk_buffer {
      * @param mode Access mode (bulk_mode::read_only, write_only, or read_write).
      * @param alloc Allocator instance.
      */
-    bulk_buffer(engine& e, std::size_t size, bulk_mode mode, A alloc = A{})
+    bulk_buffer(engine e, std::size_t size, bulk_mode mode, A alloc = A{})
     : m_impl(std::make_shared<impl>(e, size, mode, std::move(alloc))) {}
 
     bulk_buffer(const bulk_buffer&)            = default;
@@ -171,7 +171,7 @@ inline async_bulk_op pull_to(const remote_bulk& rb, const bulk_buffer<A>& buf) {
 namespace thallium {
 
 template <typename A>
-bulk_buffer<A>::impl::impl(engine& e, std::size_t sz, bulk_mode mode, A al)
+bulk_buffer<A>::impl::impl(engine e, std::size_t sz, bulk_mode mode, A al)
 : size(sz)
 , alloc(std::move(al)) {
     data = alloc_traits::allocate(alloc, sz);
