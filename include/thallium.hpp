@@ -14,6 +14,8 @@
 #include <thallium/callable_remote_procedure.hpp>
 #include <thallium/remote_bulk.hpp>
 #include <thallium/timed_remote_bulk.hpp>
+#include <thallium/bulk_buffer.hpp>
+#include <thallium/bulk_buffer_pool.hpp>
 #include <thallium/provider.hpp>
 #include <thallium/provider_handle.hpp>
 #include <thallium/xstream.hpp>

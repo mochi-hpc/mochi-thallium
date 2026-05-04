@@ -40,6 +40,7 @@ set(UNIT_TEST_FILES
     test_timed_callbacks
     test_logging
     test_edge_cases
+    test_bulk_buffer
 )
 
 # Create a separate test executable for each test file
