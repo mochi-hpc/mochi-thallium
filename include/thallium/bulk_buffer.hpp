@@ -143,6 +143,19 @@ class bulk_buffer {
      * @brief Async pull from the remote side into this buffer.
      */
     async_bulk_op pull_from(const remote_bulk& rb) const;
+
+    /**
+     * @brief Returns a reference to the internal thallium::bulk handle.
+     *
+     * @warning The returned reference is valid only as long as this
+     * bulk_buffer (or at least one copy of it) remains alive.  Do NOT
+     * store the returned bulk or copy it into an owning thallium::bulk
+     * object that may outlive this bulk_buffer: if the buffer has been
+     * leased from a bulk_buffer_pool, the pool slot is released when the
+     * last bulk_buffer copy is destroyed, and any surviving bulk handle
+     * would then refer to memory that may be reused by a subsequent lease.
+     */
+    const thallium::bulk& bulk() const noexcept { return m_impl->b; }
 };
 
 /**
