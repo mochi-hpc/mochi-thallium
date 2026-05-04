@@ -154,6 +154,19 @@ TEST_CASE("bulk_buffer receives data via intra-process RDMA") {
 
 TEST_SUITE("bulk_buffer_pool") {
 
+TEST_CASE("multi-tier pool: size_multiple <= 1 throws") {
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+
+    REQUIRE_THROWS_AS(
+        (tl::bulk_buffer_pool<>(myEngine, 3, 2, 64, 1.0f, tl::bulk_mode::write_only)),
+        tl::exception);
+    REQUIRE_THROWS_AS(
+        (tl::bulk_buffer_pool<>(myEngine, 3, 2, 64, 0.5f, tl::bulk_mode::write_only)),
+        tl::exception);
+
+    myEngine.finalize();
+}
+
 TEST_CASE("single-tier pool: create and destroy") {
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
 
@@ -237,7 +250,7 @@ TEST_CASE("multi-tier pool: max_buffer_size and tier selection") {
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
 
     // 3 tiers: 64, 256, 1024 bytes; 2 buffers each
-    tl::bulk_buffer_pool<> pool(myEngine, 3, 2, 64, 4,
+    tl::bulk_buffer_pool<> pool(myEngine, 3, 2, 64, 4.0f,
                                  tl::bulk_mode::write_only);
 
     REQUIRE(pool.max_buffer_size() == 1024);
@@ -341,7 +354,7 @@ TEST_CASE("extend_if_needed: selects correct tier") {
     tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
 
     // 3 tiers: 64, 256, 1024 bytes; 0 buffers each (lazy allocation)
-    tl::bulk_buffer_pool<> pool(myEngine, 3, 0, 64, 4,
+    tl::bulk_buffer_pool<> pool(myEngine, 3, 0, 64, 4.0f,
                                  tl::bulk_mode::write_only);
 
     tl::bulk_buffer<> small  = pool.get(0,   true);
@@ -368,6 +381,30 @@ TEST_CASE("extend_if_needed: extended buffers are returned to pool") {
     tl::bulk_buffer<> reused = pool.try_get();
     REQUIRE(!reused.is_null());
     REQUIRE(reused.size() == 128);
+
+    myEngine.finalize();
+}
+
+TEST_CASE("extend_if_needed: creates new tier when min_size exceeds all buckets") {
+    tl::engine myEngine("tcp", THALLIUM_SERVER_MODE, true);
+
+    // Pool with a single 64-byte tier.
+    tl::bulk_buffer_pool<> pool(myEngine, 1, 64, tl::bulk_mode::write_only);
+
+    // Request 4096 bytes — beyond the existing tier; a new tier must be created
+    // at 1.2× the requested size = 4915 bytes.
+    const std::size_t requested = 4096;
+    const std::size_t expected  = static_cast<std::size_t>(requested * 1.2);
+    tl::bulk_buffer<> buf = pool.get(requested, true);
+    REQUIRE(!buf.is_null());
+    REQUIRE(buf.size() == expected);
+    REQUIRE(pool.max_buffer_size() == expected);
+
+    // The buffer is returned to the new tier's free list when the lease drops.
+    buf = tl::bulk_buffer<>();
+    tl::bulk_buffer<> reused = pool.try_get(requested);
+    REQUIRE(!reused.is_null());
+    REQUIRE(reused.size() == expected);
 
     myEngine.finalize();
 }

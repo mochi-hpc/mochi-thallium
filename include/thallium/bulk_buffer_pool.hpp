@@ -8,10 +8,10 @@
 
 #include <cstddef>
 #include <memory>
-#include <stdexcept>
 #include <vector>
 #include <thallium/bulk_buffer.hpp>
 #include <thallium/engine.hpp>
+#include <thallium/exception.hpp>
 #include <thallium/mutex.hpp>
 #include <thallium/condition_variable.hpp>
 
@@ -163,21 +163,23 @@ class bulk_buffer_pool {
      * @param npools        Number of size tiers.
      * @param nbufs         Number of buffers per tier.
      * @param first_size    Size (bytes) of the smallest tier.
-     * @param size_multiple Multiplier applied to each successive tier.
+     * @param size_multiple Multiplier (> 1.0) applied to each successive tier.
      * @param mode          Bulk access mode.
      * @param alloc         Allocator instance.
      */
-    bulk_buffer_pool(const engine& e, std::size_t npools, std::size_t nbufs,
-                     std::size_t first_size, std::size_t size_multiple,
+    bulk_buffer_pool(engine& e, std::size_t npools, std::size_t nbufs,
+                     std::size_t first_size, float size_multiple,
                      bulk_mode mode, A alloc = A{})
     : m_state(std::make_shared<pool_state>()) {
+        if(size_multiple <= 1.0f)
+            throw thallium::exception("bulk_buffer_pool: size_multiple must be > 1");
         m_state->eng   = e;
         m_state->mode  = mode;
         m_state->alloc = alloc;
         std::size_t sz = first_size;
         for(std::size_t t = 0; t < npools; ++t) {
             add_bucket(e, nbufs, sz, mode, alloc);
-            sz *= size_multiple;
+            sz = static_cast<std::size_t>(sz * size_multiple);
         }
     }
 
@@ -199,8 +201,8 @@ class bulk_buffer_pool {
      * a new buffer is allocated on the fly in the smallest tier whose size is
      * >= @p min_size and returned as a lease.  When the lease is later dropped
      * the buffer is recycled into that tier's free list like any other buffer.
-     * Throws std::runtime_error if @p extend_if_needed is true but no tier has
-     * buf_size >= @p min_size.
+     * If @p min_size exceeds every existing tier, a new tier of exactly
+     * @p min_size bytes is created on the fly.
      *
      * @param min_size          Minimum required buffer size in bytes (0 = any).
      * @param extend_if_needed  If true, allocate a new buffer rather than blocking.
@@ -215,8 +217,13 @@ class bulk_buffer_pool {
         // Extend path: allocate a new impl on demand.
         if(extend_if_needed) {
             bucket* b = find_bucket_for(*m_state, min_size);
-            if(!b) throw std::runtime_error(
-                "bulk_buffer_pool::get: no bucket with buf_size >= min_size");
+            if(!b) {
+                // No existing tier is large enough — create one at 1.2× min_size
+                // to accommodate future requests of similar but slightly larger size.
+                m_state->buckets.push_back(bucket{});
+                b = &m_state->buckets.back();
+                b->buf_size = static_cast<std::size_t>(min_size * 1.2);
+            }
             std::unique_ptr<impl_type> guard(
                 new impl_type(m_state->eng, b->buf_size, m_state->mode, m_state->alloc));
             b->all.push_back(guard.get());

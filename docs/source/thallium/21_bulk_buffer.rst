@@ -124,7 +124,9 @@ When :code:`extend_if_needed` is :code:`true`:
 * Otherwise a new buffer is allocated in the smallest tier whose size is
   >= :code:`min_size` and returned as a lease.  When the lease drops the buffer
   is recycled into that tier's free list exactly like a pre-allocated buffer.
-* If no tier has a large-enough buffer size a :code:`std::runtime_error` is thrown.
+* If no existing tier has a large-enough buffer size, a new tier of exactly
+  :code:`min_size` bytes is created on the fly and appended to the pool.
+  Subsequent calls that fit within this new tier will reuse it.
 
 This allows creating a pool with zero pre-allocated buffers (:code:`count=0` /
 :code:`nbufs=0`) and letting it grow on demand:
